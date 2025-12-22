@@ -1,0 +1,228 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-primary: #a855f7;
+  --color-secondary: #6366f1;
+  --color-background: #0f172a;
+  --color-surface: #1e293b;
+  --color-text: #f8fafc;
+  --color-text-muted: #94a3b8;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+}
+
+body {
+  font-family: "Outfit", system-ui, -apple-system, sans-serif;
+  background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+  color: var(--color-text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Extension popup specific styles - default for small screens */
+#root {
+  width: 100%;
+  max-width: 400px;
+  min-height: 600px;
+  max-height: 600px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  margin: 0 auto;
+}
+
+/* Web version styles - for larger screens */
+@media (min-width: 768px) {
+  #root {
+    width: 100%;
+    max-width: 100%;
+    min-height: 100vh;
+    max-height: none;
+  }
+}
+
+/* Small screens - keep extension-like width */
+@media (max-width: 767px) {
+  #root {
+    width: 100%;
+    max-width: 400px;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(30, 41, 59, 0.5);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #a855f7 0%, #6366f1 100%);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #c084fc 0%, #818cf8 100%);
+}
+
+/* Glass morphism effect */
+.glass {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.glass-dark {
+  background: rgba(15, 23, 42, 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, #a855f7 0%, #6366f1 50%, #38bdf8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Glow effects */
+.glow-purple {
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.3), 0 0 40px rgba(168, 85, 247, 0.2),
+    0 0 60px rgba(168, 85, 247, 0.1);
+}
+
+.glow-blue {
+  box-shadow: 0 0 20px rgba(56, 189, 248, 0.3), 0 0 40px rgba(56, 189, 248, 0.2),
+    0 0 60px rgba(56, 189, 248, 0.1);
+}
+
+/* NFT Card styles */
+.nft-card {
+  background: linear-gradient(
+    135deg,
+    rgba(168, 85, 247, 0.1) 0%,
+    rgba(99, 102, 241, 0.1) 100%
+  );
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  transition: all 0.3s ease;
+}
+
+.nft-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(168, 85, 247, 0.6);
+  box-shadow: 0 20px 40px rgba(168, 85, 247, 0.2);
+}
+
+/* Shimmer animation */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Button styles */
+.btn-primary {
+  @apply px-6 py-3 bg-gradient-to-r from-accent-500 to-primary-500 rounded-xl font-semibold text-white;
+  @apply transition-all duration-300 ease-out;
+  @apply hover:from-accent-400 hover:to-primary-400 hover:shadow-neon;
+  @apply active:scale-95;
+}
+
+.btn-secondary {
+  @apply px-6 py-3 bg-dark-800 border border-dark-600 rounded-xl font-semibold text-white;
+  @apply transition-all duration-300 ease-out;
+  @apply hover:bg-dark-700 hover:border-accent-500/50;
+  @apply active:scale-95;
+}
+
+.btn-ghost {
+  @apply px-4 py-2 bg-transparent rounded-lg font-medium text-dark-300;
+  @apply transition-all duration-200;
+  @apply hover:bg-dark-800/50 hover:text-white;
+}
+
+/* Input styles */
+.input-field {
+  @apply w-full px-4 py-3 bg-dark-800/50 border border-dark-600 rounded-xl text-white;
+  @apply placeholder:text-dark-400 focus:outline-none focus:border-accent-500;
+  @apply transition-all duration-200;
+}
+
+.input-field-search {
+  @apply w-full pl-12 pr-10 py-3 bg-dark-800/50 border border-dark-600 rounded-xl text-white;
+  @apply placeholder:text-dark-400 focus:outline-none focus:border-accent-500;
+  @apply transition-all duration-200;
+}
+
+/* Card styles */
+.card {
+  @apply p-4 rounded-2xl glass-dark border border-dark-700/50;
+  @apply transition-all duration-300;
+  @apply hover:border-accent-500/30;
+}
+
+/* Media type badge colors */
+.badge-book {
+  @apply bg-emerald-500/20 text-emerald-400 border-emerald-500/30;
+}
+.badge-movie {
+  @apply bg-red-500/20 text-red-400 border-red-500/30;
+}
+.badge-anime {
+  @apply bg-pink-500/20 text-pink-400 border-pink-500/30;
+}
+.badge-manga {
+  @apply bg-orange-500/20 text-orange-400 border-orange-500/30;
+}
+.badge-comic {
+  @apply bg-yellow-500/20 text-yellow-400 border-yellow-500/30;
+}
+.badge-tvshow {
+  @apply bg-blue-500/20 text-blue-400 border-blue-500/30;
+}
+
+/* Achievement rarity */
+.rarity-common {
+  @apply border-gray-400 text-gray-400;
+}
+.rarity-uncommon {
+  @apply border-green-400 text-green-400;
+}
+.rarity-rare {
+  @apply border-blue-400 text-blue-400;
+}
+.rarity-epic {
+  @apply border-purple-400 text-purple-400;
+}
+.rarity-legendary {
+  @apply border-yellow-400 text-yellow-400;
+}
