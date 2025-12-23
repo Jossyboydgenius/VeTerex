@@ -21,7 +21,7 @@ export function Layout({ children }: LayoutProps) {
   const location = useLocation();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-dark-950 via-dark-900 to-dark-950 flex flex-col">
+    <div className="min-h-screen h-full bg-gradient-to-br from-dark-950 via-dark-900 to-dark-950 flex flex-col">
       {/* Background Effects */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-accent-500/20 rounded-full blur-[100px]" />
@@ -33,7 +33,7 @@ export function Layout({ children }: LayoutProps) {
       <Header />
 
       {/* Main Content */}
-      <main className="flex-1 relative z-10 pb-20">
+      <main className="flex-1 relative z-10 pb-20 flex flex-col">
         <AnimatePresence mode="wait">
           <motion.div
             key={location.pathname}
@@ -41,7 +41,7 @@ export function Layout({ children }: LayoutProps) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
-            className="h-full"
+            className="flex-1 flex flex-col"
           >
             {children}
           </motion.div>

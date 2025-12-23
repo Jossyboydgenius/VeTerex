@@ -17,44 +17,52 @@
   box-sizing: border-box;
 }
 
-html {
-  font-size: 16px;
-}
-
+html,
 body {
+  font-size: 16px;
   font-family: "Outfit", system-ui, -apple-system, sans-serif;
   background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
   color: var(--color-text);
-  min-height: 100vh;
-  overflow-x: hidden;
 }
 
-/* Extension popup specific styles - default for small screens */
+/* Default: Extension popup mode (400x600) */
+html,
+body,
 #root {
-  width: 100%;
-  max-width: 400px;
+  width: 400px;
+  min-width: 400px;
+  height: 600px;
   min-height: 600px;
-  max-height: 600px;
+}
+
+body {
+  overflow: hidden;
+}
+
+#root {
   overflow-y: auto;
   overflow-x: hidden;
-  margin: 0 auto;
 }
 
-/* Web version styles - for larger screens */
-@media (min-width: 768px) {
+/* Web mode: Full screen when viewport is larger than extension */
+@media (min-width: 500px) {
+  html,
+  body,
   #root {
     width: 100%;
-    max-width: 100%;
+    min-width: 100%;
+    height: auto;
     min-height: 100vh;
     max-height: none;
   }
-}
 
-/* Small screens - keep extension-like width */
-@media (max-width: 767px) {
+  body {
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
   #root {
-    width: 100%;
-    max-width: 400px;
+    overflow: visible;
   }
 }
 

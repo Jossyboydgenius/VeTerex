@@ -124,20 +124,56 @@ export function CollectionPage() {
 
   if (!isConnected) {
     return (
-      <div className="px-4 py-6 flex flex-col items-center justify-center min-h-[60vh]">
+      <div className="px-4 py-6 flex flex-col items-center justify-center flex-1">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           className="text-center"
         >
-          <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-dark-800 flex items-center justify-center">
-            <Library className="w-10 h-10 text-dark-500" />
-          </div>
-          <h2 className="text-xl font-semibold text-white mb-2">
+          <motion.div
+            className="w-24 h-24 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-accent-500/20 to-primary-500/20 flex items-center justify-center border border-accent-500/30"
+            animate={{
+              boxShadow: [
+                "0 0 20px rgba(168, 85, 247, 0.2)",
+                "0 0 40px rgba(168, 85, 247, 0.4)",
+                "0 0 20px rgba(168, 85, 247, 0.2)",
+              ],
+            }}
+            transition={{ duration: 2, repeat: Infinity }}
+          >
+            <Library className="w-12 h-12 text-accent-400" />
+          </motion.div>
+          <h2 className="text-2xl font-bold gradient-text mb-3">
             Your Collection
           </h2>
-          <p className="text-dark-400 max-w-xs mx-auto mb-6">
-            Connect your wallet to view your achievement NFTs
+          <p className="text-dark-400 max-w-xs mx-auto mb-8">
+            Connect your wallet to view and manage your achievement NFTs. Track
+            every book, movie, and anime you've completed.
+          </p>
+
+          {/* Preview Cards */}
+          <div className="grid grid-cols-3 gap-3 mb-6">
+            {[
+              "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=150&h=200&fit=crop",
+              "https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=150&h=200&fit=crop",
+              "https://images.unsplash.com/photo-1578632767115-351597cf2477?w=150&h=200&fit=crop",
+            ].map((img, i) => (
+              <div
+                key={i}
+                className="aspect-[3/4] rounded-xl bg-dark-800/50 border border-dark-700 overflow-hidden opacity-60 hover:opacity-80 transition-opacity"
+              >
+                <img
+                  src={img}
+                  alt="Preview"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            ))}
+          </div>
+
+          <p className="text-sm text-dark-500">
+            <span className="text-accent-400 font-semibold">12,450+</span> NFTs
+            minted by users
           </p>
         </motion.div>
       </div>

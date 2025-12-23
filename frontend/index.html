@@ -8,6 +8,43 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+      /* Extension popup - Chrome requires explicit body sizing */
+      body {
+        margin: 0;
+        padding: 0;
+        width: 400px;
+        min-width: 400px;
+        height: 600px;
+        min-height: 600px;
+        overflow: hidden;
+      }
+      #root {
+        width: 400px;
+        min-width: 400px;
+        height: 600px;
+        min-height: 600px;
+        overflow-y: auto;
+        overflow-x: hidden;
+      }
+      /* Web mode - override for larger screens */
+      @media (min-width: 500px) {
+        body {
+          width: 100%;
+          min-width: auto;
+          height: auto;
+          min-height: 100vh;
+          overflow: auto;
+        }
+        #root {
+          width: 100%;
+          min-width: auto;
+          height: auto;
+          min-height: 100vh;
+          max-height: none;
+        }
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
