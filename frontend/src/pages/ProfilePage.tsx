@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import {
   User,
   Settings,
@@ -15,6 +16,7 @@ import {
   Tv,
   Play,
   BookOpen,
+  ChevronRight,
 } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import {
@@ -33,6 +35,7 @@ const statIcons = {
 };
 
 export function ProfilePage() {
+  const navigate = useNavigate();
   const {
     isConnected,
     currentAccount,
@@ -343,14 +346,20 @@ export function ProfilePage() {
       >
         <h2 className="font-semibold text-white">Settings</h2>
 
-        <button className="card w-full flex items-center gap-4 hover:border-dark-600 transition-colors">
+        <button
+          onClick={() => navigate("/settings")}
+          className="card w-full flex items-center gap-4 hover:border-dark-600 transition-colors"
+        >
           <div className="w-10 h-10 rounded-xl bg-dark-700 flex items-center justify-center">
             <Settings className="w-5 h-5 text-dark-400" />
           </div>
           <div className="flex-1 text-left">
             <p className="text-white">Preferences</p>
-            <p className="text-sm text-dark-400">Language, notifications</p>
+            <p className="text-sm text-dark-400">
+              Tracking, notifications, custom sites
+            </p>
           </div>
+          <ChevronRight className="w-5 h-5 text-dark-500" />
         </button>
 
         <button

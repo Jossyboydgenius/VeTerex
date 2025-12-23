@@ -88,6 +88,125 @@ const mockNFTs: CompletionNFT[] = [
     review: "Changed my perspective.",
     rarity: "legendary",
   },
+  {
+    id: "4",
+    tokenId: "0x4567890123def012",
+    mediaId: "4",
+    media: {
+      id: "4",
+      externalId: "tt0903747",
+      title: "Breaking Bad",
+      type: "tvshow",
+      description: "A chemistry teacher turned methamphetamine manufacturer...",
+      coverImage:
+        "https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=300&h=400&fit=crop",
+      releaseYear: 2008,
+      creator: "Vince Gilligan",
+      genre: ["Drama", "Crime"],
+      totalCompletions: 4521,
+    },
+    mintedAt: new Date("2024-01-25"),
+    transactionHash: "0xjkl012...",
+    completedAt: new Date("2024-01-20"),
+    rating: 5,
+    review: "Best TV show ever made.",
+    rarity: "epic",
+  },
+  {
+    id: "5",
+    tokenId: "0x5678901234ef0123",
+    mediaId: "5",
+    media: {
+      id: "5",
+      externalId: "13",
+      title: "One Piece",
+      type: "manga",
+      description: "Follows the adventures of Monkey D. Luffy...",
+      coverImage:
+        "https://images.unsplash.com/photo-1618336753974-aae8e04506aa?w=300&h=400&fit=crop",
+      releaseYear: 1997,
+      creator: "Eiichiro Oda",
+      genre: ["Adventure", "Action"],
+      totalCompletions: 5123,
+    },
+    mintedAt: new Date("2024-02-10"),
+    transactionHash: "0xmno345...",
+    completedAt: new Date("2024-02-05"),
+    rating: 5,
+    rarity: "legendary",
+  },
+  {
+    id: "6",
+    tokenId: "0x6789012345f01234",
+    mediaId: "6",
+    media: {
+      id: "6",
+      externalId: "tt0816692",
+      title: "Interstellar",
+      type: "movie",
+      description: "A team of explorers travel through a wormhole...",
+      coverImage:
+        "https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=300&h=400&fit=crop",
+      releaseYear: 2014,
+      creator: "Christopher Nolan",
+      genre: ["Sci-Fi", "Drama"],
+      totalCompletions: 3892,
+    },
+    mintedAt: new Date("2024-03-15"),
+    transactionHash: "0xpqr678...",
+    completedAt: new Date("2024-03-10"),
+    rating: 5,
+    review: "Mind-bending and emotional.",
+    rarity: "rare",
+  },
+  {
+    id: "7",
+    tokenId: "0x7890123456012345",
+    mediaId: "7",
+    media: {
+      id: "7",
+      externalId: "1535",
+      title: "Attack on Titan",
+      type: "anime",
+      description:
+        "Humanity lives inside cities surrounded by enormous walls...",
+      coverImage:
+        "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=300&h=400&fit=crop",
+      releaseYear: 2013,
+      creator: "Wit Studio",
+      genre: ["Action", "Dark Fantasy"],
+      totalCompletions: 4156,
+    },
+    mintedAt: new Date("2024-02-28"),
+    transactionHash: "0xstu901...",
+    completedAt: new Date("2024-02-25"),
+    rating: 5,
+    rarity: "epic",
+  },
+  {
+    id: "8",
+    tokenId: "0x8901234567123456",
+    mediaId: "8",
+    media: {
+      id: "8",
+      externalId: "978-0-7432-7356-5",
+      title: "1984",
+      type: "book",
+      description: "A dystopian social science fiction novel...",
+      coverImage:
+        "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=300&h=400&fit=crop",
+      releaseYear: 1949,
+      creator: "George Orwell",
+      genre: ["Dystopian", "Political"],
+      totalCompletions: 2789,
+    },
+    mintedAt: new Date("2024-03-20"),
+    transactionHash: "0xvwx234...",
+    completedAt: new Date("2024-03-18"),
+    rating: 4,
+    review: "Eerily relevant today.",
+    rarity: "rare",
+  },
 ];
 
 const typeFilters = [
@@ -269,7 +388,9 @@ export function CollectionPage() {
       {filteredNFTs.length > 0 ? (
         <div
           className={
-            viewMode === "grid" ? "grid grid-cols-2 gap-4" : "space-y-4"
+            viewMode === "grid"
+              ? "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4"
+              : "space-y-4"
           }
         >
           {filteredNFTs.map((nft, index) => (

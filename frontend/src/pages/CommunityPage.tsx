@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import {
   Users,
   UserPlus,
@@ -105,6 +106,7 @@ const mockMatchingUsers = [
 
 export function CommunityPage() {
   const { isConnected } = useAppStore();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<"groups" | "matches">("groups");
 
   if (!isConnected) {
@@ -230,6 +232,7 @@ export function CommunityPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
               whileHover={{ scale: 1.01 }}
+              onClick={() => navigate(`/community/group/${group.id}`)}
               className="card flex items-center gap-4 cursor-pointer"
             >
               {/* Media Cover */}

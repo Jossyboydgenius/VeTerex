@@ -1,18 +1,18 @@
-import { useState } from 'react'
-import { motion } from 'framer-motion'
-import { Wallet, ChevronDown, LogOut, Copy, Check, Sparkles } from 'lucide-react'
-import { useAppStore } from '@/store/useAppStore'
-import { 
-  initWepin, 
-  loginWithWepin, 
+import { useState } from "react";
+import { motion } from "framer-motion";
+import { Wallet, ChevronDown, LogOut, Copy, Check } from "lucide-react";
+import { useAppStore } from "@/store/useAppStore";
+import {
+  initWepin,
+  loginWithWepin,
   logoutWepin,
-  getWepinAccounts 
-} from '@/services/wepin'
+  getWepinAccounts,
+} from "@/services/wepin";
 
 export function Header() {
-  const { 
-    isConnected, 
-    isLoading, 
+  const {
+    isConnected,
+    isLoading,
     currentAccount,
     setConnected,
     setLoading,
@@ -20,92 +20,96 @@ export function Header() {
     setAccounts,
     setCurrentAccount,
     addToast,
-    logout
-  } = useAppStore()
-  
-  const [showDropdown, setShowDropdown] = useState(false)
-  const [copied, setCopied] = useState(false)
-  
+    logout,
+  } = useAppStore();
+
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [copied, setCopied] = useState(false);
+
   const handleConnect = async () => {
-    setLoading(true)
+    setLoading(true);
     try {
       // Initialize Wepin SDK
-      await initWepin()
-      
+      await initWepin();
+
       // Login with Wepin Widget
-      const user = await loginWithWepin()
-      
-      if (user?.status === 'success') {
-        setWepinUser(user)
-        
+      const user = await loginWithWepin();
+
+      if (user?.status === "success") {
+        setWepinUser(user);
+
         // Get accounts
-        const accounts = await getWepinAccounts()
-        setAccounts(accounts)
-        
+        const accounts = await getWepinAccounts();
+        setAccounts(accounts);
+
         if (accounts.length > 0) {
-          setCurrentAccount(accounts[0])
+          setCurrentAccount(accounts[0]);
         }
-        
-        setConnected(true)
+
+        setConnected(true);
         addToast({
-          type: 'success',
-          message: 'Wallet connected successfully!'
-        })
+          type: "success",
+          message: "Wallet connected successfully!",
+        });
       }
     } catch (error) {
-      console.error('Connection error:', error)
+      console.error("Connection error:", error);
       addToast({
-        type: 'error',
-        message: 'Failed to connect wallet. Please try again.'
-      })
+        type: "error",
+        message: "Failed to connect wallet. Please try again.",
+      });
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
-  
+  };
+
   const handleDisconnect = async () => {
     try {
-      await logoutWepin()
-      logout()
-      setShowDropdown(false)
+      await logoutWepin();
+      logout();
+      setShowDropdown(false);
       addToast({
-        type: 'info',
-        message: 'Wallet disconnected'
-      })
+        type: "info",
+        message: "Wallet disconnected",
+      });
     } catch (error) {
-      console.error('Disconnect error:', error)
+      console.error("Disconnect error:", error);
     }
-  }
-  
+  };
+
   const copyAddress = () => {
     if (currentAccount?.address) {
-      navigator.clipboard.writeText(currentAccount.address)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      navigator.clipboard.writeText(currentAccount.address);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     }
-  }
-  
+  };
+
   const truncateAddress = (address: string) => {
-    return `${address.slice(0, 6)}...${address.slice(-4)}`
-  }
-  
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  };
+
   return (
     <header className="sticky top-0 z-50 glass-dark border-b border-dark-700/50">
       <div className="flex items-center justify-between px-4 py-3">
         {/* Logo */}
         <div className="flex items-center gap-2">
           <div className="relative">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent-500 to-primary-500 flex items-center justify-center">
-              <Sparkles className="w-6 h-6 text-white" />
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent-500 to-primary-500 flex items-center justify-center overflow-hidden">
+              <img src="/icons/icon.svg" alt="VeTerex" className="w-7 h-7" />
             </div>
             <div className="absolute -inset-1 bg-gradient-to-br from-accent-500 to-primary-500 rounded-xl blur opacity-30" />
           </div>
           <div>
-            <h1 className="text-lg font-display font-bold gradient-text">VeTerex</h1>
-            <p className="text-[10px] text-dark-400 -mt-0.5">Media Achievements</p>
+            <h1 className="text-lg font-display font-bold gradient-text">
+              VeTerex
+            </h1>
+            <p className="text-[10px] text-dark-400 -mt-0.5">
+              Media Achievements
+            </p>
           </div>
         </div>
-        
+
         {/* Wallet Connection */}
         {!isConnected ? (
           <motion.button
@@ -142,17 +146,23 @@ export function Header() {
             >
               <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-accent-500 to-primary-500" />
               <span className="text-dark-200 font-medium">
-                {currentAccount ? truncateAddress(currentAccount.address) : 'Connected'}
+                {currentAccount
+                  ? truncateAddress(currentAccount.address)
+                  : "Connected"}
               </span>
-              <ChevronDown className={`w-4 h-4 text-dark-400 transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
+              <ChevronDown
+                className={`w-4 h-4 text-dark-400 transition-transform ${
+                  showDropdown ? "rotate-180" : ""
+                }`}
+              />
             </motion.button>
-            
+
             {/* Dropdown */}
             {showDropdown && (
               <>
-                <div 
-                  className="fixed inset-0 z-40" 
-                  onClick={() => setShowDropdown(false)} 
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setShowDropdown(false)}
                 />
                 <motion.div
                   initial={{ opacity: 0, y: 10, scale: 0.95 }}
@@ -167,14 +177,14 @@ export function Header() {
                       <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent-500 to-primary-500" />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-white truncate">
-                          {currentAccount?.network || 'Ethereum'}
+                          {currentAccount?.network || "Ethereum"}
                         </p>
                         <p className="text-xs text-dark-400 truncate">
                           {currentAccount?.address}
                         </p>
                       </div>
                     </div>
-                    
+
                     <button
                       onClick={copyAddress}
                       className="w-full flex items-center justify-center gap-2 px-3 py-2 
@@ -194,7 +204,7 @@ export function Header() {
                       )}
                     </button>
                   </div>
-                  
+
                   {/* Actions */}
                   <div className="p-2">
                     <button
@@ -213,5 +223,5 @@ export function Header() {
         )}
       </div>
     </header>
-  )
+  );
 }

@@ -19,12 +19,57 @@
     },
     "default_title": "VeTerex - Media Achievement Tracker"
   },
+  "background": {
+    "service_worker": "src/background/service-worker.ts",
+    "type": "module"
+  },
   "permissions": [
-    "storage"
+    "storage",
+    "tabs",
+    "notifications",
+    "activeTab",
+    "contextMenus"
+  ],
+  "optional_permissions": [
+    "history"
+  ],
+  "optional_host_permissions": [
+    "https://*/*",
+    "http://*/*"
   ],
   "host_permissions": [
     "https://*.wepin.io/*",
-    "https://gapi.veryapi.io/*"
+    "https://gapi.veryapi.io/*",
+    "https://*.netflix.com/*",
+    "https://*.youtube.com/*",
+    "https://*.primevideo.com/*",
+    "https://*.amazon.com/*",
+    "https://*.disneyplus.com/*",
+    "https://*.hulu.com/*",
+    "https://*.crunchyroll.com/*",
+    "https://*.goodreads.com/*",
+    "https://*.mangadex.org/*",
+    "https://*.myanimelist.net/*",
+    "https://*.anilist.co/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.netflix.com/*",
+        "https://*.youtube.com/watch*",
+        "https://*.primevideo.com/*",
+        "https://*.amazon.com/gp/video/*",
+        "https://*.disneyplus.com/*",
+        "https://*.hulu.com/watch/*",
+        "https://*.crunchyroll.com/watch/*",
+        "https://*.goodreads.com/book/*",
+        "https://*.mangadex.org/chapter/*",
+        "https://*.myanimelist.net/anime/*",
+        "https://*.anilist.co/anime/*"
+      ],
+      "js": ["src/content/media-tracker.ts"],
+      "run_at": "document_idle"
+    }
   ],
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'"
