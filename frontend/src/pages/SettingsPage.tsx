@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
@@ -9,9 +9,12 @@ import {
   Trash2,
   Check,
   AlertCircle,
+  X,
+  Edit2,
 } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import { isExtension } from "@/services/tracking";
+import { CustomDropdown } from "@/components/CustomDropdown";
 
 interface CustomSite {
   id: string;
@@ -42,6 +45,9 @@ export function SettingsPage() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [customSites, setCustomSites] = useState<CustomSite[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [siteToDelete, setSiteToDelete] = useState<string | null>(null);
+  const [editingSite, setEditingSite] = useState<string | null>(null);
   const [newSiteUrl, setNewSiteUrl] = useState("");
   const [newSiteName, setNewSiteName] = useState("");
   const [newSiteType, setNewSiteType] = useState("movie");
@@ -72,7 +78,15 @@ export function SettingsPage() {
 
   // Request permission for a site
   const requestPermission = async (domain: string) => {
-    if (!isExtension) return;
+    if (!isExtension) {
+      // In web mode, just simulate permission granted for testing
+      setPermissionStatus((prev) => ({ ...prev, [domain]: true }));
+      addToast({
+        type: "success",
+        message: `Permission granted for ${domain}`,
+      });
+      return;
+    }
 
     try {
       const granted = await chrome.permissions.request({
@@ -91,6 +105,36 @@ export function SettingsPage() {
     } catch (error) {
       console.error("Permission request failed:", error);
       addToast({ type: "error", message: "Failed to request permission" });
+    }
+  };
+
+  // Revoke permission for a site
+  const revokePermission = async (domain: string) => {
+    if (!isExtension) {
+      // In web mode, just simulate permission revoked
+      setPermissionStatus((prev) => ({ ...prev, [domain]: false }));
+      addToast({
+        type: "info",
+        message: `Permission revoked for ${domain}`,
+      });
+      return;
+    }
+
+    try {
+      const removed = await chrome.permissions.remove({
+        origins: [`https://*.${domain}/*`],
+      });
+
+      if (removed) {
+        setPermissionStatus((prev) => ({ ...prev, [domain]: false }));
+        addToast({
+          type: "info",
+          message: `Permission revoked for ${domain}`,
+        });
+      }
+    } catch (error) {
+      console.error("Permission revoke failed:", error);
+      addToast({ type: "error", message: "Failed to revoke permission" });
     }
   };
 
@@ -128,30 +172,49 @@ export function SettingsPage() {
       const url = new URL(
         newSiteUrl.startsWith("http") ? newSiteUrl : `https://${newSiteUrl}`
       );
-      const newSite: CustomSite = {
-        id: `custom-${Date.now()}`,
-        url: url.origin,
-        name: newSiteName,
-        type: newSiteType,
-        enabled: true,
-      };
 
-      const updated = [...customSites, newSite];
+      let updated: CustomSite[];
+
+      if (editingSite) {
+        // Update existing site
+        updated = customSites.map((site) =>
+          site.id === editingSite
+            ? { ...site, url: url.origin, name: newSiteName, type: newSiteType }
+            : site
+        );
+        addToast({
+          type: "success",
+          message: `Updated ${newSiteName}`,
+        });
+      } else {
+        // Add new site
+        const newSite: CustomSite = {
+          id: `custom-${Date.now()}`,
+          url: url.origin,
+          name: newSiteName,
+          type: newSiteType,
+          enabled: true,
+        };
+
+        updated = [...customSites, newSite];
+
+        // Request permission for the new site
+        requestPermission(url.hostname);
+
+        addToast({
+          type: "success",
+          message: `Added ${newSiteName} to tracking list`,
+        });
+      }
+
       setCustomSites(updated);
       saveSettings("customSites", updated);
-
-      // Request permission for the new site
-      requestPermission(url.hostname);
 
       setShowAddModal(false);
       setNewSiteUrl("");
       setNewSiteName("");
       setNewSiteType("movie");
-
-      addToast({
-        type: "success",
-        message: `Added ${newSiteName} to tracking list`,
-      });
+      setEditingSite(null);
     } catch (error) {
       addToast({ type: "error", message: "Invalid URL format" });
     }
@@ -159,10 +222,27 @@ export function SettingsPage() {
 
   // Remove custom site
   const removeCustomSite = (id: string) => {
-    const updated = customSites.filter((site) => site.id !== id);
-    setCustomSites(updated);
-    saveSettings("customSites", updated);
-    addToast({ type: "info", message: "Site removed from tracking list" });
+    setSiteToDelete(id);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = () => {
+    if (siteToDelete) {
+      const updated = customSites.filter((site) => site.id !== siteToDelete);
+      setCustomSites(updated);
+      saveSettings("customSites", updated);
+      addToast({ type: "info", message: "Site removed from tracking list" });
+      setSiteToDelete(null);
+    }
+    setShowDeleteModal(false);
+  };
+
+  const editCustomSite = (site: CustomSite) => {
+    setEditingSite(site.id);
+    setNewSiteName(site.name);
+    setNewSiteUrl(site.url);
+    setNewSiteType(site.type);
+    setShowAddModal(true);
   };
 
   // Toggle site enabled
@@ -278,10 +358,18 @@ export function SettingsPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   {permissionStatus[platform.domain] ? (
-                    <span className="flex items-center gap-1 text-xs text-green-400">
-                      <Check className="w-3 h-3" />
-                      Enabled
-                    </span>
+                    <div className="group relative">
+                      <button
+                        onClick={() => revokePermission(platform.domain)}
+                        className="flex items-center gap-1 text-xs text-green-400 hover:text-red-400 transition-colors"
+                      >
+                        <Check className="w-3 h-3" />
+                        Enabled
+                      </button>
+                      <div className="absolute bottom-full right-0 mb-2 px-2 py-1 bg-dark-700 border border-dark-600 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                        Click to disable
+                      </div>
+                    </div>
                   ) : (
                     <button
                       onClick={() => requestPermission(platform.domain)}
@@ -321,16 +409,6 @@ export function SettingsPage() {
                   className="flex items-center justify-between py-2 border-b border-dark-700 last:border-0"
                 >
                   <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => toggleSite(site.id)}
-                      className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-                        site.enabled
-                          ? "bg-accent-500 border-accent-500"
-                          : "border-dark-500"
-                      }`}
-                    >
-                      {site.enabled && <Check className="w-3 h-3 text-white" />}
-                    </button>
                     <div>
                       <p className="text-sm font-medium text-white">
                         {site.name}
@@ -338,12 +416,46 @@ export function SettingsPage() {
                       <p className="text-xs text-dark-500">{site.url}</p>
                     </div>
                   </div>
-                  <button
-                    onClick={() => removeCustomSite(site.id)}
-                    className="p-2 text-dark-400 hover:text-red-400 transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {site.enabled ? (
+                      <div className="group relative">
+                        <button
+                          onClick={() => toggleSite(site.id)}
+                          className="flex items-center gap-1 text-xs text-green-400 hover:text-red-400 transition-colors"
+                        >
+                          <Check className="w-3 h-3" />
+                          Enabled
+                        </button>
+                        <div className="absolute bottom-full right-0 mb-2 px-2 py-1 bg-dark-700 border border-dark-600 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                          Click to disable
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="group relative">
+                        <button
+                          onClick={() => toggleSite(site.id)}
+                          className="text-xs text-accent-400 hover:text-accent-300"
+                        >
+                          Enable
+                        </button>
+                        <div className="absolute bottom-full right-0 mb-2 px-2 py-1 bg-dark-700 border border-dark-600 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                          Click to enable
+                        </div>
+                      </div>
+                    )}
+                    <button
+                      onClick={() => editCustomSite(site)}
+                      className="p-2 text-dark-400 hover:text-accent-400 transition-colors"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => removeCustomSite(site.id)}
+                      className="p-2 text-dark-400 hover:text-red-400 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -375,93 +487,173 @@ export function SettingsPage() {
       </div>
 
       {/* Add Site Modal */}
-      {showAddModal && (
-        <>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setShowAddModal(false)}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
-          />
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="fixed inset-x-4 z-50 max-w-md mx-auto"
-            style={{ top: "50%", transform: "translateY(-50%)" }}
-          >
-            <div className="glass-dark rounded-2xl border border-dark-700 p-6">
-              <h3 className="text-lg font-semibold text-white mb-4">
-                Add Custom Website
-              </h3>
+      <AnimatePresence>
+        {showAddModal && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowAddModal(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[150]"
+            />
+            <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="w-full max-w-md"
+              >
+                <div className="bg-dark-900 rounded-2xl border border-dark-700 p-6 shadow-xl">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-white">
+                      {editingSite
+                        ? "Edit Custom Website"
+                        : "Add Custom Website"}
+                    </h3>
+                    <button
+                      onClick={() => {
+                        setShowAddModal(false);
+                        setEditingSite(null);
+                        setNewSiteName("");
+                        setNewSiteUrl("");
+                        setNewSiteType("movie");
+                      }}
+                      className="p-2 rounded-lg hover:bg-dark-700 transition-colors"
+                    >
+                      <X className="w-5 h-5 text-dark-400" />
+                    </button>
+                  </div>
 
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-dark-300 mb-2">
-                    Website Name
-                  </label>
-                  <input
-                    type="text"
-                    value={newSiteName}
-                    onChange={(e) => setNewSiteName(e.target.value)}
-                    placeholder="e.g., HBO Max"
-                    className="input-field"
-                  />
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-dark-300 mb-2">
+                        Website Name
+                      </label>
+                      <input
+                        type="text"
+                        value={newSiteName}
+                        onChange={(e) => setNewSiteName(e.target.value)}
+                        placeholder="e.g., HBO Max"
+                        className="input-field"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-dark-300 mb-2">
+                        Website URL
+                      </label>
+                      <input
+                        type="text"
+                        value={newSiteUrl}
+                        onChange={(e) => setNewSiteUrl(e.target.value)}
+                        placeholder="e.g., hbomax.com"
+                        className="input-field"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-dark-300 mb-2">
+                        Media Type
+                      </label>
+                      <CustomDropdown
+                        value={newSiteType}
+                        onChange={setNewSiteType}
+                        options={[
+                          { value: "movie", label: "Movie" },
+                          { value: "tvshow", label: "TV Show" },
+                          { value: "anime", label: "Anime" },
+                          { value: "book", label: "Book" },
+                          { value: "manga", label: "Manga" },
+                          { value: "video", label: "Video" },
+                        ]}
+                        placeholder="Select media type"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 mt-6">
+                    <button
+                      onClick={() => {
+                        setShowAddModal(false);
+                        setEditingSite(null);
+                        setNewSiteName("");
+                        setNewSiteUrl("");
+                        setNewSiteType("movie");
+                      }}
+                      className="flex-1 py-2.5 rounded-xl bg-dark-700 text-dark-300 font-medium"
+                    >
+                      Cancel
+                    </button>
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={addCustomSite}
+                      className="flex-1 py-2.5 rounded-xl bg-accent-500 text-white font-medium"
+                    >
+                      {editingSite ? "Update Site" : "Add Site"}
+                    </motion.button>
+                  </div>
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-dark-300 mb-2">
-                    Website URL
-                  </label>
-                  <input
-                    type="text"
-                    value={newSiteUrl}
-                    onChange={(e) => setNewSiteUrl(e.target.value)}
-                    placeholder="e.g., hbomax.com"
-                    className="input-field"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-dark-300 mb-2">
-                    Media Type
-                  </label>
-                  <select
-                    value={newSiteType}
-                    onChange={(e) => setNewSiteType(e.target.value)}
-                    className="input-field"
-                  >
-                    <option value="movie">Movie</option>
-                    <option value="tvshow">TV Show</option>
-                    <option value="anime">Anime</option>
-                    <option value="book">Book</option>
-                    <option value="manga">Manga</option>
-                    <option value="video">Video</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={() => setShowAddModal(false)}
-                  className="flex-1 py-2.5 rounded-xl bg-dark-700 text-dark-300 font-medium"
-                >
-                  Cancel
-                </button>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={addCustomSite}
-                  className="flex-1 py-2.5 rounded-xl bg-accent-500 text-white font-medium"
-                >
-                  Add Site
-                </motion.button>
-              </div>
+              </motion.div>
             </div>
-          </motion.div>
-        </>
-      )}
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {showDeleteModal && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowDeleteModal(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[150]"
+            />
+            <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="w-full max-w-sm"
+              >
+                <div className="bg-dark-900 rounded-2xl border border-dark-700 p-6 shadow-xl">
+                  <div className="flex items-center justify-center mb-4">
+                    <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center">
+                      <AlertCircle className="w-6 h-6 text-red-400" />
+                    </div>
+                  </div>
+                  <h3 className="text-lg font-semibold text-white text-center mb-2">
+                    Delete Custom Website?
+                  </h3>
+                  <p className="text-sm text-dark-400 text-center mb-6">
+                    This action cannot be undone. The website will be removed
+                    from your tracking list.
+                  </p>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setShowDeleteModal(false)}
+                      className="flex-1 py-2.5 rounded-xl bg-dark-700 text-dark-300 font-medium hover:bg-dark-600 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={confirmDelete}
+                      className="flex-1 py-2.5 rounded-xl bg-red-500 text-white font-medium hover:bg-red-600 transition-colors"
+                    >
+                      Delete
+                    </motion.button>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

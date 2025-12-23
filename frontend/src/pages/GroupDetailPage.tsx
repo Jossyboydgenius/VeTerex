@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
   Users,
@@ -11,6 +11,12 @@ import {
   Share2,
   Send,
   MoreHorizontal,
+  X,
+  Link,
+  Check,
+  Flag,
+  Bell,
+  BellOff,
 } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import type { Group } from "@/types";
@@ -167,13 +173,43 @@ const mockMembers = [
 export function GroupDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { isConnected } = useAppStore();
+  const { isConnected, addToast } = useAppStore();
   const [activeTab, setActiveTab] = useState<"discussion" | "members">(
     "discussion"
   );
   const [newPost, setNewPost] = useState("");
   const [isJoined, setIsJoined] = useState(false);
   const [group, setGroup] = useState<Group | null>(null);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [notifications, setNotifications] = useState(true);
+  const [shareContent, setShareContent] = useState<{
+    type: "group" | "post";
+    postContent?: string;
+  } | null>(null);
+
+  const copyShareLink = () => {
+    if (group) {
+      const link = `${window.location.origin}/#/community/group/${group.id}`;
+      navigator.clipboard.writeText(link);
+      setCopied(true);
+      addToast({ type: "success", message: "Link copied to clipboard!" });
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const sharePost = (postContent: string) => {
+    setShareContent({ type: "post", postContent });
+    setShowShareModal(true);
+    setCopied(false);
+  };
+
+  const openGroupShareModal = () => {
+    setShareContent({ type: "group" });
+    setShowShareModal(true);
+    setCopied(false);
+  };
 
   useEffect(() => {
     // Find the group by ID
@@ -233,12 +269,77 @@ export function GroupDetailPage() {
               {group.media.type} Group
             </p>
           </div>
-          <button className="p-2 rounded-lg hover:bg-dark-700 transition-colors">
+          <button
+            onClick={openGroupShareModal}
+            className="p-2 rounded-lg hover:bg-dark-700 transition-colors"
+          >
             <Share2 className="w-5 h-5 text-dark-400" />
           </button>
-          <button className="p-2 rounded-lg hover:bg-dark-700 transition-colors">
-            <MoreHorizontal className="w-5 h-5 text-dark-400" />
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => setShowMoreMenu(!showMoreMenu)}
+              className="p-2 rounded-lg hover:bg-dark-700 transition-colors"
+            >
+              <MoreHorizontal className="w-5 h-5 text-dark-400" />
+            </button>
+
+            {/* More Menu Dropdown */}
+            <AnimatePresence>
+              {showMoreMenu && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                  className="absolute right-0 top-full mt-2 w-48 bg-dark-800 border border-dark-700 rounded-xl shadow-xl overflow-hidden z-50"
+                >
+                  <button
+                    onClick={() => {
+                      setNotifications(!notifications);
+                      addToast({
+                        type: "success",
+                        message: notifications
+                          ? "Notifications disabled"
+                          : "Notifications enabled",
+                      });
+                      setShowMoreMenu(false);
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left text-white hover:bg-dark-700 transition-colors"
+                  >
+                    {notifications ? (
+                      <BellOff className="w-4 h-4 text-dark-400" />
+                    ) : (
+                      <Bell className="w-4 h-4 text-dark-400" />
+                    )}
+                    <span className="text-sm">
+                      {notifications
+                        ? "Mute notifications"
+                        : "Enable notifications"}
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      openGroupShareModal();
+                      setShowMoreMenu(false);
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left text-white hover:bg-dark-700 transition-colors"
+                  >
+                    <Share2 className="w-4 h-4 text-dark-400" />
+                    <span className="text-sm">Share group</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      addToast({ type: "info", message: "Report submitted" });
+                      setShowMoreMenu(false);
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left text-red-400 hover:bg-dark-700 transition-colors"
+                  >
+                    <Flag className="w-4 h-4" />
+                    <span className="text-sm">Report group</span>
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
       </div>
 
@@ -406,7 +507,10 @@ export function GroupDetailPage() {
                       <MessageCircle className="w-4 h-4" />
                       <span>{post.replies}</span>
                     </button>
-                    <button className="flex items-center gap-1 text-sm text-dark-400 hover:text-accent-400 transition-colors ml-auto">
+                    <button
+                      onClick={() => sharePost(post.content)}
+                      className="flex items-center gap-1 text-sm text-dark-400 hover:text-accent-400 transition-colors ml-auto"
+                    >
                       <Share2 className="w-4 h-4" />
                     </button>
                   </div>
@@ -449,6 +553,157 @@ export function GroupDetailPage() {
           )}
         </div>
       </div>
+
+      {/* Share Modal */}
+      <AnimatePresence>
+        {showShareModal && group && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowShareModal(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]"
+            />
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="w-full max-w-md"
+              >
+                <div className="bg-dark-900 rounded-2xl border border-dark-700 p-6 shadow-xl">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-white">
+                      {shareContent?.type === "post"
+                        ? "Share Post"
+                        : "Share Group"}
+                    </h3>
+                    <button
+                      onClick={() => setShowShareModal(false)}
+                      className="p-2 rounded-lg hover:bg-dark-700 transition-colors"
+                    >
+                      <X className="w-5 h-5 text-dark-400" />
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-4 p-4 rounded-xl bg-dark-800/50 mb-4">
+                    {shareContent?.type === "post" ? (
+                      <div className="flex-1">
+                        <p className="text-sm text-dark-300 line-clamp-3">
+                          "{shareContent.postContent}"
+                        </p>
+                        <p className="text-xs text-dark-500 mt-2">
+                          from {group.media.title}
+                        </p>
+                      </div>
+                    ) : (
+                      <>
+                        {group.media.coverImage && (
+                          <img
+                            src={group.media.coverImage}
+                            alt={group.media.title}
+                            className="w-12 h-16 rounded-lg object-cover"
+                          />
+                        )}
+                        <div>
+                          <h4 className="font-semibold text-white">
+                            {group.media.title}
+                          </h4>
+                          <p className="text-sm text-dark-400">
+                            {group.memberCount.toLocaleString()} members
+                          </p>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  <div className="space-y-3">
+                    <button
+                      onClick={copyShareLink}
+                      className="w-full flex items-center gap-3 p-3 rounded-xl bg-dark-700 hover:bg-dark-600 transition-colors"
+                    >
+                      {copied ? (
+                        <Check className="w-5 h-5 text-green-400" />
+                      ) : (
+                        <Link className="w-5 h-5 text-dark-400" />
+                      )}
+                      <span className="text-white">
+                        {copied ? "Link Copied!" : "Copy Link"}
+                      </span>
+                    </button>
+
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => {
+                          const tweetText =
+                            shareContent?.type === "post"
+                              ? `Check out this post from the ${
+                                  group.media.title
+                                } group on VeTerex: "${shareContent.postContent?.slice(
+                                  0,
+                                  100
+                                )}${
+                                  (shareContent.postContent?.length || 0) > 100
+                                    ? "..."
+                                    : ""
+                                }"`
+                              : `Join me in the ${group.media.title} group on VeTerex!`;
+                          window.open(
+                            `https://twitter.com/intent/tweet?text=${encodeURIComponent(
+                              tweetText
+                            )}&url=${encodeURIComponent(
+                              `${window.location.origin}/#/community/group/${group.id}`
+                            )}`,
+                            "_blank"
+                          );
+                        }}
+                        className="flex-1 p-3 rounded-xl bg-[#1DA1F2]/20 hover:bg-[#1DA1F2]/30 text-[#1DA1F2] transition-colors text-sm font-medium"
+                      >
+                        Twitter
+                      </button>
+                      <button
+                        onClick={() => {
+                          const shareText =
+                            shareContent?.type === "post"
+                              ? `Check out this post from the ${
+                                  group.media.title
+                                } group on VeTerex: "${shareContent.postContent?.slice(
+                                  0,
+                                  100
+                                )}${
+                                  (shareContent.postContent?.length || 0) > 100
+                                    ? "..."
+                                    : ""
+                                }"`
+                              : `Join me in the ${group.media.title} group on VeTerex!`;
+                          window.open(
+                            `https://t.me/share/url?url=${encodeURIComponent(
+                              `${window.location.origin}/#/community/group/${group.id}`
+                            )}&text=${encodeURIComponent(shareText)}`,
+                            "_blank"
+                          );
+                        }}
+                        className="flex-1 p-3 rounded-xl bg-[#0088cc]/20 hover:bg-[#0088cc]/30 text-[#0088cc] transition-colors text-sm font-medium"
+                      >
+                        Telegram
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Close more menu when clicking outside */}
+      {showMoreMenu && (
+        <div
+          className="fixed inset-0 z-40"
+          onClick={() => setShowMoreMenu(false)}
+        />
+      )}
     </div>
   );
 }

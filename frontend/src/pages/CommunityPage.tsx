@@ -1,13 +1,18 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
   Users,
   UserPlus,
+  UserCheck,
   MessageCircle,
   Award,
   Sparkles,
   ChevronRight,
+  Share2,
+  X,
+  Link,
+  Check,
 } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import type { Group } from "@/types";
@@ -99,15 +104,55 @@ const mockMatchingUsers = [
     id: "3",
     username: "BookWorm99",
     avatar:
-      "https://images.unsplash.com/photo-1599566150163-29194dcabd36?w=100&h=100&fit=crop",
+      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop",
     commonNFTs: 5,
   },
 ];
 
 export function CommunityPage() {
-  const { isConnected } = useAppStore();
+  const { isConnected, addToast } = useAppStore();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<"groups" | "matches">("groups");
+  const [addedFriends, setAddedFriends] = useState<Set<string>>(new Set());
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const toggleFriend = (userId: string) => {
+    const wasAdded = addedFriends.has(userId);
+    setAddedFriends((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(userId)) {
+        newSet.delete(userId);
+      } else {
+        newSet.add(userId);
+      }
+      return newSet;
+    });
+    // Show toast after state update
+    if (wasAdded) {
+      addToast({ type: "info", message: "Friend removed" });
+    } else {
+      addToast({ type: "success", message: "Friend added!" });
+    }
+  };
+
+  const openShareModal = (group: Group, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedGroup(group);
+    setShowShareModal(true);
+    setCopied(false);
+  };
+
+  const copyShareLink = () => {
+    if (selectedGroup) {
+      const link = `${window.location.origin}/#/community/group/${selectedGroup.id}`;
+      navigator.clipboard.writeText(link);
+      setCopied(true);
+      addToast({ type: "success", message: "Link copied to clipboard!" });
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   if (!isConnected) {
     return (
@@ -270,7 +315,17 @@ export function CommunityPage() {
                 </div>
               </div>
 
-              <ChevronRight className="w-5 h-5 text-dark-500" />
+              <div className="flex items-center gap-2">
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={(e) => openShareModal(group, e)}
+                  className="p-2 rounded-lg bg-dark-700 hover:bg-dark-600 text-dark-400 hover:text-white transition-colors"
+                >
+                  <Share2 className="w-4 h-4" />
+                </motion.button>
+                <ChevronRight className="w-5 h-5 text-dark-500" />
+              </div>
             </motion.div>
           ))}
         </div>
@@ -326,9 +381,18 @@ export function CommunityPage() {
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    className="p-2 rounded-lg bg-accent-500/20 text-accent-400 hover:bg-accent-500/30"
+                    onClick={() => toggleFriend(user.id)}
+                    className={`p-2 rounded-lg transition-colors ${
+                      addedFriends.has(user.id)
+                        ? "bg-green-500/20 text-green-400"
+                        : "bg-accent-500/20 text-accent-400 hover:bg-accent-500/30"
+                    }`}
                   >
-                    <UserPlus className="w-5 h-5" />
+                    {addedFriends.has(user.id) ? (
+                      <UserCheck className="w-5 h-5" />
+                    ) : (
+                      <UserPlus className="w-5 h-5" />
+                    )}
                   </motion.button>
                 </motion.div>
               ))}
@@ -336,6 +400,110 @@ export function CommunityPage() {
           </div>
         </div>
       )}
+
+      {/* Share Modal */}
+      <AnimatePresence>
+        {showShareModal && selectedGroup && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowShareModal(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]"
+            />
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="w-full max-w-md"
+              >
+                <div className="bg-dark-900 rounded-2xl border border-dark-700 p-6 shadow-xl">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-white">
+                      Share Group
+                    </h3>
+                    <button
+                      onClick={() => setShowShareModal(false)}
+                      className="p-2 rounded-lg hover:bg-dark-700 transition-colors"
+                    >
+                      <X className="w-5 h-5 text-dark-400" />
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-4 p-4 rounded-xl bg-dark-800/50 mb-4">
+                    {selectedGroup.media.coverImage && (
+                      <img
+                        src={selectedGroup.media.coverImage}
+                        alt={selectedGroup.media.title}
+                        className="w-12 h-16 rounded-lg object-cover"
+                      />
+                    )}
+                    <div>
+                      <h4 className="font-semibold text-white">
+                        {selectedGroup.media.title}
+                      </h4>
+                      <p className="text-sm text-dark-400">
+                        {selectedGroup.memberCount.toLocaleString()} members
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <button
+                      onClick={copyShareLink}
+                      className="w-full flex items-center gap-3 p-3 rounded-xl bg-dark-700 hover:bg-dark-600 transition-colors"
+                    >
+                      {copied ? (
+                        <Check className="w-5 h-5 text-green-400" />
+                      ) : (
+                        <Link className="w-5 h-5 text-dark-400" />
+                      )}
+                      <span className="text-white">
+                        {copied ? "Link Copied!" : "Copy Link"}
+                      </span>
+                    </button>
+
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => {
+                          window.open(
+                            `https://twitter.com/intent/tweet?text=Join%20me%20in%20the%20${encodeURIComponent(
+                              selectedGroup.media.title
+                            )}%20group%20on%20VeTerex!&url=${encodeURIComponent(
+                              `${window.location.origin}/#/community/group/${selectedGroup.id}`
+                            )}`,
+                            "_blank"
+                          );
+                        }}
+                        className="flex-1 p-3 rounded-xl bg-[#1DA1F2]/20 hover:bg-[#1DA1F2]/30 text-[#1DA1F2] transition-colors text-sm font-medium"
+                      >
+                        Twitter
+                      </button>
+                      <button
+                        onClick={() => {
+                          window.open(
+                            `https://t.me/share/url?url=${encodeURIComponent(
+                              `${window.location.origin}/#/community/group/${selectedGroup.id}`
+                            )}&text=Join%20me%20in%20the%20${encodeURIComponent(
+                              selectedGroup.media.title
+                            )}%20group%20on%20VeTerex!`,
+                            "_blank"
+                          );
+                        }}
+                        className="flex-1 p-3 rounded-xl bg-[#0088cc]/20 hover:bg-[#0088cc]/30 text-[#0088cc] transition-colors text-sm font-medium"
+                      >
+                        Telegram
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

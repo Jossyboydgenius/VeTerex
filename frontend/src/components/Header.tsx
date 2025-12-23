@@ -30,7 +30,33 @@ export function Header() {
     setLoading(true);
     try {
       // Initialize Wepin SDK
-      await initWepin();
+      const initialized = await initWepin();
+
+      if (!initialized) {
+        // Check if running as extension
+        const isExtension =
+          typeof chrome !== "undefined" &&
+          chrome.runtime &&
+          chrome.runtime.id &&
+          window.location.protocol === "chrome-extension:";
+
+        if (isExtension) {
+          addToast({
+            type: "error",
+            message:
+              "Wallet connection requires domain registration. Please use the web version at localhost:5173",
+          });
+          setLoading(false);
+          return;
+        }
+
+        addToast({
+          type: "error",
+          message: "Failed to initialize wallet. Please try again.",
+        });
+        setLoading(false);
+        return;
+      }
 
       // Login with Wepin Widget
       const user = await loginWithWepin();
@@ -52,12 +78,22 @@ export function Header() {
           message: "Wallet connected successfully!",
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Connection error:", error);
-      addToast({
-        type: "error",
-        message: "Failed to connect wallet. Please try again.",
-      });
+
+      // Check for domain error
+      if (error?.message?.includes("domain")) {
+        addToast({
+          type: "error",
+          message:
+            "Wallet requires domain registration. Use web version or register extension domain.",
+        });
+      } else {
+        addToast({
+          type: "error",
+          message: "Failed to connect wallet. Please try again.",
+        });
+      }
     } finally {
       setLoading(false);
     }
