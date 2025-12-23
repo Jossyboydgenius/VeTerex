@@ -17,7 +17,12 @@ import {
   BookOpen,
 } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
-import { logoutWepin } from "@/services/wepin";
+import {
+  logoutWepin,
+  initWepin,
+  loginWithWepin,
+  getWepinAccounts,
+} from "@/services/wepin";
 
 const statIcons = {
   book: Book,
@@ -33,11 +38,56 @@ export function ProfilePage() {
     currentAccount,
     wepinUser,
     completions,
-    logout,
+    setConnected,
+    setLoading,
+    setWepinUser,
+    setAccounts,
+    setCurrentAccount,
     addToast,
+    logout,
   } = useAppStore();
 
   const [copied, setCopied] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
+
+  const handleConnect = async () => {
+    setIsConnecting(true);
+    setLoading(true);
+    try {
+      // Initialize Wepin SDK
+      await initWepin();
+
+      // Login with Wepin Widget
+      const user = await loginWithWepin();
+
+      if (user?.status === "success") {
+        setWepinUser(user);
+
+        // Get accounts
+        const accounts = await getWepinAccounts();
+        setAccounts(accounts);
+
+        if (accounts.length > 0) {
+          setCurrentAccount(accounts[0]);
+        }
+
+        setConnected(true);
+        addToast({
+          type: "success",
+          message: "Wallet connected successfully!",
+        });
+      }
+    } catch (error) {
+      console.error("Connection error:", error);
+      addToast({
+        type: "error",
+        message: "Failed to connect wallet. Please try again.",
+      });
+    } finally {
+      setIsConnecting(false);
+      setLoading(false);
+    }
+  };
 
   const handleCopyAddress = () => {
     if (currentAccount?.address) {
@@ -110,9 +160,29 @@ export function ProfilePage() {
 
           <p className="text-sm text-dark-500">
             Sign in with{" "}
-            <span className="text-accent-400 font-semibold">Google</span>,{" "}
-            <span className="text-accent-400 font-semibold">Apple</span>, or{" "}
-            <span className="text-accent-400 font-semibold">Email</span>
+            <button
+              onClick={handleConnect}
+              disabled={isConnecting}
+              className="text-accent-400 font-semibold cursor-pointer hover:text-accent-300 transition-colors hover:underline"
+            >
+              Google
+            </button>
+            ,{" "}
+            <button
+              onClick={handleConnect}
+              disabled={isConnecting}
+              className="text-accent-400 font-semibold cursor-pointer hover:text-accent-300 transition-colors hover:underline"
+            >
+              Apple
+            </button>
+            , or{" "}
+            <button
+              onClick={handleConnect}
+              disabled={isConnecting}
+              className="text-accent-400 font-semibold cursor-pointer hover:text-accent-300 transition-colors hover:underline"
+            >
+              Email
+            </button>
           </p>
         </motion.div>
       </div>

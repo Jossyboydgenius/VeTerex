@@ -23,47 +23,20 @@ body {
   font-family: "Outfit", system-ui, -apple-system, sans-serif;
   background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
   color: var(--color-text);
-}
-
-/* Default: Extension popup mode (400x600) */
-html,
-body,
-#root {
-  width: 400px;
-  min-width: 400px;
-  height: 600px;
-  min-height: 600px;
+  width: 100%;
+  min-height: 100vh;
 }
 
 body {
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 #root {
+  width: 100%;
+  min-height: 100vh;
   overflow-y: auto;
   overflow-x: hidden;
-}
-
-/* Web mode: Full screen when viewport is larger than extension */
-@media (min-width: 500px) {
-  html,
-  body,
-  #root {
-    width: 100%;
-    min-width: 100%;
-    height: auto;
-    min-height: 100vh;
-    max-height: none;
-  }
-
-  body {
-    overflow-x: hidden;
-    overflow-y: auto;
-  }
-
-  #root {
-    overflow: visible;
-  }
 }
 
 /* Custom scrollbar */

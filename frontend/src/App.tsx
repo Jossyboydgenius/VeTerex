@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { HashRouter, Routes, Route } from "react-router-dom";
 import { Layout } from "./components/Layout";
 import { HomePage } from "./pages/HomePage";
 import { ExplorePage } from "./pages/ExplorePage";
@@ -10,7 +10,7 @@ import { NotFoundPage } from "./pages/NotFoundPage";
 
 function App() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <Layout>
         <Routes>
           {/* Default route - redirect to home */}
@@ -25,7 +25,7 @@ function App() {
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </Layout>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
 
