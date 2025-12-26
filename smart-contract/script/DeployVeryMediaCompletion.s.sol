@@ -3,6 +3,8 @@ pragma solidity ^0.8.30;
 
 import {Script} from "forge-std/Script.sol";
 
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+
 import {VeTerex} from "../src/trex.sol";
 
 contract DeployVeryMediaCompletion is Script {
@@ -14,13 +16,18 @@ contract DeployVeryMediaCompletion is Script {
         string memory defaultName = "VeTerex";
         string memory defaultSymbol = "VTRX";
         string memory defaultBaseURI = "";
+        address defaultBackend = address(0);
 
         string memory name_ = vm.envOr("TOKEN_NAME", defaultName);
         string memory symbol_ = vm.envOr("TOKEN_SYMBOL", defaultSymbol);
         string memory baseURI_ = vm.envOr("BASE_URI", defaultBaseURI);
+        address backend_ = vm.envOr("BACKEND", defaultBackend);
 
         vm.startBroadcast(deployerPrivateKey);
-        deployed = new VeTerex(name_, symbol_, initialOwner, baseURI_);
+        VeTerex implementation = new VeTerex();
+        bytes memory initData = abi.encodeCall(VeTerex.initialize, (name_, symbol_, initialOwner, baseURI_, backend_));
+        ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initData);
+        deployed = VeTerex(address(proxy));
         vm.stopBroadcast();
     }
 }

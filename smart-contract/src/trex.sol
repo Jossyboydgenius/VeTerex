@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {ERC721Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
-contract VeTerex is ERC721, Ownable {
+contract VeTerex is Initializable, ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
     using Strings for uint256;
 
     enum MediaKind {
@@ -25,6 +27,7 @@ contract VeTerex is ERC721, Ownable {
     error NotGroupMember(address user, bytes32 mediaId);
     error NotTokenOwner(address user, uint256 tokenId);
     error NotRegistrar(address caller);
+    error NotBackend(address caller);
     error NonTransferable();
 
     event MediaRegistered(bytes32 indexed mediaId, MediaKind indexed kind, string uri);
@@ -40,9 +43,12 @@ contract VeTerex is ERC721, Ownable {
         MediaKind kind;
         bool exists;
         string uri;
+        string name;
     }
 
-    uint256 public nextTokenId = 1;
+    address public backend;
+
+    uint256 public nextTokenId;
 
     string private _baseTokenURI;
 
@@ -57,11 +63,23 @@ contract VeTerex is ERC721, Ownable {
     mapping(bytes32 mediaId => mapping(address user => uint256 indexPlusOne)) private _groupIndexPlusOne;
     mapping(address registrar => bool allowed) public isRegistrar;
 
-    constructor(string memory name_, string memory symbol_, address initialOwner, string memory baseURI_)
-        ERC721(name_, symbol_)
-        Ownable(initialOwner)
-    {
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(
+        string memory name_,
+        string memory symbol_,
+        address initialOwner,
+        string memory baseURI_,
+        address backend_
+    ) public initializer {
+        __ERC721_init(name_, symbol_);
+        __Ownable_init(initialOwner);
+
+        nextTokenId = 1;
         _baseTokenURI = baseURI_;
+        backend = backend_;
         emit BaseURISet(baseURI_);
     }
 
@@ -74,26 +92,29 @@ contract VeTerex is ERC721, Ownable {
         emit RegistrarSet(registrar, allowed);
     }
 
-    function _checkRegistrar() internal view {
-        if (msg.sender != owner() && !isRegistrar[msg.sender]) revert NotRegistrar(msg.sender);
+    function setBackend(address backend_) external onlyOwner {
+        backend = backend_;
     }
 
-    function registerMedia(bytes32 mediaId, MediaKind kind, string calldata uri) external {
-        _checkRegistrar();
-        if (_media[mediaId].exists) revert MediaAlreadyRegistered(mediaId);
-        _media[mediaId] = MediaItem({kind: kind, exists: true, uri: uri});
-        emit MediaRegistered(mediaId, kind, uri);
+    modifier onlyBackend() {
+        if (msg.sender != backend) revert NotBackend(msg.sender);
+        _;
     }
 
-    function registerMediaByExternalId(MediaKind kind, string calldata externalId, string calldata uri)
-        external
-        returns (bytes32 mediaId)
-    {
-        _checkRegistrar();
-        mediaId = computeMediaId(kind, externalId);
-        if (_media[mediaId].exists) revert MediaAlreadyRegistered(mediaId);
-        _media[mediaId] = MediaItem({kind: kind, exists: true, uri: uri});
-        emit MediaRegistered(mediaId, kind, uri);
+    /// @notice Backend can register media with a name and URI and mint to a user in one call.
+    function completeAndRegisterByExternalId(
+        address to,
+        MediaKind kind,
+        string calldata externalId,
+        string calldata uri,
+        string calldata name
+    ) external onlyBackend returns (uint256 tokenId) {
+        bytes32 mediaId = computeMediaId(kind, externalId);
+        if (!_media[mediaId].exists) {
+            _media[mediaId] = MediaItem({kind: kind, exists: true, uri: uri, name: name});
+            emit MediaRegistered(mediaId, kind, uri);
+        }
+        tokenId = _complete(to, mediaId);
     }
 
     function setMediaURI(bytes32 mediaId, string calldata uri) external onlyOwner {
@@ -102,8 +123,7 @@ contract VeTerex is ERC721, Ownable {
         emit MediaURISet(mediaId, uri);
     }
 
-    function setMediaKind(bytes32 mediaId, MediaKind kind) external {
-        _checkRegistrar();
+    function setMediaKind(bytes32 mediaId, MediaKind kind) external onlyOwner {
         if (!_media[mediaId].exists) revert MediaNotRegistered(mediaId);
         _media[mediaId].kind = kind;
         emit MediaKindSet(mediaId, kind);
@@ -114,22 +134,18 @@ contract VeTerex is ERC721, Ownable {
         return (item.exists, item.kind, item.uri);
     }
 
-    function complete(bytes32 mediaId) public returns (uint256 tokenId) {
-        if (completionTokenId[msg.sender][mediaId] != 0) revert AlreadyCompleted(msg.sender, mediaId);
+    function _complete(address user, bytes32 mediaId) internal returns (uint256 tokenId) {
+        if (completionTokenId[user][mediaId] != 0) revert AlreadyCompleted(user, mediaId);
 
         tokenId = nextTokenId++;
         tokenMediaId[tokenId] = mediaId;
-        completionTokenId[msg.sender][mediaId] = tokenId;
+        completionTokenId[user][mediaId] = tokenId;
 
-        _safeMint(msg.sender, tokenId);
-        _userTokenIds[msg.sender].push(tokenId);
-        _userTokenIndexPlusOne[msg.sender][tokenId] = _userTokenIds[msg.sender].length;
+        _safeMint(user, tokenId);
+        _userTokenIds[user].push(tokenId);
+        _userTokenIndexPlusOne[user][tokenId] = _userTokenIds[user].length;
 
-        emit MediaCompleted(msg.sender, mediaId, tokenId);
-    }
-
-    function completeByExternalId(MediaKind kind, string calldata externalId) external returns (uint256 tokenId) {
-        return complete(computeMediaId(kind, externalId));
+        emit MediaCompleted(user, mediaId, tokenId);
     }
 
     function hasCompleted(address user, bytes32 mediaId) external view returns (bool) {
@@ -230,6 +246,8 @@ contract VeTerex is ERC721, Ownable {
         if (from != address(0) && to != address(0)) revert NonTransferable();
         return super._update(to, tokenId, auth);
     }
+
+    function _authorizeUpgrade(address) internal override onlyOwner {}
 
     function _joinGroup(address user, bytes32 mediaId) internal {
         if (_groupIndexPlusOne[mediaId][user] != 0) return;

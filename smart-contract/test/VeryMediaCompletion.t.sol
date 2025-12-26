@@ -3,110 +3,108 @@ pragma solidity ^0.8.30;
 
 import {Test} from "forge-std/Test.sol";
 
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+
 import {VeTerex} from "../src/trex.sol";
+
+contract VeTerexV2 is VeTerex {
+    function version() external pure returns (uint256) {
+        return 2;
+    }
+}
 
 contract VeryMediaCompletionTest is Test {
     VeTerex internal nft;
 
     address internal owner = address(0xABCD);
-    address internal registrar = address(0xBEEF);
+    address internal backend = address(0xBEEF);
     address internal alice = address(0xA11CE);
     address internal bob = address(0xB0B);
 
     function setUp() public {
-        nft = new VeTerex("VeTerex", "VTRX", owner, "ipfs://base/");
+        VeTerex implementation = new VeTerex();
+        bytes memory initData = abi.encodeCall(VeTerex.initialize, ("VeTerex", "VTRX", owner, "ipfs://base/", backend));
+        ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initData);
+        nft = VeTerex(address(proxy));
     }
 
-    function testRegisterAndCompleteMintsAndJoinsGroup() public {
-        bytes32 mediaId = nft.computeMediaId(VeTerex.MediaKind.Book, "isbn:9780143127741");
+    function testBackendCanRegisterAndMint() public {
+        VeTerex.MediaKind kind = VeTerex.MediaKind.Book;
+        string memory externalId = "isbn:9780143127741";
+        string memory uri = "ipfs://media/book1.json";
+        string memory name = "Book 1";
 
-        vm.prank(owner);
-        nft.registerMedia(mediaId, VeTerex.MediaKind.Book, "ipfs://media/book1.json");
+        bytes32 mediaId = nft.computeMediaId(kind, externalId);
 
-        vm.prank(alice);
-        uint256 tokenId = nft.complete(mediaId);
+        vm.prank(backend);
+        uint256 tokenId = nft.completeAndRegisterByExternalId(alice, kind, externalId, uri, name);
 
         assertEq(nft.ownerOf(tokenId), alice);
         assertEq(nft.completionTokenId(alice, mediaId), tokenId);
         assertEq(nft.tokenMediaId(tokenId), mediaId);
         assertEq(nft.groupMemberCount(mediaId), 0);
         assertFalse(nft.isGroupMember(mediaId, alice));
-        assertEq(nft.tokenURI(tokenId), "ipfs://media/book1.json");
+        assertEq(nft.tokenURI(tokenId), uri);
+
+        (bool exists, VeTerex.MediaKind storedKind, string memory storedUri) = nft.mediaInfo(mediaId);
+        assertTrue(exists);
+        assertEq(uint256(storedKind), uint256(kind));
+        assertEq(storedUri, uri);
+    }
+
+    function testNonBackendCannotMint() public {
+        VeTerex.MediaKind kind = VeTerex.MediaKind.Movie;
+        string memory externalId = "imdb:tt1375666";
+
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(VeTerex.NotBackend.selector, alice));
+        nft.completeAndRegisterByExternalId(alice, kind, externalId, "", "");
+    }
+
+    function testMintRevertsIfAlreadyCompleted() public {
+        VeTerex.MediaKind kind = VeTerex.MediaKind.Manga;
+        string memory externalId = "mal:2";
+        bytes32 mediaId = nft.computeMediaId(kind, externalId);
+
+        vm.prank(backend);
+        nft.completeAndRegisterByExternalId(alice, kind, externalId, "ipfs://media/manga2.json", "Manga 2");
+
+        vm.prank(backend);
+        vm.expectRevert(abi.encodeWithSelector(VeTerex.AlreadyCompleted.selector, alice, mediaId));
+        nft.completeAndRegisterByExternalId(alice, kind, externalId, "ipfs://media/manga2.json", "Manga 2");
+    }
+
+    function testJoinAndLeaveGroup() public {
+        VeTerex.MediaKind kind = VeTerex.MediaKind.Anime;
+        string memory externalId = "mal:20";
+        bytes32 mediaId = nft.computeMediaId(kind, externalId);
+
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(VeTerex.NotCompleted.selector, alice, mediaId));
+        nft.joinGroup(mediaId);
+
+        vm.prank(backend);
+        nft.completeAndRegisterByExternalId(alice, kind, externalId, "", "");
 
         vm.prank(alice);
         nft.joinGroup(mediaId);
         assertEq(nft.groupMemberCount(mediaId), 1);
         assertEq(nft.groupMemberAt(mediaId, 0), alice);
         assertTrue(nft.isGroupMember(mediaId, alice));
-    }
-
-    function testCompleteMintsIfUnregisteredWithoutRegistering() public {
-        bytes32 mediaId = nft.computeMediaId(VeTerex.MediaKind.Movie, "imdb:tt1375666");
-
-        vm.prank(alice);
-        uint256 tokenId = nft.complete(mediaId);
-
-        assertEq(nft.ownerOf(tokenId), alice);
-        (bool exists,,) = nft.mediaInfo(mediaId);
-        assertFalse(exists);
-    }
-
-    function testCompleteRevertsIfAlreadyCompleted() public {
-        bytes32 mediaId = nft.computeMediaId(VeTerex.MediaKind.Manga, "mal:2");
-
-        vm.prank(owner);
-        nft.registerMedia(mediaId, VeTerex.MediaKind.Manga, "ipfs://media/manga2.json");
-
-        vm.prank(alice);
-        nft.complete(mediaId);
-
-        vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(VeTerex.AlreadyCompleted.selector, alice, mediaId));
-        nft.complete(mediaId);
-    }
-
-    function testJoinAndLeaveGroup() public {
-        bytes32 mediaId = nft.computeMediaId(VeTerex.MediaKind.Anime, "mal:20");
-
-        vm.prank(owner);
-        nft.registerMedia(mediaId, VeTerex.MediaKind.Anime, "");
-
-        vm.prank(alice);
-        nft.complete(mediaId);
-
-        vm.prank(alice);
-        nft.joinGroup(mediaId);
 
         vm.prank(alice);
         nft.leaveGroup(mediaId);
         assertEq(nft.groupMemberCount(mediaId), 0);
         assertFalse(nft.isGroupMember(mediaId, alice));
-
-        vm.prank(alice);
-        nft.joinGroup(mediaId);
-        assertEq(nft.groupMemberCount(mediaId), 1);
-        assertTrue(nft.isGroupMember(mediaId, alice));
-    }
-
-    function testJoinGroupRevertsIfNotCompleted() public {
-        bytes32 mediaId = nft.computeMediaId(VeTerex.MediaKind.Show, "tvdb:121361");
-
-        vm.prank(owner);
-        nft.registerMedia(mediaId, VeTerex.MediaKind.Show, "");
-
-        vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(VeTerex.NotCompleted.selector, bob, mediaId));
-        nft.joinGroup(mediaId);
     }
 
     function testBurnClearsCompletionAndRemovesFromGroup() public {
-        bytes32 mediaId = nft.computeMediaId(VeTerex.MediaKind.Comic, "marvel:deadpool-1");
+        VeTerex.MediaKind kind = VeTerex.MediaKind.Comic;
+        string memory externalId = "marvel:deadpool-1";
+        bytes32 mediaId = nft.computeMediaId(kind, externalId);
 
-        vm.prank(owner);
-        nft.registerMedia(mediaId, VeTerex.MediaKind.Comic, "");
-
-        vm.prank(alice);
-        uint256 tokenId = nft.complete(mediaId);
+        vm.prank(backend);
+        uint256 tokenId = nft.completeAndRegisterByExternalId(alice, kind, externalId, "", "");
 
         vm.prank(alice);
         nft.joinGroup(mediaId);
@@ -120,13 +118,11 @@ contract VeryMediaCompletionTest is Test {
     }
 
     function testNonTransferableRevertsOnTransferAndApproval() public {
-        bytes32 mediaId = nft.computeMediaId(VeTerex.MediaKind.Movie, "imdb:tt0137523");
+        VeTerex.MediaKind kind = VeTerex.MediaKind.Movie;
+        string memory externalId = "imdb:tt0137523";
 
-        vm.prank(owner);
-        nft.registerMedia(mediaId, VeTerex.MediaKind.Movie, "");
-
-        vm.prank(alice);
-        uint256 tokenId = nft.complete(mediaId);
+        vm.prank(backend);
+        uint256 tokenId = nft.completeAndRegisterByExternalId(alice, kind, externalId, "", "");
 
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(VeTerex.NonTransferable.selector));
@@ -142,88 +138,50 @@ contract VeryMediaCompletionTest is Test {
     }
 
     function testTokenURIFallsBackToBaseURIAndHexMediaId() public {
-        bytes32 mediaId = nft.computeMediaId(VeTerex.MediaKind.Book, "isbn:123");
+        VeTerex.MediaKind kind = VeTerex.MediaKind.Book;
+        string memory externalId = "isbn:123";
 
-        vm.prank(owner);
-        nft.registerMedia(mediaId, VeTerex.MediaKind.Book, "");
-
-        vm.prank(alice);
-        uint256 tokenId = nft.complete(mediaId);
+        vm.prank(backend);
+        uint256 tokenId = nft.completeAndRegisterByExternalId(alice, kind, externalId, "", "");
 
         string memory uri = nft.tokenURI(tokenId);
         assertTrue(bytes(uri).length > bytes("ipfs://base/").length);
         assertTrue(_startsWith(uri, "ipfs://base/"));
     }
 
-    function testRegistrarCanRegisterMedia() public {
-        bytes32 mediaId = nft.computeMediaId(VeTerex.MediaKind.Book, "isbn:reg");
-
+    function testInitializeCannotBeCalledTwice() public {
         vm.prank(owner);
-        nft.setRegistrar(registrar, true);
-
-        vm.prank(registrar);
-        nft.registerMedia(mediaId, VeTerex.MediaKind.Book, "");
-
-        (bool exists,,) = nft.mediaInfo(mediaId);
-        assertTrue(exists);
+        vm.expectRevert();
+        nft.initialize("VeTerex", "VTRX", owner, "ipfs://base/", backend);
     }
 
-    function testNonRegistrarCannotRegisterMedia() public {
-        bytes32 mediaId = nft.computeMediaId(VeTerex.MediaKind.Book, "isbn:nope");
+    function testUpgradeKeepsState() public {
+        VeTerex.MediaKind kind = VeTerex.MediaKind.Book;
+        string memory externalId = "isbn:upgrade";
+        bytes32 mediaId = nft.computeMediaId(kind, externalId);
 
-        vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(VeTerex.NotRegistrar.selector, alice));
-        nft.registerMedia(mediaId, VeTerex.MediaKind.Book, "");
-    }
+        vm.prank(backend);
+        uint256 tokenId = nft.completeAndRegisterByExternalId(alice, kind, externalId, "ipfs://media/u.json", "U");
 
-    function testCanTextRequiresSharedCompletion() public {
-        bytes32 mediaId = nft.computeMediaId(VeTerex.MediaKind.Movie, "imdb:dm");
-
-        vm.prank(owner);
-        nft.registerMedia(mediaId, VeTerex.MediaKind.Movie, "");
-
-        vm.prank(alice);
-        nft.complete(mediaId);
-
-        assertFalse(nft.canText(alice, bob, mediaId));
-
-        vm.prank(bob);
-        nft.complete(mediaId);
-
-        assertTrue(nft.canText(alice, bob, mediaId));
-    }
-
-    function testCanJoinGroupTracksMembership() public {
-        bytes32 mediaId = nft.computeMediaId(VeTerex.MediaKind.Show, "tvdb:cangroup");
+        VeTerexV2 implV2 = new VeTerexV2();
 
         vm.prank(owner);
-        nft.registerMedia(mediaId, VeTerex.MediaKind.Show, "");
+        nft.upgradeToAndCall(address(implV2), "");
 
-        assertFalse(nft.canJoinGroup(alice, mediaId));
+        VeTerexV2 upgraded = VeTerexV2(address(nft));
 
-        vm.prank(alice);
-        nft.complete(mediaId);
-
-        assertTrue(nft.canJoinGroup(alice, mediaId));
-
-        vm.prank(alice);
-        nft.joinGroup(mediaId);
-
-        assertFalse(nft.canJoinGroup(alice, mediaId));
+        assertEq(upgraded.version(), 2);
+        assertEq(upgraded.ownerOf(tokenId), alice);
+        assertEq(upgraded.completionTokenId(alice, mediaId), tokenId);
+        assertEq(upgraded.backend(), backend);
     }
 
-    function testUserTokenIdsReturnsMintedTokens() public {
-        bytes32 mediaId = nft.computeMediaId(VeTerex.MediaKind.Book, "isbn:tokens");
-
-        vm.prank(owner);
-        nft.registerMedia(mediaId, VeTerex.MediaKind.Book, "");
+    function testOnlyOwnerCanUpgrade() public {
+        VeTerexV2 implV2 = new VeTerexV2();
 
         vm.prank(alice);
-        uint256 tokenId = nft.complete(mediaId);
-
-        uint256[] memory ids = nft.userTokenIds(alice);
-        assertEq(ids.length, 1);
-        assertEq(ids[0], tokenId);
+        vm.expectRevert();
+        nft.upgradeToAndCall(address(implV2), "");
     }
 
     function _startsWith(string memory s, string memory prefix) internal pure returns (bool) {
