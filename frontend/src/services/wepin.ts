@@ -12,33 +12,53 @@ const isExtension =
   chrome.runtime.id &&
   window.location.protocol === "chrome-extension:";
 
+// Get the extension ID if running as extension
+const getExtensionId = (): string | null => {
+  if (isExtension && chrome.runtime?.id) {
+    return chrome.runtime.id;
+  }
+  return null;
+};
+
+// Get the domain to register in Wepin
+export const getWepinDomainForRegistration = (): string => {
+  if (isExtension) {
+    return `chrome-extension://${getExtensionId()}`;
+  }
+  return window.location.origin;
+};
+
 // WepinSDK instance
 let wepinSDK: any = null;
+let initializationError: string | null = null;
 
 /**
  * Initialize Wepin SDK
  * Must be called before any other Wepin operations
  * Note: Wepin SDK requires domain registration. Extensions using chrome-extension://
  * protocol need special handling.
+ *
+ * For Chrome extensions:
+ * 1. Go to Wepin Workspace (https://workspace.wepin.io)
+ * 2. Navigate to your app's settings
+ * 3. Add a new domain: chrome-extension://<your-extension-id>
+ * 4. You can find your extension ID in chrome://extensions
  */
 export async function initWepin(): Promise<boolean> {
   try {
+    initializationError = null;
+
     // Check if running in extension context
     if (isExtension) {
-      console.warn(
-        "[VeTerex] Running in Chrome extension context. Wepin SDK requires domain registration."
-      );
-      console.warn("[VeTerex] To use Wepin in extension:");
-      console.warn(
-        '  1. Open extension in a new tab (right-click extension icon > "Open in new tab")'
-      );
-      console.warn(
-        "  2. Or register chrome-extension://<extension-id> domain in Wepin dashboard"
-      );
-      console.warn("  3. Or use the web version at localhost:5173");
+      const extensionId = getExtensionId();
+      const extensionDomain = `chrome-extension://${extensionId}`;
 
-      // Try to initialize anyway - it may work if domain is registered
-      // If not, we'll catch the error and provide helpful message
+      console.log("[VeTerex] Running in Chrome extension context");
+      console.log(`[VeTerex] Extension ID: ${extensionId}`);
+      console.log(`[VeTerex] To enable Wepin wallet in this extension:`);
+      console.log(`  1. Go to Wepin Workspace: https://workspace.wepin.io`);
+      console.log(`  2. Add this domain to your app: ${extensionDomain}`);
+      console.log(`  3. Reload the extension after adding the domain`);
     }
 
     // Dynamic import for CSR environment
@@ -62,27 +82,36 @@ export async function initWepin(): Promise<boolean> {
     console.error("[VeTerex] Failed to initialize Wepin SDK:", error);
 
     // Check if this is a domain validation error
-    if (
-      error?.message?.includes("Invalid domain") ||
-      error?.response?.data?.message === "Invalid domain" ||
-      (error?.message && error.message.includes("404"))
-    ) {
-      if (isExtension) {
-        console.error(
-          "[VeTerex] Domain validation failed for Chrome extension."
-        );
-        console.error(
-          "[VeTerex] Please add your extension domain to Wepin dashboard:"
-        );
-        console.error(`  Domain: chrome-extension://${chrome.runtime.id}`);
-        throw new Error(
-          "Wepin requires domain registration. Please use the web version or register your extension domain in Wepin dashboard."
-        );
-      }
+    const errorMessage = error?.message || error?.response?.data?.message || "";
+    const isDomainError =
+      errorMessage.includes("Invalid domain") ||
+      errorMessage.includes("domain") ||
+      errorMessage.includes("404") ||
+      errorMessage.includes("not registered");
+
+    if (isDomainError && isExtension) {
+      const extensionId = getExtensionId();
+      const extensionDomain = `chrome-extension://${extensionId}`;
+
+      initializationError = `Wallet requires domain registration. Please add "${extensionDomain}" to your Wepin Workspace domains, or use the web version.`;
+
+      console.error("[VeTerex] Domain validation failed for Chrome extension.");
+      console.error("[VeTerex] Please add this domain to Wepin Workspace:");
+      console.error(`  Domain: ${extensionDomain}`);
+
+      throw new Error(initializationError);
     }
 
+    initializationError = error?.message || "Failed to initialize Wepin SDK";
     return false;
   }
+}
+
+/**
+ * Get the initialization error message if any
+ */
+export function getWepinInitError(): string | null {
+  return initializationError;
 }
 
 /**

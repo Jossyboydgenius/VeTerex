@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Home, Compass, Library, Users, User } from "lucide-react";
+import { Home, Library, Users, User } from "lucide-react";
 import { Header } from "./Header";
 import { ToastContainer } from "./Toast";
 
@@ -11,7 +11,7 @@ interface LayoutProps {
 
 const navItems = [
   { path: "/", icon: Home, label: "Home" },
-  { path: "/explore", icon: Compass, label: "Explore" },
+  // { path: "/explore", icon: Compass, label: "Explore" },
   { path: "/collection", icon: Library, label: "Collection" },
   { path: "/community", icon: Users, label: "Community" },
   { path: "/profile", icon: User, label: "Profile" },

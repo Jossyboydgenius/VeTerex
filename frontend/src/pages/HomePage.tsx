@@ -44,6 +44,12 @@ const mediaTypes = [
     label: "TV Shows",
     color: "from-blue-500 to-indigo-600",
   },
+  {
+    type: "series",
+    icon: Film,
+    label: "Series",
+    color: "from-violet-500 to-purple-600",
+  },
 ];
 
 const stats = [
@@ -51,6 +57,9 @@ const stats = [
   { icon: Users, value: "3,200", label: "Active Users" },
   { icon: TrendingUp, value: "85K", label: "Completions" },
 ];
+
+// Stats section temporarily disabled
+const SHOW_STATS = false;
 
 export function HomePage() {
   const { isConnected, completions } = useAppStore();
@@ -117,27 +126,29 @@ export function HomePage() {
         )}
       </motion.section>
 
-      {/* Stats */}
-      <motion.section
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className="grid grid-cols-3 gap-3"
-      >
-        {stats.map(({ icon: Icon, value, label }, index) => (
-          <motion.div
-            key={label}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.4 + index * 0.1 }}
-            className="card text-center py-4"
-          >
-            <Icon className="w-5 h-5 mx-auto text-accent-400 mb-2" />
-            <p className="text-lg font-bold text-white">{value}</p>
-            <p className="text-xs text-dark-400">{label}</p>
-          </motion.div>
-        ))}
-      </motion.section>
+      {/* Stats - Temporarily disabled */}
+      {SHOW_STATS && (
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="grid grid-cols-3 gap-3"
+        >
+          {stats.map(({ icon: Icon, value, label }, index) => (
+            <motion.div
+              key={label}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.4 + index * 0.1 }}
+              className="card text-center py-4"
+            >
+              <Icon className="w-5 h-5 mx-auto text-accent-400 mb-2" />
+              <p className="text-lg font-bold text-white">{value}</p>
+              <p className="text-xs text-dark-400">{label}</p>
+            </motion.div>
+          ))}
+        </motion.section>
+      )}
 
       {/* Media Types Grid */}
       <section>

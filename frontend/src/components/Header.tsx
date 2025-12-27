@@ -1,13 +1,29 @@
-import { useState } from "react";
-import { motion } from "framer-motion";
-import { Wallet, ChevronDown, LogOut, Copy, Check } from "lucide-react";
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Wallet,
+  ChevronDown,
+  LogOut,
+  Copy,
+  Check,
+  AlertCircle,
+  X,
+} from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import {
   initWepin,
   loginWithWepin,
   logoutWepin,
   getWepinAccounts,
+  getWepinDomainForRegistration,
 } from "@/services/wepin";
+
+// Check if running as Chrome extension
+const isExtension =
+  typeof chrome !== "undefined" &&
+  chrome.runtime &&
+  chrome.runtime.id &&
+  window.location.protocol === "chrome-extension:";
 
 export function Header() {
   const {
@@ -25,6 +41,14 @@ export function Header() {
 
   const [showDropdown, setShowDropdown] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showDomainError, setShowDomainError] = useState(false);
+  const [extensionDomain, setExtensionDomain] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isExtension) {
+      setExtensionDomain(getWepinDomainForRegistration());
+    }
+  }, []);
 
   const handleConnect = async () => {
     setLoading(true);
@@ -33,18 +57,12 @@ export function Header() {
       const initialized = await initWepin();
 
       if (!initialized) {
-        // Check if running as extension
-        const isExtension =
-          typeof chrome !== "undefined" &&
-          chrome.runtime &&
-          chrome.runtime.id &&
-          window.location.protocol === "chrome-extension:";
-
         if (isExtension) {
+          setShowDomainError(true);
           addToast({
             type: "error",
             message:
-              "Wallet connection requires domain registration. Please use the web version at localhost:5173",
+              "Wallet requires domain registration. Use web version or register extension domain.",
           });
           setLoading(false);
           return;
@@ -73,6 +91,7 @@ export function Header() {
         }
 
         setConnected(true);
+        setShowDomainError(false);
         addToast({
           type: "success",
           message: "Wallet connected successfully!",
@@ -82,7 +101,11 @@ export function Header() {
       console.error("Connection error:", error);
 
       // Check for domain error
-      if (error?.message?.includes("domain")) {
+      if (
+        error?.message?.includes("domain") ||
+        error?.message?.includes("registration")
+      ) {
+        setShowDomainError(true);
         addToast({
           type: "error",
           message:
@@ -127,6 +150,40 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 glass-dark border-b border-dark-700/50">
+      {/* Domain Registration Error Banner for Extensions */}
+      <AnimatePresence>
+        {showDomainError && isExtension && extensionDomain && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="bg-red-500/10 border-b border-red-500/20"
+          >
+            <div className="flex items-start gap-3 px-4 py-3">
+              <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-red-300 font-medium">
+                  Wallet requires domain registration. Use web version or
+                  register extension domain.
+                </p>
+                <p className="text-xs text-red-400/80 mt-1 break-all">
+                  Add this domain to Wepin Workspace:{" "}
+                  <code className="bg-red-500/20 px-1 rounded">
+                    {extensionDomain}
+                  </code>
+                </p>
+              </div>
+              <button
+                onClick={() => setShowDomainError(false)}
+                className="p-1 text-red-400 hover:text-red-300 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="flex items-center justify-between px-4 py-3">
         {/* Logo */}
         <div className="flex items-center gap-2">
