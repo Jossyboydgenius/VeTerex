@@ -8,11 +8,23 @@ import type {
   Toast,
 } from "@/types";
 
+// VeryChat user type
+interface VeryChatUser {
+  profileId: string;
+  profileName: string;
+  profileImage?: string;
+}
+
+// Auth type to track which auth method is used
+type AuthMethod = "wepin" | "verychat" | null;
+
 interface AppState {
   // Auth State
   isConnected: boolean;
   isLoading: boolean;
+  authMethod: AuthMethod;
   wepinUser: WepinUser | null;
+  verychatUser: VeryChatUser | null;
   accounts: WepinAccount[];
   currentAccount: WepinAccount | null;
 
@@ -26,7 +38,9 @@ interface AppState {
   // Actions
   setConnected: (connected: boolean) => void;
   setLoading: (loading: boolean) => void;
+  setAuthMethod: (method: AuthMethod) => void;
   setWepinUser: (user: WepinUser | null) => void;
+  setVeryChatUser: (user: VeryChatUser | null) => void;
   setAccounts: (accounts: WepinAccount[]) => void;
   setCurrentAccount: (account: WepinAccount | null) => void;
   setUser: (user: User | null) => void;
@@ -47,7 +61,9 @@ export const useAppStore = create<AppState>()(
       // Initial State
       isConnected: false,
       isLoading: false,
+      authMethod: null,
       wepinUser: null,
+      verychatUser: null,
       accounts: [],
       currentAccount: null,
       user: null,
@@ -57,7 +73,9 @@ export const useAppStore = create<AppState>()(
       // Auth Actions
       setConnected: (connected) => set({ isConnected: connected }),
       setLoading: (loading) => set({ isLoading: loading }),
+      setAuthMethod: (method) => set({ authMethod: method }),
       setWepinUser: (user) => set({ wepinUser: user }),
+      setVeryChatUser: (user) => set({ verychatUser: user }),
       setAccounts: (accounts) => set({ accounts }),
       setCurrentAccount: (account) => set({ currentAccount: account }),
 
@@ -90,7 +108,9 @@ export const useAppStore = create<AppState>()(
       logout: () =>
         set({
           isConnected: false,
+          authMethod: null,
           wepinUser: null,
+          verychatUser: null,
           accounts: [],
           currentAccount: null,
           user: null,
@@ -101,7 +121,9 @@ export const useAppStore = create<AppState>()(
       name: "veterex-storage",
       partialize: (state) => ({
         isConnected: state.isConnected,
+        authMethod: state.authMethod,
         wepinUser: state.wepinUser,
+        verychatUser: state.verychatUser,
         accounts: state.accounts,
         currentAccount: state.currentAccount,
         completions: state.completions,

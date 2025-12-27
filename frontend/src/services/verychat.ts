@@ -11,7 +11,7 @@ const PROJECT_ID =
 interface VeryChatUser {
   profileId: string;
   profileName: string;
-  profileImage: string;
+  profileImage?: string;
 }
 
 interface AuthTokens {
@@ -19,7 +19,20 @@ interface AuthTokens {
   refreshToken: string;
 }
 
-interface LoginResponse extends AuthTokens {
+// API response format - user info is at root level, not nested
+interface ApiLoginResponse {
+  accessToken: string;
+  refreshToken: string;
+  statusCode: number;
+  profileId: string;
+  profileName: string;
+  profileImage?: string;
+}
+
+// Our normalized response format
+interface LoginResponse {
+  accessToken: string;
+  refreshToken: string;
   user: VeryChatUser;
   statusCode: number;
 }
@@ -154,26 +167,46 @@ export async function loginWithCode(
       }),
     });
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
-      throw new Error(error.message || "Invalid or expired verification code");
+    const data = await response.json();
+
+    // Check for error response
+    if (data.statusCode === 400 || data.statusCode === 401) {
+      throw new Error(data.message || "Invalid or expired verification code");
     }
 
-    const data: LoginResponse = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || "Invalid or expired verification code");
+    }
+
+    // API returns user info at root level, normalize it
+    const apiResponse = data as ApiLoginResponse;
+
+    // Create normalized user object
+    const user: VeryChatUser = {
+      profileId: apiResponse.profileId,
+      profileName: apiResponse.profileName,
+      profileImage: apiResponse.profileImage || "",
+    };
 
     // Store tokens
     currentTokens = {
-      accessToken: data.accessToken,
-      refreshToken: data.refreshToken,
+      accessToken: apiResponse.accessToken,
+      refreshToken: apiResponse.refreshToken,
     };
-    currentUser = data.user;
+    currentUser = user;
 
     localStorage.setItem("verychat_tokens", JSON.stringify(currentTokens));
     localStorage.setItem("verychat_user", JSON.stringify(currentUser));
 
-    console.log("[VeryChat] User logged in:", data.user.profileName);
-    return data;
-  } catch (error) {
+    console.log("[VeryChat] User logged in:", user.profileName);
+
+    return {
+      accessToken: apiResponse.accessToken,
+      refreshToken: apiResponse.refreshToken,
+      user,
+      statusCode: apiResponse.statusCode,
+    };
+  } catch (error: any) {
     console.error("[VeryChat] Login failed:", error);
     throw error;
   }
