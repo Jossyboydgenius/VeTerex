@@ -59,6 +59,9 @@ contract VeTerex is Initializable, ERC721Upgradeable, OwnableUpgradeable, UUPSUp
     mapping(address user => uint256[] tokenIds) private _userTokenIds;
     mapping(address user => mapping(uint256 tokenId => uint256 indexPlusOne)) private _userTokenIndexPlusOne;
 
+    mapping(bytes32 mediaId => address[] users) private _mediaCompleters;
+    mapping(bytes32 mediaId => mapping(address user => uint256 indexPlusOne)) private _mediaCompleterIndexPlusOne;
+
     mapping(bytes32 mediaId => address[]) private _groupMembers;
     mapping(bytes32 mediaId => mapping(address user => uint256 indexPlusOne)) private _groupIndexPlusOne;
     mapping(address registrar => bool allowed) public isRegistrar;
@@ -144,6 +147,7 @@ contract VeTerex is Initializable, ERC721Upgradeable, OwnableUpgradeable, UUPSUp
         _safeMint(user, tokenId);
         _userTokenIds[user].push(tokenId);
         _userTokenIndexPlusOne[user][tokenId] = _userTokenIds[user].length;
+        _addMediaCompleter(user, mediaId);
 
         emit MediaCompleted(user, mediaId, tokenId);
     }
@@ -207,6 +211,7 @@ contract VeTerex is Initializable, ERC721Upgradeable, OwnableUpgradeable, UUPSUp
         delete tokenMediaId[tokenId];
         delete completionTokenId[msg.sender][mediaId];
         _removeUserTokenId(msg.sender, tokenId);
+        _removeMediaCompleter(msg.sender, mediaId);
         _removeGroupMember(msg.sender, mediaId);
 
         _burn(tokenId);
@@ -294,5 +299,71 @@ contract VeTerex is Initializable, ERC721Upgradeable, OwnableUpgradeable, UUPSUp
 
     function getusernft(address user) public view returns (uint256[] memory userNfts) {
         return _userTokenIds[user];
+    }
+
+    function getsimilars(address user, uint256[] calldata _nft) public view returns (address[] memory commonusers) {
+        uint256 max = 0;
+        for (uint256 i = 0; i < _nft.length; i++) {
+            uint256 tokenId = _nft[i];
+            if (ownerOf(tokenId) != user) revert NotTokenOwner(user, tokenId);
+            bytes32 mediaId = tokenMediaId[tokenId];
+            max += _mediaCompleters[mediaId].length;
+        }
+
+        if (max == 0) return new address[](0);
+
+        address[] memory tmp = new address[](max);
+        uint256 out = 0;
+
+        for (uint256 i = 0; i < _nft.length; i++) {
+            bytes32 mediaId = tokenMediaId[_nft[i]];
+            address[] storage completers = _mediaCompleters[mediaId];
+
+            for (uint256 j = 0; j < completers.length; j++) {
+                address candidate = completers[j];
+                if (candidate == user) continue;
+
+                bool seen = false;
+                for (uint256 k = 0; k < out; k++) {
+                    if (tmp[k] == candidate) {
+                        seen = true;
+                        break;
+                    }
+                }
+
+                if (!seen) {
+                    tmp[out] = candidate;
+                    out++;
+                }
+            }
+        }
+
+        commonusers = new address[](out);
+        for (uint256 i = 0; i < out; i++) {
+            commonusers[i] = tmp[i];
+        }
+    }
+
+    function _addMediaCompleter(address user, bytes32 mediaId) internal {
+        if (_mediaCompleterIndexPlusOne[mediaId][user] != 0) return;
+        _mediaCompleters[mediaId].push(user);
+        _mediaCompleterIndexPlusOne[mediaId][user] = _mediaCompleters[mediaId].length;
+    }
+
+    function _removeMediaCompleter(address user, bytes32 mediaId) internal {
+        uint256 indexPlusOne = _mediaCompleterIndexPlusOne[mediaId][user];
+        if (indexPlusOne == 0) return;
+
+        uint256 index = indexPlusOne - 1;
+        uint256 lastIndex = _mediaCompleters[mediaId].length - 1;
+
+        if (index != lastIndex) {
+            address last = _mediaCompleters[mediaId][lastIndex];
+            _mediaCompleters[mediaId][index] = last;
+            _mediaCompleterIndexPlusOne[mediaId][last] = index + 1;
+        }
+
+        _mediaCompleters[mediaId].pop();
+        delete _mediaCompleterIndexPlusOne[mediaId][user];
     }
 }

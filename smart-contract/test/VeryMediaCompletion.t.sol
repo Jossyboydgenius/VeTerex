@@ -117,6 +117,82 @@ contract VeryMediaCompletionTest is Test {
         assertFalse(nft.isGroupMember(mediaId, alice));
     }
 
+    function testGetSimilarsReturnsOtherCompleters() public {
+        VeTerex.MediaKind kind = VeTerex.MediaKind.Show;
+        string memory externalId = "imdb:tt0903747";
+
+        vm.prank(backend);
+        uint256 aliceTokenId = nft.completeAndRegisterByExternalId(alice, kind, externalId, "", "");
+
+        vm.prank(backend);
+        uint256 bobTokenId = nft.completeAndRegisterByExternalId(bob, kind, externalId, "", "");
+
+        uint256[] memory aliceNfts = new uint256[](1);
+        aliceNfts[0] = aliceTokenId;
+        address[] memory aliceSimilars = nft.getsimilars(alice, aliceNfts);
+        assertEq(aliceSimilars.length, 1);
+        assertEq(aliceSimilars[0], bob);
+
+        uint256[] memory bobNfts = new uint256[](1);
+        bobNfts[0] = bobTokenId;
+        address[] memory bobSimilars = nft.getsimilars(bob, bobNfts);
+        assertEq(bobSimilars.length, 1);
+        assertEq(bobSimilars[0], alice);
+
+        vm.expectRevert(abi.encodeWithSelector(VeTerex.NotTokenOwner.selector, alice, bobTokenId));
+        uint256[] memory wrongNfts = new uint256[](1);
+        wrongNfts[0] = bobTokenId;
+        nft.getsimilars(alice, wrongNfts);
+    }
+
+    function testGetSimilarsUpdatesAfterBurn() public {
+        VeTerex.MediaKind kind = VeTerex.MediaKind.Anime;
+        string memory externalId = "mal:burn-similars";
+
+        vm.prank(backend);
+        uint256 aliceTokenId = nft.completeAndRegisterByExternalId(alice, kind, externalId, "", "");
+
+        vm.prank(backend);
+        uint256 bobTokenId = nft.completeAndRegisterByExternalId(bob, kind, externalId, "", "");
+
+        vm.prank(bob);
+        nft.burn(bobTokenId);
+
+        uint256[] memory aliceNfts = new uint256[](1);
+        aliceNfts[0] = aliceTokenId;
+        address[] memory aliceSimilars = nft.getsimilars(alice, aliceNfts);
+        assertEq(aliceSimilars.length, 0);
+    }
+
+    function testGetSimilarsAcrossMultipleNftsIsUnionAndUnique() public {
+        VeTerex.MediaKind kindA = VeTerex.MediaKind.Book;
+        VeTerex.MediaKind kindB = VeTerex.MediaKind.Movie;
+        string memory idA = "id:a";
+        string memory idB = "id:b";
+
+        vm.prank(backend);
+        uint256 aliceA = nft.completeAndRegisterByExternalId(alice, kindA, idA, "", "");
+        vm.prank(backend);
+        uint256 aliceB = nft.completeAndRegisterByExternalId(alice, kindB, idB, "", "");
+
+        vm.prank(backend);
+        nft.completeAndRegisterByExternalId(bob, kindA, idA, "", "");
+        vm.prank(backend);
+        nft.completeAndRegisterByExternalId(bob, kindB, idB, "", "");
+
+        address charlie = address(0xC0FFEE);
+        vm.prank(backend);
+        nft.completeAndRegisterByExternalId(charlie, kindB, idB, "", "");
+
+        uint256[] memory aliceNfts = new uint256[](2);
+        aliceNfts[0] = aliceA;
+        aliceNfts[1] = aliceB;
+
+        address[] memory similars = nft.getsimilars(alice, aliceNfts);
+        assertEq(similars.length, 2);
+        assertTrue((similars[0] == bob && similars[1] == charlie) || (similars[0] == charlie && similars[1] == bob));
+    }
+
     function testNonTransferableRevertsOnTransferAndApproval() public {
         VeTerex.MediaKind kind = VeTerex.MediaKind.Movie;
         string memory externalId = "imdb:tt0137523";
