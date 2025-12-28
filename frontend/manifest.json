@@ -28,18 +28,19 @@
     "tabs",
     "notifications",
     "activeTab",
-    "contextMenus"
+    "contextMenus",
+    "scripting"
   ],
   "optional_permissions": [
     "history"
   ],
-  "optional_host_permissions": [
-    "https://*/*",
-    "http://*/*"
-  ],
   "host_permissions": [
     "https://*.wepin.io/*",
-    "https://gapi.veryapi.io/*",
+    "https://gapi.veryapi.io/*"
+  ],
+  "optional_host_permissions": [
+    "https://*/*",
+    "http://*/*",
     "https://*.netflix.com/*",
     "https://*.youtube.com/*",
     "https://*.primevideo.com/*",
@@ -57,6 +58,7 @@
       "matches": [
         "https://*.netflix.com/*",
         "https://*.youtube.com/watch*",
+        "https://*.youtube.com/shorts/*",
         "https://*.primevideo.com/*",
         "https://*.amazon.com/gp/video/*",
         "https://*.disneyplus.com/*",

@@ -8,6 +8,7 @@ import { GroupDetailPage } from "./pages/GroupDetailPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { MediaDetailPage } from "./pages/MediaDetailPage";
+import { MintPage } from "./pages/MintPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 
 function App() {
@@ -25,6 +26,7 @@ function App() {
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/media/:id" element={<MediaDetailPage />} />
+          <Route path="/mint" element={<MintPage />} />
           {/* Catch all unmatched routes - 404 page */}
           <Route path="*" element={<NotFoundPage />} />
         </Routes>

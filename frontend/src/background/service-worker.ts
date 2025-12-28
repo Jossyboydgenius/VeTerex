@@ -9,6 +9,8 @@ interface TrackingSession {
     title: string;
     url: string;
     progress?: number;
+    duration?: number;
+    thumbnail?: string;
     timestamp: number;
   };
   startTime: number;
@@ -127,15 +129,26 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // Media tracking messages from content script
     case "TRACKING_START":
       if (sender.tab?.id) {
+        const trackingData = message.data;
         const session: TrackingSession = {
           tabId: sender.tab.id,
-          mediaInfo: message.data.mediaInfo,
-          startTime: message.data.startTime,
+          mediaInfo: {
+            platform: trackingData.platform,
+            type: trackingData.type,
+            title: trackingData.title,
+            url: trackingData.url,
+            progress: trackingData.progress || 0,
+            timestamp: Date.now(),
+          },
+          startTime: Date.now(),
           watchTime: 0,
           completed: false,
         };
         activeSessions.set(sender.tab.id, session);
         console.log("[VeTerex] Tracking started:", session.mediaInfo.title);
+
+        // Store in chrome.storage for popup access
+        updateActiveTrackingStorage();
       }
       sendResponse({ success: true });
       return true;
@@ -143,14 +156,47 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     case "TRACKING_UPDATE":
       if (sender.tab?.id) {
         const session = activeSessions.get(sender.tab.id);
+        const updateData = message.data;
         if (session) {
-          session.watchTime = message.data.watchTime;
-          session.mediaInfo.progress = message.data.mediaInfo.progress;
+          session.watchTime = updateData.watchTime || session.watchTime || 0;
+          session.mediaInfo.progress = updateData.progress || 0;
+          session.mediaInfo.duration =
+            updateData.duration || session.mediaInfo.duration || 0;
+          session.mediaInfo.thumbnail =
+            updateData.thumbnail || session.mediaInfo.thumbnail || "";
+          session.completed = updateData.completed || session.completed;
           console.log("[VeTerex] Tracking update:", {
             title: session.mediaInfo.title,
             progress: session.mediaInfo.progress,
             watchTime: session.watchTime,
           });
+
+          // Update storage for popup
+          updateActiveTrackingStorage();
+        } else {
+          // Session doesn't exist, create one from update data
+          const newSession: TrackingSession = {
+            tabId: sender.tab.id,
+            mediaInfo: {
+              platform: updateData.platform || "unknown",
+              type: updateData.type || "video",
+              title: updateData.title || "Unknown",
+              url: updateData.url || "",
+              progress: updateData.progress || 0,
+              duration: updateData.duration || 0,
+              thumbnail: updateData.thumbnail || "",
+              timestamp: Date.now(),
+            },
+            startTime: updateData.startTime || Date.now(),
+            watchTime: updateData.watchTime || 0,
+            completed: updateData.completed || false,
+          };
+          activeSessions.set(sender.tab.id, newSession);
+          console.log(
+            "[VeTerex] Created new session from update:",
+            newSession.mediaInfo.title
+          );
+          updateActiveTrackingStorage();
         }
       }
       sendResponse({ success: true });
@@ -162,9 +208,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (session) {
           console.log("[VeTerex] Tracking ended:", {
             title: session.mediaInfo.title,
-            totalWatchTime: message.data.watchTime,
+            totalWatchTime: message.data?.watchTime || session.watchTime,
           });
           activeSessions.delete(sender.tab.id);
+          updateActiveTrackingStorage();
         }
       }
       sendResponse({ success: true });
@@ -267,6 +314,43 @@ function updateBadge(count: number) {
   } else {
     chrome.action.setBadgeText({ text: "" });
   }
+}
+
+// Update active tracking in chrome.storage for popup access
+function updateActiveTrackingStorage() {
+  const sessions = Array.from(activeSessions.values());
+
+  // Deduplicate by URL (same video on different tabs shouldn't create duplicates)
+  const uniqueSessions = new Map<string, (typeof sessions)[0]>();
+  for (const session of sessions) {
+    const existingSession = uniqueSessions.get(session.mediaInfo.url);
+    if (!existingSession || session.watchTime > existingSession.watchTime) {
+      uniqueSessions.set(session.mediaInfo.url, session);
+    }
+  }
+
+  const trackingData = Array.from(uniqueSessions.values()).map((session) => ({
+    id: `track-${session.tabId}-${session.startTime}`,
+    platform: session.mediaInfo.platform,
+    type: session.mediaInfo.type,
+    title: session.mediaInfo.title,
+    url: session.mediaInfo.url,
+    progress: session.mediaInfo.progress || 0,
+    duration: session.mediaInfo.duration || 0,
+    watchTime: Math.round(session.watchTime),
+    thumbnail: session.mediaInfo.thumbnail || "",
+    completed: session.completed,
+    startTime: session.startTime,
+    lastUpdate: Date.now(),
+  }));
+
+  chrome.storage.local.set({ activeTracking: trackingData }, () => {
+    console.log(
+      "[VeTerex] Updated active tracking storage:",
+      trackingData.length,
+      "sessions"
+    );
+  });
 }
 
 // Handle tab updates (when URL changes)

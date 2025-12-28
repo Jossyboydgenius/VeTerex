@@ -15,10 +15,12 @@ const SUPPORTED_PLATFORMS = {
     },
   },
   youtube: {
-    patterns: ["youtube.com/watch"],
+    patterns: ["youtube.com/watch", "youtube.com/shorts"],
     type: "video",
     selectors: {
-      title: "h1.ytd-video-primary-info-renderer",
+      // Multiple possible title selectors for different YouTube layouts
+      title:
+        "h1.ytd-watch-metadata yt-formatted-string, h1.ytd-video-primary-info-renderer yt-formatted-string, #title h1, .ytp-title-link",
       progress: ".ytp-progress-bar",
     },
   },
@@ -106,6 +108,7 @@ interface MediaInfo {
   url: string;
   progress?: number;
   duration?: number;
+  thumbnail?: string;
   timestamp: number;
 }
 
@@ -120,6 +123,44 @@ interface TrackingSession {
 // Current tracking session
 let currentSession: TrackingSession | null = null;
 let trackingInterval: ReturnType<typeof setInterval> | null = null;
+let customSites: Array<{
+  id?: string;
+  url: string;
+  name: string;
+  type: string;
+  enabled?: boolean;
+}> = [];
+
+// Load custom sites from storage
+if (typeof chrome !== "undefined" && chrome.storage) {
+  chrome.storage.local.get(["customSites"], (result) => {
+    customSites = result.customSites || [];
+    console.log("[VeTerex] Loaded custom sites:", customSites);
+  });
+
+  // Listen for custom sites updates
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName === "local" && changes.customSites) {
+      customSites = changes.customSites.newValue || [];
+      console.log("[VeTerex] Updated custom sites:", customSites);
+    }
+  });
+}
+
+/**
+ * Extract domain from URL string
+ */
+function extractDomain(urlString: string): string {
+  try {
+    const url = new URL(urlString);
+    return url.hostname.replace("www.", "");
+  } catch {
+    return urlString
+      .replace(/https?:\/\//, "")
+      .replace("www.", "")
+      .split("/")[0];
+  }
+}
 
 /**
  * Detect which platform the user is currently on
@@ -129,11 +170,50 @@ function detectPlatform(): {
   config: (typeof SUPPORTED_PLATFORMS)[keyof typeof SUPPORTED_PLATFORMS];
 } | null {
   const url = window.location.href;
+  const hostname = window.location.hostname.replace("www.", "");
 
+  // Check built-in supported platforms first
   for (const [name, config] of Object.entries(SUPPORTED_PLATFORMS)) {
     if (config.patterns.some((pattern) => url.includes(pattern))) {
       return { name, config };
     }
+  }
+
+  // Check custom sites
+  for (const site of customSites) {
+    if (!site.enabled && site.enabled !== undefined) continue; // Skip disabled sites
+
+    const siteDomain = extractDomain(site.url);
+    if (hostname.includes(siteDomain) || siteDomain.includes(hostname)) {
+      console.log("[VeTerex] Matched custom site:", site.name, siteDomain);
+      return {
+        name: site.name || hostname,
+        config: {
+          patterns: [siteDomain],
+          type: site.type || "video",
+          selectors: {
+            title: "h1, .title, [class*='title'], title",
+            progress: ".progress-bar, [class*='progress']",
+          },
+        },
+      };
+    }
+  }
+
+  // Check if there's a video element on the page (generic fallback)
+  const video = document.querySelector("video");
+  if (video && video.duration > 0) {
+    return {
+      name: hostname,
+      config: {
+        patterns: [hostname],
+        type: "video",
+        selectors: {
+          title: "h1, .title, [class*='title'], title",
+          progress: ".progress-bar, [class*='progress']",
+        },
+      },
+    };
   }
 
   return null;
@@ -149,33 +229,124 @@ function extractMediaInfo(): MediaInfo | null {
   const { name, config } = platform;
 
   try {
-    const titleElement = document.querySelector(config.selectors.title);
-    if (!titleElement) return null;
-
-    const title = titleElement.textContent?.trim() || "Unknown Title";
-
-    // Try to get progress if available
+    let title = "Unknown Title";
     let progress = 0;
-    const selectors = config.selectors as { progress?: string };
-    if (selectors.progress) {
-      const progressElement = document.querySelector(
-        selectors.progress
-      ) as HTMLElement;
-      if (progressElement) {
-        // Try various ways to get progress
-        const style = progressElement.getAttribute("style");
-        if (style) {
-          const match = style.match(/width:\s*(\d+(?:\.\d+)?)%/);
-          if (match) progress = parseFloat(match[1]);
-        }
+    let duration = 0;
+    let thumbnail = "";
 
-        // For video elements
-        const video = document.querySelector("video");
-        if (video && video.duration) {
-          progress = (video.currentTime / video.duration) * 100;
+    // Try to get thumbnail from og:image meta tag
+    const ogImage = document.querySelector('meta[property="og:image"]');
+    if (ogImage) {
+      thumbnail = ogImage.getAttribute("content") || "";
+    }
+
+    // Special handling for YouTube
+    if (name === "youtube") {
+      // Try multiple selectors for YouTube title
+      const titleSelectors = [
+        "h1.ytd-watch-metadata yt-formatted-string",
+        "h1.ytd-video-primary-info-renderer yt-formatted-string",
+        "#title h1 yt-formatted-string",
+        ".ytp-title-link",
+        "ytd-watch-metadata h1",
+        "#container h1.title",
+        // For shorts
+        "ytd-reel-video-renderer h2.title",
+        ".reel-video-in-sequence ytd-reel-player-header-renderer h2",
+      ];
+
+      for (const selector of titleSelectors) {
+        const el = document.querySelector(selector);
+        if (el?.textContent?.trim()) {
+          title = el.textContent.trim();
+          break;
         }
       }
+
+      // Get video progress
+      const video = document.querySelector("video");
+      if (video && video.duration && !isNaN(video.duration)) {
+        duration = video.duration;
+        progress = (video.currentTime / video.duration) * 100;
+      }
+    } else {
+      // Generic extraction for other platforms
+      // Try multiple title selectors
+      const titleSelectors = config.selectors.title
+        .split(",")
+        .map((s) => s.trim());
+      for (const selector of titleSelectors) {
+        const titleElement = document.querySelector(selector);
+        if (titleElement?.textContent?.trim()) {
+          title = titleElement.textContent.trim();
+          break;
+        }
+      }
+
+      // Fallback: try document title
+      if (title === "Unknown Title" && document.title) {
+        // Clean up the title (remove site name suffixes)
+        title = document.title.split("|")[0].split("-")[0].split("—")[0].trim();
+      }
+
+      // Try to get progress from progress bar
+      const selectors = config.selectors as { progress?: string };
+      if (selectors.progress) {
+        const progressSelectors = selectors.progress
+          .split(",")
+          .map((s) => s.trim());
+        for (const selector of progressSelectors) {
+          const progressElement = document.querySelector(
+            selector
+          ) as HTMLElement;
+          if (progressElement) {
+            const style = progressElement.getAttribute("style");
+            if (style) {
+              const match = style.match(/width:\s*(\d+(?:\.\d+)?)%/);
+              if (match) {
+                progress = parseFloat(match[1]);
+                break;
+              }
+            }
+          }
+        }
+      }
+
+      // For video elements on any platform - this is the most reliable
+      const video = document.querySelector("video");
+      if (
+        video &&
+        video.duration &&
+        !isNaN(video.duration) &&
+        video.duration > 0
+      ) {
+        duration = video.duration;
+        progress = (video.currentTime / video.duration) * 100;
+        console.log("[VeTerex] Video found:", {
+          duration: video.duration,
+          currentTime: video.currentTime,
+          progress,
+        });
+      }
     }
+
+    // If we still don't have a title, try using the page title
+    if (title === "Unknown Title" && document.title) {
+      title = document.title.split("|")[0].split("-")[0].trim();
+    }
+
+    // Don't track if we couldn't find a title
+    if (title === "Unknown Title" || !title) {
+      console.log("[VeTerex] Could not extract title, skipping");
+      return null;
+    }
+
+    console.log("[VeTerex] Extracted media info:", {
+      platform: name,
+      title,
+      progress,
+      duration,
+    });
 
     return {
       platform: name,
@@ -183,6 +354,8 @@ function extractMediaInfo(): MediaInfo | null {
       title,
       url: window.location.href,
       progress,
+      duration,
+      thumbnail,
       timestamp: Date.now(),
     };
   } catch (error) {
@@ -196,12 +369,37 @@ function extractMediaInfo(): MediaInfo | null {
  */
 function startTracking() {
   const mediaInfo = extractMediaInfo();
-  if (!mediaInfo) return;
+  if (!mediaInfo) {
+    console.log("[VeTerex] Could not extract media info, retrying...");
+    // Retry after a short delay - YouTube might not have loaded content yet
+    setTimeout(() => {
+      const retryInfo = extractMediaInfo();
+      if (retryInfo && !currentSession) {
+        initSession(retryInfo);
+      }
+    }, 2000);
+    return;
+  }
 
+  initSession(mediaInfo);
+}
+
+/**
+ * Initialize a tracking session
+ */
+function initSession(mediaInfo: MediaInfo) {
   console.log("[VeTerex] Starting media tracking:", mediaInfo);
 
+  // Generate a unique ID for this tracking session
+  const sessionId = `${mediaInfo.platform}-${Date.now()}-${Math.random()
+    .toString(36)
+    .substr(2, 9)}`;
+
   currentSession = {
-    mediaInfo,
+    mediaInfo: {
+      ...mediaInfo,
+      id: sessionId,
+    } as MediaInfo & { id: string },
     startTime: Date.now(),
     lastUpdate: Date.now(),
     watchTime: 0,
@@ -211,11 +409,17 @@ function startTracking() {
   // Send tracking start message to background
   chrome.runtime.sendMessage({
     type: "TRACKING_START",
-    data: currentSession,
+    data: {
+      id: sessionId,
+      ...currentSession.mediaInfo,
+      startTime: currentSession.startTime,
+      watchTime: 0,
+      completed: false,
+    },
   });
 
-  // Update tracking every 30 seconds
-  trackingInterval = setInterval(updateTracking, 30000);
+  // Update tracking every 5 seconds for more responsive UI
+  trackingInterval = setInterval(updateTracking, 5000);
 }
 
 /**
@@ -228,24 +432,60 @@ function updateTracking() {
   if (!mediaInfo) return;
 
   const now = Date.now();
-  currentSession.watchTime += (now - currentSession.lastUpdate) / 1000;
   currentSession.lastUpdate = now;
   currentSession.mediaInfo.progress = mediaInfo.progress;
+  currentSession.mediaInfo.duration = mediaInfo.duration;
 
-  // Check if completed (>90% progress)
-  if (
-    mediaInfo.progress &&
-    mediaInfo.progress >= 90 &&
-    !currentSession.completed
-  ) {
+  // Get actual watch time from video element if available
+  const video = document.querySelector("video");
+  if (video && !isNaN(video.currentTime)) {
+    // Use the actual video currentTime as watch time
+    currentSession.watchTime = video.currentTime;
+  } else {
+    // Fallback: calculate based on progress and duration
+    if (mediaInfo.duration && mediaInfo.progress) {
+      currentSession.watchTime =
+        (mediaInfo.progress / 100) * mediaInfo.duration;
+    }
+  }
+
+  // Get the session ID
+  const sessionData = currentSession.mediaInfo as MediaInfo & { id?: string };
+  const sessionId =
+    sessionData.id ||
+    `${currentSession.mediaInfo.platform}-${currentSession.startTime}`;
+
+  // Check if completed (>90% progress or near end of video)
+  const progress = mediaInfo.progress ?? 0;
+  const isNearEnd =
+    mediaInfo.duration && mediaInfo.duration > 0
+      ? progress >= 90 ||
+        mediaInfo.duration - (progress / 100) * mediaInfo.duration < 30
+      : progress >= 90;
+
+  if (isNearEnd && !currentSession.completed) {
     currentSession.completed = true;
     notifyCompletion(currentSession);
   }
 
-  // Send progress update
+  // Send progress update to background
   chrome.runtime.sendMessage({
     type: "TRACKING_UPDATE",
-    data: currentSession,
+    data: {
+      id: sessionId,
+      platform: currentSession.mediaInfo.platform,
+      type: currentSession.mediaInfo.type,
+      title: currentSession.mediaInfo.title,
+      url: currentSession.mediaInfo.url,
+      progress: currentSession.mediaInfo.progress,
+      duration: currentSession.mediaInfo.duration,
+      thumbnail:
+        mediaInfo.thumbnail || currentSession.mediaInfo.thumbnail || "",
+      startTime: currentSession.startTime,
+      lastUpdate: now,
+      watchTime: Math.round(currentSession.watchTime),
+      completed: currentSession.completed,
+    },
   });
 }
 
@@ -303,6 +543,8 @@ function showCompletionBanner(mediaInfo: MediaInfo) {
   banner.id = "veterex-completion-banner";
   banner.innerHTML = `
     <style>
+      @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap');
+      
       #veterex-completion-banner {
         position: fixed;
         bottom: 20px;
@@ -311,10 +553,11 @@ function showCompletionBanner(mediaInfo: MediaInfo) {
         background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
         border: 1px solid #4a5568;
         border-radius: 16px;
-        padding: 16px 20px;
+        padding: 20px 24px;
         box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        max-width: 320px;
+        font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        min-width: 340px;
+        max-width: 400px;
         animation: slideIn 0.3s ease-out;
       }
       
@@ -337,72 +580,77 @@ function showCompletionBanner(mediaInfo: MediaInfo) {
       }
       
       .veterex-banner-icon {
-        width: 40px;
-        height: 40px;
+        width: 48px;
+        height: 48px;
         background: linear-gradient(135deg, #00d4ff 0%, #7c3aed 100%);
-        border-radius: 10px;
+        border-radius: 12px;
         display: flex;
         align-items: center;
         justify-content: center;
       }
       
       .veterex-banner-icon svg {
-        width: 24px;
-        height: 24px;
+        width: 28px;
+        height: 28px;
         fill: white;
       }
       
       .veterex-banner-title {
         color: #00d4ff;
         font-weight: 600;
-        font-size: 14px;
+        font-size: 16px;
         margin: 0;
+        font-family: 'Outfit', sans-serif;
       }
       
       .veterex-banner-subtitle {
         color: #a0aec0;
         font-size: 12px;
         margin: 0;
+        font-family: 'Outfit', sans-serif;
       }
       
       .veterex-banner-media {
         background: rgba(255, 255, 255, 0.05);
-        border-radius: 8px;
-        padding: 10px;
-        margin-bottom: 12px;
+        border-radius: 10px;
+        padding: 12px;
+        margin-bottom: 16px;
       }
       
       .veterex-banner-media-title {
         color: white;
         font-weight: 500;
-        font-size: 13px;
+        font-size: 14px;
         margin: 0 0 4px 0;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+        font-family: 'Outfit', sans-serif;
       }
       
       .veterex-banner-media-type {
         color: #a0aec0;
-        font-size: 11px;
+        font-size: 12px;
         text-transform: capitalize;
         margin: 0;
+        font-family: 'Outfit', sans-serif;
       }
       
       .veterex-banner-buttons {
         display: flex;
-        gap: 8px;
+        gap: 10px;
       }
       
       .veterex-banner-btn {
         flex: 1;
-        padding: 10px 16px;
-        border-radius: 8px;
-        font-size: 13px;
+        padding: 12px 16px;
+        border-radius: 10px;
+        font-size: 14px;
         font-weight: 500;
         cursor: pointer;
         border: none;
         transition: all 0.2s;
+        font-family: 'Outfit', sans-serif;
       }
       
       .veterex-banner-btn-primary {

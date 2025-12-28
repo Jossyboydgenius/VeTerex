@@ -5,4 +5,5 @@ export { CollectionPage } from "./CollectionPage";
 export { CommunityPage } from "./CommunityPage";
 export { ProfilePage } from "./ProfilePage";
 export { MediaDetailPage } from "./MediaDetailPage";
+export { MintPage } from "./MintPage";
 export { NotFoundPage } from "./NotFoundPage";

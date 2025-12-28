@@ -6,3 +6,5 @@ export { MediaCard, MediaCardSkeleton } from "./MediaCard";
 export { NFTCard, NFTCardSkeleton } from "./NFTCard";
 export { MintNFTModal } from "./MintNFTModal";
 export { VeryChatLoginModal } from "./VeryChatLoginModal";
+export { TrackingPermissionModal } from "./TrackingPermissionModal";
+export { TrackedMediaCard } from "./TrackedMediaCard";

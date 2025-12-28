@@ -1,4 +1,5 @@
-import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
 import {
   Book,
@@ -10,8 +11,32 @@ import {
   Users,
   TrendingUp,
   Play,
+  Activity,
+  Globe,
+  CheckCircle,
+  AlertCircle,
 } from "lucide-react";
-import { useAppStore } from "@/store/useAppStore";
+import { useAppStore, type TrackedMedia } from "@/store/useAppStore";
+import {
+  TrackingPermissionModal,
+  TrackedMediaCard,
+  MintNFTModal,
+} from "@/components";
+
+// Check if running as Chrome extension
+const isExtension =
+  typeof chrome !== "undefined" &&
+  chrome.runtime &&
+  chrome.runtime.id &&
+  typeof chrome.tabs !== "undefined";
+
+interface CurrentSiteInfo {
+  url: string;
+  hostname: string;
+  isSupported: boolean;
+  platformName: string | null;
+  isTracking: boolean;
+}
 
 const mediaTypes = [
   {
@@ -61,70 +86,394 @@ const stats = [
 // Stats section temporarily disabled
 const SHOW_STATS = false;
 
+// Supported platforms for checking current site
+const SUPPORTED_PLATFORMS: Record<string, string[]> = {
+  YouTube: ["youtube.com"],
+  Netflix: ["netflix.com"],
+  "Prime Video": ["primevideo.com", "amazon.com/gp/video"],
+  "Disney+": ["disneyplus.com"],
+  Hulu: ["hulu.com"],
+  Crunchyroll: ["crunchyroll.com"],
+  Goodreads: ["goodreads.com"],
+  Kindle: ["read.amazon.com"],
+  MangaDex: ["mangadex.org"],
+  MyAnimeList: ["myanimelist.net"],
+  AniList: ["anilist.co"],
+};
+
 export function HomePage() {
-  const { isConnected, completions } = useAppStore();
+  const {
+    isConnected,
+    completions,
+    trackingEnabled,
+    trackingPermissionAsked,
+    activeTracking,
+    pendingMints,
+    setTrackingEnabled,
+    setTrackingPermissionAsked,
+    removePendingMint,
+    addToast,
+  } = useAppStore();
+
+  const [showPermissionModal, setShowPermissionModal] = useState(false);
+  const [showMintModal, setShowMintModal] = useState(false);
+  const [selectedMedia, setSelectedMedia] = useState<TrackedMedia | null>(null);
+  const [currentSite, setCurrentSite] = useState<CurrentSiteInfo | null>(null);
+
+  // Detect current active tab site
+  useEffect(() => {
+    if (!isExtension) return;
+
+    const detectCurrentSite = async () => {
+      try {
+        const tabs = await chrome.tabs.query({
+          active: true,
+          currentWindow: true,
+        });
+        const tab = tabs[0];
+        if (!tab?.url) return;
+
+        const url = new URL(tab.url);
+        const hostname = url.hostname.replace("www.", "");
+
+        // Check if it's a supported platform
+        let platformName: string | null = null;
+        for (const [name, patterns] of Object.entries(SUPPORTED_PLATFORMS)) {
+          if (patterns.some((p) => hostname.includes(p.replace("www.", "")))) {
+            platformName = name;
+            break;
+          }
+        }
+
+        // Check custom sites from storage
+        if (!platformName) {
+          const result = await chrome.storage.local.get(["customSites"]);
+          const customSites = result.customSites || [];
+          for (const site of customSites) {
+            // Extract domain from the site URL
+            try {
+              const siteUrl = new URL(site.url);
+              const siteDomain = siteUrl.hostname.replace("www.", "");
+              if (
+                hostname.includes(siteDomain) ||
+                siteDomain.includes(hostname)
+              ) {
+                platformName = site.name || siteDomain;
+                break;
+              }
+            } catch {
+              // If URL parsing fails, try direct comparison
+              const siteDomain = site.url
+                .replace(/https?:\/\//, "")
+                .replace("www.", "")
+                .split("/")[0];
+              if (
+                hostname.includes(siteDomain) ||
+                siteDomain.includes(hostname)
+              ) {
+                platformName = site.name || siteDomain;
+                break;
+              }
+            }
+          }
+        }
+
+        setCurrentSite({
+          url: tab.url,
+          hostname,
+          isSupported: platformName !== null,
+          platformName,
+          isTracking: activeTracking.some((t) => t.url.includes(hostname)),
+        });
+      } catch (error) {
+        console.error("[VeTerex] Error detecting current site:", error);
+      }
+    };
+
+    detectCurrentSite();
+  }, [activeTracking]);
+
+  // Show permission modal on first load if not asked yet
+  useEffect(() => {
+    if (isConnected && !trackingPermissionAsked) {
+      // Small delay to let the UI settle
+      const timer = setTimeout(() => {
+        setShowPermissionModal(true);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [isConnected, trackingPermissionAsked]);
+
+  // Listen for tracking updates from content script
+  useEffect(() => {
+    // Only run chrome-specific code in extension context
+    if (!isExtension) return;
+
+    // Load initial active tracking from storage
+    const loadActiveTracking = () => {
+      try {
+        chrome.storage?.local?.get(["activeTracking"], (result) => {
+          if (chrome.runtime.lastError) {
+            console.error("[VeTerex] Storage error:", chrome.runtime.lastError);
+            return;
+          }
+          if (result?.activeTracking && Array.isArray(result.activeTracking)) {
+            result.activeTracking.forEach((track: TrackedMedia) => {
+              useAppStore.getState().updateActiveTracking(track);
+            });
+          }
+        });
+      } catch (err) {
+        console.error("[VeTerex] Failed to load active tracking:", err);
+      }
+    };
+
+    // Load on mount
+    loadActiveTracking();
+
+    // Also get active sessions from service worker
+    try {
+      chrome.runtime.sendMessage(
+        { type: "GET_ACTIVE_SESSIONS" },
+        (response) => {
+          if (response?.success && response.data) {
+            console.log("[VeTerex] Active sessions:", response.data);
+          }
+        }
+      );
+    } catch (err) {
+      console.error("[VeTerex] Failed to get active sessions:", err);
+    }
+
+    const handleMessage = (message: { type: string; data?: TrackedMedia }) => {
+      if (message.type === "TRACKING_UPDATE" && message.data) {
+        useAppStore.getState().updateActiveTracking(message.data);
+      }
+      if (message.type === "MEDIA_COMPLETED" && message.data) {
+        useAppStore.getState().addPendingMint(message.data);
+      }
+    };
+
+    // Listen for storage changes
+    const handleStorageChange = (
+      changes: { [key: string]: chrome.storage.StorageChange },
+      areaName: string
+    ) => {
+      if (areaName === "local" && changes.activeTracking) {
+        const newTracking = changes.activeTracking.newValue;
+        if (Array.isArray(newTracking)) {
+          // Clear and update
+          useAppStore.getState().clearActiveTracking();
+          newTracking.forEach((track: TrackedMedia) => {
+            useAppStore.getState().updateActiveTracking(track);
+          });
+        }
+      }
+    };
+
+    chrome.runtime.onMessage.addListener(handleMessage);
+    chrome.storage?.onChanged?.addListener(handleStorageChange);
+
+    return () => {
+      chrome.runtime.onMessage.removeListener(handleMessage);
+      chrome.storage?.onChanged?.removeListener(handleStorageChange);
+    };
+  }, []);
+
+  const handleAllowTracking = () => {
+    setTrackingEnabled(true);
+    setTrackingPermissionAsked(true);
+    setShowPermissionModal(false);
+    addToast({
+      type: "success",
+      message: "Tracking enabled! We'll track your media progress.",
+    });
+  };
+
+  const handleDenyTracking = () => {
+    setTrackingEnabled(false);
+    setTrackingPermissionAsked(true);
+    setShowPermissionModal(false);
+    addToast({
+      type: "info",
+      message: "Tracking disabled. You can enable it in Settings.",
+    });
+  };
+
+  const handleMint = (media: TrackedMedia) => {
+    setSelectedMedia(media);
+    setShowMintModal(true);
+  };
+
+  const handleDismissCompletion = (id: string) => {
+    removePendingMint(id);
+  };
+
+  // Combine active tracking and pending mints
+  const allTrackedMedia = [
+    ...pendingMints,
+    ...activeTracking.filter((t) => !pendingMints.some((p) => p.id === t.id)),
+  ];
 
   return (
     <div className="px-4 py-6 space-y-8">
-      {/* Hero Section */}
-      <motion.section
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="text-center py-8"
-      >
+      {/* Current Site Indicator - Show in extension when on a supported site */}
+      {isExtension && currentSite && isConnected && trackingEnabled && (
         <motion.div
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ delay: 0.1 }}
-          className="w-24 h-24 mx-auto mb-6"
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={`flex items-center gap-3 p-3 rounded-xl border ${
+            currentSite.isSupported
+              ? currentSite.isTracking
+                ? "bg-green-500/10 border-green-500/30"
+                : "bg-accent-500/10 border-accent-500/30"
+              : "bg-dark-800 border-dark-700"
+          }`}
         >
-          <img
-            src="/icons/icon.svg"
-            alt="VeTerex Logo"
-            className="w-full h-full"
-          />
+          <div
+            className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+              currentSite.isSupported
+                ? currentSite.isTracking
+                  ? "bg-green-500/20"
+                  : "bg-accent-500/20"
+                : "bg-dark-700"
+            }`}
+          >
+            {currentSite.isSupported ? (
+              currentSite.isTracking ? (
+                <CheckCircle className="w-5 h-5 text-green-400" />
+              ) : (
+                <Globe className="w-5 h-5 text-accent-400" />
+              )
+            ) : (
+              <AlertCircle className="w-5 h-5 text-dark-400" />
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-white truncate">
+              {currentSite.platformName || currentSite.hostname}
+            </p>
+            <p
+              className={`text-xs ${
+                currentSite.isSupported
+                  ? currentSite.isTracking
+                    ? "text-green-400"
+                    : "text-accent-400"
+                  : "text-dark-400"
+              }`}
+            >
+              {currentSite.isSupported
+                ? currentSite.isTracking
+                  ? "Currently tracking"
+                  : "Supported site - Play media to track"
+                : "Not a supported site"}
+            </p>
+          </div>
+          {currentSite.isTracking && (
+            <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+          )}
         </motion.div>
+      )}
 
-        <motion.h1
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
-          className="text-2xl font-display font-bold gradient-text mb-3"
+      {/* Tracking Progress Section - Show when connected */}
+      {isConnected && trackingEnabled && allTrackedMedia.length > 0 ? (
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
         >
-          Track Your Media Journey
-        </motion.h1>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Activity className="w-5 h-5 text-accent-400" />
+              <h2 className="text-lg font-semibold text-white">
+                Tracking Your Progress
+              </h2>
+            </div>
+            <span className="text-xs text-dark-400 px-2 py-1 bg-dark-800 rounded-full">
+              {allTrackedMedia.length} active
+            </span>
+          </div>
 
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3 }}
-          className="text-dark-400 text-sm max-w-xs mx-auto mb-6"
+          <div className="space-y-3">
+            <AnimatePresence mode="popLayout">
+              {allTrackedMedia.map((media) => (
+                <TrackedMediaCard
+                  key={media.id}
+                  media={media}
+                  onMint={media.completed ? () => handleMint(media) : undefined}
+                  onDismiss={
+                    media.completed
+                      ? () => handleDismissCompletion(media.id)
+                      : undefined
+                  }
+                />
+              ))}
+            </AnimatePresence>
+          </div>
+        </motion.section>
+      ) : (
+        /* Hero Section - Show when not connected or no tracking */
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center py-8"
         >
-          Earn verified NFT badges for every book, movie, anime, and show you
-          complete. Connect with others who share your achievements.
-        </motion.p>
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.1 }}
+            className="w-24 h-24 mx-auto mb-6"
+          >
+            <img
+              src="/icons/icon.svg"
+              alt="VeTerex Logo"
+              className="w-full h-full"
+            />
+          </motion.div>
 
-        {!isConnected ? (
+          <motion.h1
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="text-2xl font-display font-bold gradient-text mb-3"
+          >
+            {isConnected && trackingEnabled
+              ? "No Active Tracking"
+              : "Track Your Media Journey"}
+          </motion.h1>
+
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.4 }}
-            className="text-sm text-accent-400"
+            transition={{ delay: 0.3 }}
+            className="text-dark-400 text-sm max-w-xs mx-auto mb-6"
           >
-            Connect your wallet to start tracking
+            {isConnected && trackingEnabled
+              ? "Visit a supported site like YouTube or Netflix to start tracking your media."
+              : "Earn verified NFT badges for every book, movie, anime, and show you complete. Connect with others who share your achievements."}
           </motion.p>
-        ) : (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.4 }}
-            className="flex items-center justify-center gap-2 text-sm text-green-400"
-          >
-            <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-            <span>Wallet Connected</span>
-          </motion.div>
-        )}
-      </motion.section>
+
+          {!isConnected ? (
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.4 }}
+              className="text-sm text-accent-400"
+            >
+              Connect your wallet to start tracking
+            </motion.p>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.4 }}
+              className="flex items-center justify-center gap-2 text-sm text-green-400"
+            >
+              <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+              <span>Wallet Connected</span>
+            </motion.div>
+          )}
+        </motion.section>
+      )}
 
       {/* Stats - Temporarily disabled */}
       {SHOW_STATS && (
@@ -243,7 +592,7 @@ export function HomePage() {
       >
         <h2 className="text-lg font-semibold text-white mb-4">Quick Actions</h2>
 
-        <Link to="/explore">
+        <Link to="/mint">
           <motion.div
             whileHover={{ scale: 1.01 }}
             whileTap={{ scale: 0.99 }}
@@ -281,6 +630,52 @@ export function HomePage() {
           </motion.div>
         </Link>
       </motion.section>
+
+      {/* Tracking Permission Modal */}
+      <TrackingPermissionModal
+        isOpen={showPermissionModal}
+        onClose={() => setShowPermissionModal(false)}
+        onAllow={handleAllowTracking}
+        onDeny={handleDenyTracking}
+      />
+
+      {/* Mint NFT Modal */}
+      {selectedMedia && (
+        <MintNFTModal
+          isOpen={showMintModal}
+          onClose={() => {
+            setShowMintModal(false);
+            setSelectedMedia(null);
+          }}
+          media={{
+            id: selectedMedia.id,
+            externalId: selectedMedia.id,
+            title: selectedMedia.title,
+            type: selectedMedia.type as
+              | "book"
+              | "movie"
+              | "anime"
+              | "manga"
+              | "comic"
+              | "tvshow",
+            description: `Completed on ${selectedMedia.platform}`,
+            coverImage: selectedMedia.thumbnail || "",
+            releaseYear: new Date().getFullYear(),
+            creator: selectedMedia.platform,
+            genre: [selectedMedia.type],
+            totalCompletions: 1,
+          }}
+          onSuccess={() => {
+            removePendingMint(selectedMedia.id);
+            setShowMintModal(false);
+            setSelectedMedia(null);
+            addToast({
+              type: "success",
+              message: "NFT minted successfully! 🎉",
+            });
+          }}
+        />
+      )}
     </div>
   );
 }

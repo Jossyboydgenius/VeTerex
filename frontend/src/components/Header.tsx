@@ -126,9 +126,17 @@ export function Header() {
     }
   };
 
-  const copyAddress = () => {
-    if (currentAccount?.address) {
-      navigator.clipboard.writeText(currentAccount.address);
+  const copyToClipboard = () => {
+    let textToCopy = "";
+
+    if (authMethod === "verychat" && verychatUser) {
+      textToCopy = `@${verychatUser.profileId}`;
+    } else if (currentAccount?.address) {
+      textToCopy = currentAccount.address;
+    }
+
+    if (textToCopy) {
+      navigator.clipboard.writeText(textToCopy);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
@@ -258,27 +266,29 @@ export function Header() {
                         </div>
                       </div>
 
-                      {/* Copy Address button - only for Wepin */}
-                      {authMethod === "wepin" && currentAccount && (
-                        <button
-                          onClick={copyAddress}
-                          className="w-full flex items-center justify-center gap-2 px-3 py-2 
-                                 bg-dark-800 rounded-lg text-sm text-dark-300 
-                                 hover:text-white hover:bg-dark-700 transition-colors"
-                        >
-                          {copied ? (
-                            <>
-                              <Check className="w-4 h-4 text-green-400" />
-                              <span>Copied!</span>
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="w-4 h-4" />
-                              <span>Copy Address</span>
-                            </>
-                          )}
-                        </button>
-                      )}
+                      {/* Copy button - works for both auth methods */}
+                      <button
+                        onClick={copyToClipboard}
+                        className="w-full flex items-center justify-center gap-2 px-3 py-2 
+                               bg-dark-800 rounded-lg text-sm text-dark-300 
+                               hover:text-white hover:bg-dark-700 transition-colors"
+                      >
+                        {copied ? (
+                          <>
+                            <Check className="w-4 h-4 text-green-400" />
+                            <span>Copied!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-4 h-4" />
+                            <span>
+                              {authMethod === "verychat"
+                                ? "Copy Handle"
+                                : "Copy Address"}
+                            </span>
+                          </>
+                        )}
+                      </button>
 
                       {/* Auth method badge */}
                       <div className="flex items-center justify-center gap-2 mt-3 px-3 py-1.5 bg-dark-800 rounded-lg">

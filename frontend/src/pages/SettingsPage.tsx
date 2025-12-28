@@ -11,6 +11,8 @@ import {
   AlertCircle,
   X,
   Edit2,
+  Activity,
+  ExternalLink,
 } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import { isExtension } from "@/services/tracking";
@@ -40,8 +42,12 @@ const defaultPlatforms = [
 
 export function SettingsPage() {
   const navigate = useNavigate();
-  const { addToast } = useAppStore();
-  const [trackingEnabled, setTrackingEnabled] = useState(true);
+  const {
+    addToast,
+    trackingEnabled: globalTrackingEnabled,
+    setTrackingEnabled: setGlobalTrackingEnabled,
+  } = useAppStore();
+  const [trackingEnabled, setTrackingEnabled] = useState(globalTrackingEnabled);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [customSites, setCustomSites] = useState<CustomSite[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -55,13 +61,17 @@ export function SettingsPage() {
     Record<string, boolean>
   >({});
 
+  // Sync local state with global state
+  useEffect(() => {
+    setTrackingEnabled(globalTrackingEnabled);
+  }, [globalTrackingEnabled]);
+
   // Load settings from storage
   useEffect(() => {
     if (isExtension) {
       chrome.storage.local.get(
-        ["trackingEnabled", "notificationsEnabled", "customSites"],
+        ["notificationsEnabled", "customSites"],
         (result) => {
-          setTrackingEnabled(result.trackingEnabled ?? true);
           setNotificationsEnabled(result.notificationsEnabled ?? true);
           setCustomSites(result.customSites ?? []);
         }
@@ -74,6 +84,13 @@ export function SettingsPage() {
     if (isExtension) {
       chrome.storage.local.set({ [key]: value });
     }
+  };
+
+  // Handle tracking toggle - update both global state and chrome storage
+  const handleTrackingToggle = (enabled: boolean) => {
+    setTrackingEnabled(enabled);
+    setGlobalTrackingEnabled(enabled);
+    saveSettings("trackingEnabled", enabled);
   };
 
   // Request permission for a site
@@ -115,12 +132,13 @@ export function SettingsPage() {
       setPermissionStatus((prev) => ({ ...prev, [domain]: false }));
       addToast({
         type: "info",
-        message: `Permission revoked for ${domain}`,
+        message: `Tracking disabled for ${domain}`,
       });
       return;
     }
 
     try {
+      // Try to remove the permission
       const removed = await chrome.permissions.remove({
         origins: [`https://*.${domain}/*`],
       });
@@ -129,12 +147,25 @@ export function SettingsPage() {
         setPermissionStatus((prev) => ({ ...prev, [domain]: false }));
         addToast({
           type: "info",
-          message: `Permission revoked for ${domain}`,
+          message: `Tracking disabled for ${domain}`,
+        });
+      } else {
+        // Permission might be required (not optional)
+        // Just update the UI state to show as disabled
+        setPermissionStatus((prev) => ({ ...prev, [domain]: false }));
+        addToast({
+          type: "info",
+          message: `Tracking disabled for ${domain}`,
         });
       }
     } catch (error) {
       console.error("Permission revoke failed:", error);
-      addToast({ type: "error", message: "Failed to revoke permission" });
+      // Even if revoke fails, update UI state
+      setPermissionStatus((prev) => ({ ...prev, [domain]: false }));
+      addToast({
+        type: "info",
+        message: `Tracking disabled for ${domain}`,
+      });
     }
   };
 
@@ -280,7 +311,7 @@ export function SettingsPage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-accent-500/20 flex items-center justify-center">
-                  <Globe className="w-5 h-5 text-accent-400" />
+                  <Activity className="w-5 h-5 text-accent-400" />
                 </div>
                 <div>
                   <p className="font-medium text-white">Enable Tracking</p>
@@ -290,10 +321,7 @@ export function SettingsPage() {
                 </div>
               </div>
               <button
-                onClick={() => {
-                  setTrackingEnabled(!trackingEnabled);
-                  saveSettings("trackingEnabled", !trackingEnabled);
-                }}
+                onClick={() => handleTrackingToggle(!trackingEnabled)}
                 className={`w-12 h-6 rounded-full transition-colors relative ${
                   trackingEnabled ? "bg-accent-500" : "bg-dark-600"
                 }`}
@@ -348,13 +376,24 @@ export function SettingsPage() {
                 key={platform.domain}
                 className="flex items-center justify-between py-2 border-b border-dark-700 last:border-0"
               >
-                <div>
-                  <p className="text-sm font-medium text-white">
-                    {platform.name}
-                  </p>
-                  <p className="text-xs text-dark-500 capitalize">
-                    {platform.type}
-                  </p>
+                <div className="flex items-center gap-3">
+                  <a
+                    href={`https://${platform.domain}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-2 rounded-lg bg-dark-800 hover:bg-dark-700 text-dark-400 hover:text-accent-400 transition-colors"
+                    title={`Visit ${platform.name}`}
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                  </a>
+                  <div>
+                    <p className="text-sm font-medium text-white">
+                      {platform.name}
+                    </p>
+                    <p className="text-xs text-dark-500 capitalize">
+                      {platform.type}
+                    </p>
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
                   {permissionStatus[platform.domain] ? (
@@ -409,6 +448,15 @@ export function SettingsPage() {
                   className="flex items-center justify-between py-2 border-b border-dark-700 last:border-0"
                 >
                   <div className="flex items-center gap-3">
+                    <a
+                      href={site.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 rounded-lg bg-dark-800 hover:bg-dark-700 text-dark-400 hover:text-accent-400 transition-colors"
+                      title={`Visit ${site.name}`}
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
                     <div>
                       <p className="text-sm font-medium text-white">
                         {site.name}

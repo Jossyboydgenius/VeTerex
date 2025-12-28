@@ -25,6 +25,7 @@ import {
   loginWithWepin,
   getWepinAccounts,
 } from "@/services/wepin";
+import { logout as logoutVeryChat } from "@/services/verychat";
 
 const statIcons = {
   book: Book,
@@ -38,8 +39,11 @@ export function ProfilePage() {
   const navigate = useNavigate();
   const {
     isConnected,
+    authMethod,
     currentAccount,
     wepinUser,
+    verychatUser,
+    joinedAt,
     completions,
     setConnected,
     setLoading,
@@ -52,6 +56,29 @@ export function ProfilePage() {
 
   const [copied, setCopied] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
+
+  // Get display name based on auth method
+  const displayName =
+    authMethod === "verychat" && verychatUser
+      ? verychatUser.profileName
+      : wepinUser?.userInfo?.email?.split("@")[0] || "Anonymous User";
+
+  // Get profile ID for display
+  const profileId =
+    authMethod === "verychat" && verychatUser
+      ? `@${verychatUser.profileId}`
+      : currentAccount?.address
+      ? `${currentAccount.address.slice(0, 8)}...${currentAccount.address.slice(
+          -6
+        )}`
+      : null;
+
+  // Format join date
+  const formatJoinDate = (dateString: string | null) => {
+    if (!dateString) return "Recently joined";
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  };
 
   const handleConnect = async () => {
     setIsConnecting(true);
@@ -102,7 +129,11 @@ export function ProfilePage() {
 
   const handleLogout = async () => {
     try {
-      await logoutWepin();
+      if (authMethod === "wepin") {
+        await logoutWepin();
+      } else if (authMethod === "verychat") {
+        logoutVeryChat();
+      }
       logout();
       addToast({ type: "info", message: "Logged out successfully" });
     } catch (error) {
@@ -203,8 +234,16 @@ export function ProfilePage() {
         {/* Avatar */}
         <div className="relative inline-block mb-4">
           <div className="w-24 h-24 rounded-full bg-gradient-to-br from-accent-500 to-primary-500 p-[3px]">
-            <div className="w-full h-full rounded-full bg-dark-900 flex items-center justify-center">
-              <User className="w-12 h-12 text-dark-400" />
+            <div className="w-full h-full rounded-full bg-dark-900 flex items-center justify-center overflow-hidden">
+              {authMethod === "verychat" && verychatUser?.profileImage ? (
+                <img
+                  src={verychatUser.profileImage}
+                  alt={verychatUser.profileName}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <User className="w-12 h-12 text-dark-400" />
+              )}
             </div>
           </div>
           <button className="absolute bottom-0 right-0 p-2 rounded-full bg-accent-500 text-white hover:bg-accent-400 transition-colors">
@@ -213,33 +252,34 @@ export function ProfilePage() {
         </div>
 
         {/* User Info */}
-        <h1 className="text-xl font-bold text-white mb-1">
-          {wepinUser?.userInfo?.email?.split("@")[0] || "Anonymous User"}
-        </h1>
+        <h1 className="text-xl font-bold text-white mb-1">{displayName}</h1>
 
-        {/* Wallet Address */}
-        <div className="flex items-center justify-center gap-2 text-sm text-dark-400 mb-4">
-          <span className="font-mono">
-            {currentAccount?.address?.slice(0, 8)}...
-            {currentAccount?.address?.slice(-6)}
-          </span>
-          <button
-            onClick={handleCopyAddress}
-            className="p-1 rounded hover:bg-dark-700 transition-colors"
-          >
-            {copied ? (
-              <Check className="w-4 h-4 text-green-400" />
-            ) : (
-              <Copy className="w-4 h-4" />
+        {/* Profile ID or Wallet Address */}
+        {profileId && (
+          <div className="flex items-center justify-center gap-2 text-sm text-dark-400 mb-4">
+            <span className="font-mono">{profileId}</span>
+            {authMethod === "wepin" && currentAccount?.address && (
+              <button
+                onClick={handleCopyAddress}
+                className="p-1 rounded hover:bg-dark-700 transition-colors"
+              >
+                {copied ? (
+                  <Check className="w-4 h-4 text-green-400" />
+                ) : (
+                  <Copy className="w-4 h-4" />
+                )}
+              </button>
             )}
-          </button>
-        </div>
+          </div>
+        )}
 
         {/* Network Badge */}
         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-dark-800 text-sm">
           <div className="w-2 h-2 rounded-full bg-green-400" />
           <span className="text-dark-300">
-            {currentAccount?.network || "Ethereum"}
+            {authMethod === "verychat"
+              ? "VeryChat"
+              : currentAccount?.network || "Ethereum"}
           </span>
         </div>
       </motion.div>
@@ -297,8 +337,8 @@ export function ProfilePage() {
       >
         <h2 className="font-semibold text-white">Account</h2>
 
-        {/* Email */}
-        {wepinUser?.userInfo?.email && (
+        {/* Email - Only for Wepin users */}
+        {authMethod === "wepin" && wepinUser?.userInfo?.email && (
           <div className="card flex items-center gap-4">
             <div className="w-10 h-10 rounded-xl bg-dark-700 flex items-center justify-center">
               <User className="w-5 h-5 text-dark-400" />
@@ -310,20 +350,33 @@ export function ProfilePage() {
           </div>
         )}
 
-        {/* Provider */}
-        {wepinUser?.userInfo?.provider && (
+        {/* VeryChat Profile ID */}
+        {authMethod === "verychat" && verychatUser && (
           <div className="card flex items-center gap-4">
             <div className="w-10 h-10 rounded-xl bg-dark-700 flex items-center justify-center">
-              <ExternalLink className="w-5 h-5 text-dark-400" />
+              <User className="w-5 h-5 text-dark-400" />
             </div>
             <div className="flex-1">
-              <p className="text-sm text-dark-400">Connected via</p>
-              <p className="text-white capitalize">
-                {wepinUser.userInfo.provider}
-              </p>
+              <p className="text-sm text-dark-400">VeryChat Handle</p>
+              <p className="text-white">@{verychatUser.profileId}</p>
             </div>
           </div>
         )}
+
+        {/* Provider */}
+        <div className="card flex items-center gap-4">
+          <div className="w-10 h-10 rounded-xl bg-dark-700 flex items-center justify-center">
+            <ExternalLink className="w-5 h-5 text-dark-400" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm text-dark-400">Connected via</p>
+            <p className="text-white capitalize">
+              {authMethod === "verychat"
+                ? "VeryChat"
+                : wepinUser?.userInfo?.provider || "Wepin"}
+            </p>
+          </div>
+        </div>
 
         {/* Member Since */}
         <div className="card flex items-center gap-4">
@@ -332,7 +385,7 @@ export function ProfilePage() {
           </div>
           <div className="flex-1">
             <p className="text-sm text-dark-400">Member since</p>
-            <p className="text-white">December 2024</p>
+            <p className="text-white">{formatJoinDate(joinedAt)}</p>
           </div>
         </div>
       </motion.div>
