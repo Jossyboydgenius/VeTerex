@@ -78,11 +78,7 @@ contract VeTerex is Initializable, ERC721Upgradeable, OwnableUpgradeable, UUPSUp
         address backend_
     ) public initializer {
         __ERC721_init(name_, symbol_);
-        __Ownable_init();
-        __UUPSUpgradeable_init();
-        if (initialOwner != _msgSender()) {
-            transferOwnership(initialOwner);
-        }
+        __Ownable_init(initialOwner);
 
         nextTokenId = 1;
         _baseTokenURI = baseURI_;
@@ -229,7 +225,7 @@ contract VeTerex is Initializable, ERC721Upgradeable, OwnableUpgradeable, UUPSUp
     }
 
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
-        _requireMinted(tokenId);
+        _requireOwned(tokenId);
         bytes32 mediaId = tokenMediaId[tokenId];
 
         string memory uri = _media[mediaId].uri;
@@ -252,12 +248,17 @@ contract VeTerex is Initializable, ERC721Upgradeable, OwnableUpgradeable, UUPSUp
         return _baseTokenURI;
     }
 
-    function _beforeTokenTransfer(address from, address to, uint256 firstTokenId, uint256 batchSize) internal override {
+    function _update(address to, uint256 tokenId, address auth) internal override returns (address) {
+        address from = _ownerOf(tokenId);
         if (from != address(0) && to != address(0)) revert NonTransferable();
-        super._beforeTokenTransfer(from, to, firstTokenId, batchSize);
+        return super._update(to, tokenId, auth);
     }
 
     function _authorizeUpgrade(address) internal override onlyOwner {}
+
+    function upgradeTo(address newImplementation) external payable onlyProxy {
+        upgradeToAndCall(newImplementation, "");
+    }
 
     function _joinGroup(address user, bytes32 mediaId) internal {
         if (_groupIndexPlusOne[mediaId][user] != 0) return;
