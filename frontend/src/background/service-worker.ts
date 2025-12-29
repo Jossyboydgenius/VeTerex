@@ -297,9 +297,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     // Active sessions
     case "GET_ACTIVE_SESSIONS":
-      const sessions = Array.from(activeSessions.values());
-      sendResponse({ success: true, data: sessions });
-      return true;
+      {
+        const sessions = Array.from(activeSessions.values());
+        sendResponse({ success: true, data: sessions });
+        return true;
+      }
 
     default:
       sendResponse({ success: false, error: "Unknown message type" });

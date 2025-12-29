@@ -49,35 +49,35 @@ export function MintPage() {
   const [isMinting, setIsMinting] = useState(false);
   const [mintSuccess, setMintSuccess] = useState(false);
 
-  // Load pending mint data from chrome storage
   useEffect(() => {
-    if (isExtension) {
-      chrome.storage?.local?.get(["pendingMint"], (result) => {
-        if (result.pendingMint) {
-          setMediaToMint({
-            id: `mint-${Date.now()}`,
-            platform: result.pendingMint.platform || "unknown",
-            type: result.pendingMint.type || "video",
-            title: result.pendingMint.title || "Unknown Media",
-            url: result.pendingMint.url || "",
-            progress: 100,
-            watchTime: result.pendingMint.watchTime || 0,
-            thumbnail: result.pendingMint.thumbnail || "",
-            completed: true,
-            startTime: result.pendingMint.startTime || Date.now(),
-            lastUpdate: Date.now(),
-          });
-          // Clear pendingMint from storage
-          chrome.storage.local.remove(["pendingMint"]);
-        }
-      });
-    }
+    if (!isExtension) return;
 
-    // Also check if there are pending mints in the store
-    if (pendingMints.length > 0 && !mediaToMint) {
-      setMediaToMint(pendingMints[0]);
-    }
-  }, [pendingMints]);
+    chrome.storage?.local?.get(["pendingMint"], (result) => {
+      if (!result.pendingMint) return;
+
+      setMediaToMint({
+        id: `mint-${Date.now()}`,
+        platform: result.pendingMint.platform || "unknown",
+        type: result.pendingMint.type || "video",
+        title: result.pendingMint.title || "Unknown Media",
+        url: result.pendingMint.url || "",
+        progress: 100,
+        watchTime: result.pendingMint.watchTime || 0,
+        thumbnail: result.pendingMint.thumbnail || "",
+        completed: true,
+        startTime: result.pendingMint.startTime || Date.now(),
+        lastUpdate: Date.now(),
+      });
+
+      chrome.storage.local.remove(["pendingMint"]);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (pendingMints.length === 0) return;
+    if (mediaToMint) return;
+    setMediaToMint(pendingMints[0]);
+  }, [pendingMints, mediaToMint]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);

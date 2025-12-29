@@ -246,7 +246,7 @@ export function SettingsPage() {
       setNewSiteName("");
       setNewSiteType("movie");
       setEditingSite(null);
-    } catch (error) {
+    } catch {
       addToast({ type: "error", message: "Invalid URL format" });
     }
   };

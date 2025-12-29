@@ -78,7 +78,11 @@ contract VeTerex is Initializable, ERC721Upgradeable, OwnableUpgradeable, UUPSUp
         address backend_
     ) public initializer {
         __ERC721_init(name_, symbol_);
-        __Ownable_init(initialOwner);
+        __Ownable_init();
+        __UUPSUpgradeable_init();
+        if (initialOwner != _msgSender()) {
+            transferOwnership(initialOwner);
+        }
 
         nextTokenId = 1;
         _baseTokenURI = baseURI_;
@@ -86,7 +90,7 @@ contract VeTerex is Initializable, ERC721Upgradeable, OwnableUpgradeable, UUPSUp
         emit BaseURISet(baseURI_);
     }
 
-    function computeMediaId(MediaKind kind,  string calldata uri,string calldata name) public pure returns (bytes32) {
+    function computeMediaId(MediaKind kind, string calldata uri, string calldata name) public pure returns (bytes32) {
         return keccak256(abi.encode(kind, uri, name));
     }
 
@@ -109,13 +113,12 @@ contract VeTerex is Initializable, ERC721Upgradeable, OwnableUpgradeable, UUPSUp
     // @dora - lydia (check if registered), lydia
 
     /// @notice Backend can register media with a name and URI and mint to a user in one call.
-    function completeAndRegisterByExternalId(
-        address to,
-        MediaKind kind,
-        string calldata uri,
-        string calldata name
-    ) external onlyBackend returns (uint256 tokenId) {
-        bytes32 mediaId = computeMediaId(kind, uri,name);
+    function completeAndRegisterByExternalId(address to, MediaKind kind, string calldata uri, string calldata name)
+        external
+        onlyBackend
+        returns (uint256 tokenId)
+    {
+        bytes32 mediaId = computeMediaId(kind, uri, name);
         if (!_media[mediaId].exists) {
             _media[mediaId] = MediaItem({kind: kind, exists: true, uri: uri, name: name});
             emit MediaRegistered(mediaId, kind, uri);
@@ -226,7 +229,7 @@ contract VeTerex is Initializable, ERC721Upgradeable, OwnableUpgradeable, UUPSUp
     }
 
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
-        _requireOwned(tokenId);
+        _requireMinted(tokenId);
         bytes32 mediaId = tokenMediaId[tokenId];
 
         string memory uri = _media[mediaId].uri;
@@ -249,10 +252,9 @@ contract VeTerex is Initializable, ERC721Upgradeable, OwnableUpgradeable, UUPSUp
         return _baseTokenURI;
     }
 
-    function _update(address to, uint256 tokenId, address auth) internal override returns (address) {
-        address from = _ownerOf(tokenId);
+    function _beforeTokenTransfer(address from, address to, uint256 firstTokenId, uint256 batchSize) internal override {
         if (from != address(0) && to != address(0)) revert NonTransferable();
-        return super._update(to, tokenId, auth);
+        super._beforeTokenTransfer(from, to, firstTokenId, batchSize);
     }
 
     function _authorizeUpgrade(address) internal override onlyOwner {}

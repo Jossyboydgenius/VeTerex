@@ -30,14 +30,13 @@ contract VeryMediaCompletionTest is Test {
 
     function testBackendCanRegisterAndMint() public {
         VeTerex.MediaKind kind = VeTerex.MediaKind.Book;
-        string memory externalId = "isbn:9780143127741";
         string memory uri = "ipfs://media/book1.json";
         string memory name = "Book 1";
 
-        bytes32 mediaId = nft.computeMediaId(kind, externalId);
+        bytes32 mediaId = nft.computeMediaId(kind, uri, name);
 
         vm.prank(backend);
-        uint256 tokenId = nft.completeAndRegisterByExternalId(alice, kind, externalId, uri, name);
+        uint256 tokenId = nft.completeAndRegisterByExternalId(alice, kind, uri, name);
 
         assertEq(nft.ownerOf(tokenId), alice);
         assertEq(nft.completionTokenId(alice, mediaId), tokenId);
@@ -54,37 +53,38 @@ contract VeryMediaCompletionTest is Test {
 
     function testNonBackendCannotMint() public {
         VeTerex.MediaKind kind = VeTerex.MediaKind.Movie;
-        string memory externalId = "imdb:tt1375666";
 
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(VeTerex.NotBackend.selector, alice));
-        nft.completeAndRegisterByExternalId(alice, kind, externalId, "", "");
+        nft.completeAndRegisterByExternalId(alice, kind, "", "");
     }
 
     function testMintRevertsIfAlreadyCompleted() public {
         VeTerex.MediaKind kind = VeTerex.MediaKind.Manga;
-        string memory externalId = "mal:2";
-        bytes32 mediaId = nft.computeMediaId(kind, externalId);
+        string memory uri = "ipfs://media/manga2.json";
+        string memory name = "Manga 2";
+        bytes32 mediaId = nft.computeMediaId(kind, uri, name);
 
         vm.prank(backend);
-        nft.completeAndRegisterByExternalId(alice, kind, externalId, "ipfs://media/manga2.json", "Manga 2");
+        nft.completeAndRegisterByExternalId(alice, kind, uri, name);
 
         vm.prank(backend);
         vm.expectRevert(abi.encodeWithSelector(VeTerex.AlreadyCompleted.selector, alice, mediaId));
-        nft.completeAndRegisterByExternalId(alice, kind, externalId, "ipfs://media/manga2.json", "Manga 2");
+        nft.completeAndRegisterByExternalId(alice, kind, uri, name);
     }
 
     function testJoinAndLeaveGroup() public {
         VeTerex.MediaKind kind = VeTerex.MediaKind.Anime;
-        string memory externalId = "mal:20";
-        bytes32 mediaId = nft.computeMediaId(kind, externalId);
+        string memory uri = "ipfs://media/anime20.json";
+        string memory name = "Anime 20";
+        bytes32 mediaId = nft.computeMediaId(kind, uri, name);
 
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(VeTerex.NotCompleted.selector, alice, mediaId));
         nft.joinGroup(mediaId);
 
         vm.prank(backend);
-        nft.completeAndRegisterByExternalId(alice, kind, externalId, "", "");
+        nft.completeAndRegisterByExternalId(alice, kind, uri, name);
 
         vm.prank(alice);
         nft.joinGroup(mediaId);
@@ -100,11 +100,12 @@ contract VeryMediaCompletionTest is Test {
 
     function testBurnClearsCompletionAndRemovesFromGroup() public {
         VeTerex.MediaKind kind = VeTerex.MediaKind.Comic;
-        string memory externalId = "marvel:deadpool-1";
-        bytes32 mediaId = nft.computeMediaId(kind, externalId);
+        string memory uri = "ipfs://media/deadpool-1.json";
+        string memory name = "Deadpool 1";
+        bytes32 mediaId = nft.computeMediaId(kind, uri, name);
 
         vm.prank(backend);
-        uint256 tokenId = nft.completeAndRegisterByExternalId(alice, kind, externalId, "", "");
+        uint256 tokenId = nft.completeAndRegisterByExternalId(alice, kind, uri, name);
 
         vm.prank(alice);
         nft.joinGroup(mediaId);
@@ -119,13 +120,14 @@ contract VeryMediaCompletionTest is Test {
 
     function testGetSimilarsReturnsOtherCompleters() public {
         VeTerex.MediaKind kind = VeTerex.MediaKind.Show;
-        string memory externalId = "imdb:tt0903747";
+        string memory uri = "ipfs://media/breaking-bad.json";
+        string memory name = "Breaking Bad";
 
         vm.prank(backend);
-        uint256 aliceTokenId = nft.completeAndRegisterByExternalId(alice, kind, externalId, "", "");
+        uint256 aliceTokenId = nft.completeAndRegisterByExternalId(alice, kind, uri, name);
 
         vm.prank(backend);
-        uint256 bobTokenId = nft.completeAndRegisterByExternalId(bob, kind, externalId, "", "");
+        uint256 bobTokenId = nft.completeAndRegisterByExternalId(bob, kind, uri, name);
 
         uint256[] memory aliceNfts = new uint256[](1);
         aliceNfts[0] = aliceTokenId;
@@ -147,13 +149,14 @@ contract VeryMediaCompletionTest is Test {
 
     function testGetSimilarsUpdatesAfterBurn() public {
         VeTerex.MediaKind kind = VeTerex.MediaKind.Anime;
-        string memory externalId = "mal:burn-similars";
+        string memory uri = "ipfs://media/burn-similars.json";
+        string memory name = "Burn Similars";
 
         vm.prank(backend);
-        uint256 aliceTokenId = nft.completeAndRegisterByExternalId(alice, kind, externalId, "", "");
+        uint256 aliceTokenId = nft.completeAndRegisterByExternalId(alice, kind, uri, name);
 
         vm.prank(backend);
-        uint256 bobTokenId = nft.completeAndRegisterByExternalId(bob, kind, externalId, "", "");
+        uint256 bobTokenId = nft.completeAndRegisterByExternalId(bob, kind, uri, name);
 
         vm.prank(bob);
         nft.burn(bobTokenId);
@@ -167,22 +170,24 @@ contract VeryMediaCompletionTest is Test {
     function testGetSimilarsAcrossMultipleNftsIsUnionAndUnique() public {
         VeTerex.MediaKind kindA = VeTerex.MediaKind.Book;
         VeTerex.MediaKind kindB = VeTerex.MediaKind.Movie;
-        string memory idA = "id:a";
-        string memory idB = "id:b";
+        string memory uriA = "ipfs://media/a.json";
+        string memory uriB = "ipfs://media/b.json";
+        string memory nameA = "A";
+        string memory nameB = "B";
 
         vm.prank(backend);
-        uint256 aliceA = nft.completeAndRegisterByExternalId(alice, kindA, idA, "", "");
+        uint256 aliceA = nft.completeAndRegisterByExternalId(alice, kindA, uriA, nameA);
         vm.prank(backend);
-        uint256 aliceB = nft.completeAndRegisterByExternalId(alice, kindB, idB, "", "");
+        uint256 aliceB = nft.completeAndRegisterByExternalId(alice, kindB, uriB, nameB);
 
         vm.prank(backend);
-        nft.completeAndRegisterByExternalId(bob, kindA, idA, "", "");
+        nft.completeAndRegisterByExternalId(bob, kindA, uriA, nameA);
         vm.prank(backend);
-        nft.completeAndRegisterByExternalId(bob, kindB, idB, "", "");
+        nft.completeAndRegisterByExternalId(bob, kindB, uriB, nameB);
 
         address charlie = address(0xC0FFEE);
         vm.prank(backend);
-        nft.completeAndRegisterByExternalId(charlie, kindB, idB, "", "");
+        nft.completeAndRegisterByExternalId(charlie, kindB, uriB, nameB);
 
         uint256[] memory aliceNfts = new uint256[](2);
         aliceNfts[0] = aliceA;
@@ -195,10 +200,11 @@ contract VeryMediaCompletionTest is Test {
 
     function testNonTransferableRevertsOnTransferAndApproval() public {
         VeTerex.MediaKind kind = VeTerex.MediaKind.Movie;
-        string memory externalId = "imdb:tt0137523";
+        string memory uri = "ipfs://media/fight-club.json";
+        string memory name = "Fight Club";
 
         vm.prank(backend);
-        uint256 tokenId = nft.completeAndRegisterByExternalId(alice, kind, externalId, "", "");
+        uint256 tokenId = nft.completeAndRegisterByExternalId(alice, kind, uri, name);
 
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(VeTerex.NonTransferable.selector));
@@ -215,14 +221,15 @@ contract VeryMediaCompletionTest is Test {
 
     function testTokenURIFallsBackToBaseURIAndHexMediaId() public {
         VeTerex.MediaKind kind = VeTerex.MediaKind.Book;
-        string memory externalId = "isbn:123";
+        string memory uri = "";
+        string memory name = "Book 123";
 
         vm.prank(backend);
-        uint256 tokenId = nft.completeAndRegisterByExternalId(alice, kind, externalId, "", "");
+        uint256 tokenId = nft.completeAndRegisterByExternalId(alice, kind, uri, name);
 
-        string memory uri = nft.tokenURI(tokenId);
-        assertTrue(bytes(uri).length > bytes("ipfs://base/").length);
-        assertTrue(_startsWith(uri, "ipfs://base/"));
+        string memory tokenUri = nft.tokenURI(tokenId);
+        assertTrue(bytes(tokenUri).length > bytes("ipfs://base/").length);
+        assertTrue(_startsWith(tokenUri, "ipfs://base/"));
     }
 
     function testInitializeCannotBeCalledTwice() public {
@@ -233,16 +240,17 @@ contract VeryMediaCompletionTest is Test {
 
     function testUpgradeKeepsState() public {
         VeTerex.MediaKind kind = VeTerex.MediaKind.Book;
-        string memory externalId = "isbn:upgrade";
-        bytes32 mediaId = nft.computeMediaId(kind, externalId);
+        string memory uri = "ipfs://media/u.json";
+        string memory name = "U";
+        bytes32 mediaId = nft.computeMediaId(kind, uri, name);
 
         vm.prank(backend);
-        uint256 tokenId = nft.completeAndRegisterByExternalId(alice, kind, externalId, "ipfs://media/u.json", "U");
+        uint256 tokenId = nft.completeAndRegisterByExternalId(alice, kind, uri, name);
 
         VeTerexV2 implV2 = new VeTerexV2();
 
         vm.prank(owner);
-        nft.upgradeToAndCall(address(implV2), "");
+        nft.upgradeTo(address(implV2));
 
         VeTerexV2 upgraded = VeTerexV2(address(nft));
 
@@ -257,7 +265,7 @@ contract VeryMediaCompletionTest is Test {
 
         vm.prank(alice);
         vm.expectRevert();
-        nft.upgradeToAndCall(address(implV2), "");
+        nft.upgradeTo(address(implV2));
     }
 
     function _startsWith(string memory s, string memory prefix) internal pure returns (bool) {
