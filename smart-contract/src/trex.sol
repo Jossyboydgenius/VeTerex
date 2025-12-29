@@ -86,8 +86,8 @@ contract VeTerex is Initializable, ERC721Upgradeable, OwnableUpgradeable, UUPSUp
         emit BaseURISet(baseURI_);
     }
 
-    function computeMediaId(MediaKind kind, string calldata externalId) public pure returns (bytes32) {
-        return keccak256(abi.encode(kind, externalId));
+    function computeMediaId(MediaKind kind,  string calldata uri,string calldata name) public pure returns (bytes32) {
+        return keccak256(abi.encode(kind, uri, name));
     }
 
     function setRegistrar(address registrar, bool allowed) external onlyOwner {
@@ -104,15 +104,18 @@ contract VeTerex is Initializable, ERC721Upgradeable, OwnableUpgradeable, UUPSUp
         _;
     }
 
+    //NFTS FOR COMPLETIONS
+    // @dora - first (system didnt any record of dora meaning no nft)
+    // @dora - lydia (check if registered), lydia
+
     /// @notice Backend can register media with a name and URI and mint to a user in one call.
     function completeAndRegisterByExternalId(
         address to,
         MediaKind kind,
-        string calldata externalId,
         string calldata uri,
         string calldata name
     ) external onlyBackend returns (uint256 tokenId) {
-        bytes32 mediaId = computeMediaId(kind, externalId);
+        bytes32 mediaId = computeMediaId(kind, uri,name);
         if (!_media[mediaId].exists) {
             _media[mediaId] = MediaItem({kind: kind, exists: true, uri: uri, name: name});
             emit MediaRegistered(mediaId, kind, uri);
@@ -134,7 +137,7 @@ contract VeTerex is Initializable, ERC721Upgradeable, OwnableUpgradeable, UUPSUp
 
     function mediaInfo(bytes32 mediaId) external view returns (bool exists, MediaKind kind, string memory uri) {
         MediaItem storage item = _media[mediaId];
-        return (item.exists, item.kind, item.uri);
+        return (item.exists, item.kind, item.uri); //@todo return nft name too
     }
 
     function _complete(address user, bytes32 mediaId) internal returns (uint256 tokenId) {
