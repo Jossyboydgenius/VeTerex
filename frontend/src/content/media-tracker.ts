@@ -1252,23 +1252,22 @@ function startActivityTracking() {
           '[class*="duration"], [class*="time"], .runtime'
         );
         if (durationEl?.textContent) {
-          const durationMatch =
-            durationEl.textContent.match(/(\d+):(\d+):?(\d+)?/);
-          if (durationMatch) {
-            const hours = durationMatch[3] ? parseInt(durationMatch[1]) : 0;
-            const minutes = durationMatch[3]
-              ? parseInt(durationMatch[2])
-              : parseInt(durationMatch[1]);
-            const seconds = durationMatch[3]
-              ? parseInt(durationMatch[3])
-              : parseInt(durationMatch[2]);
-            const totalDuration = hours * 3600 + minutes * 60 + seconds;
-
-            if (totalDuration > 0) {
-              currentSession.mediaInfo.duration = totalDuration;
+          const matches = Array.from(
+            durationEl.textContent.matchAll(/(\d+):(\d+):?(\d+)?/g)
+          );
+          if (matches.length) {
+            const pick = matches[matches.length - 1];
+            const hours = pick[3] ? parseInt(pick[1]) : 0;
+            const minutes = pick[3] ? parseInt(pick[2]) : parseInt(pick[1]);
+            const seconds = pick[3] ? parseInt(pick[3]) : parseInt(pick[2]);
+            const candidate = hours * 3600 + minutes * 60 + seconds;
+            const existing = currentSession.mediaInfo.duration || 0;
+            const chosen = Math.max(existing, candidate);
+            if (chosen > 0) {
+              currentSession.mediaInfo.duration = chosen;
               currentSession.mediaInfo.progress = Math.min(
                 100,
-                Math.round((totalActiveTime / 1000 / totalDuration) * 100)
+                Math.round((totalActiveTime / 1000 / chosen) * 100)
               );
             }
           }
@@ -1683,7 +1682,7 @@ function extractMediaInfo(): MediaInfo | null {
       const pageInfo = countMangaPages();
       if (pageInfo.total > 0) {
         progress = Math.round((pageInfo.current / pageInfo.total) * 100);
-        duration = pageInfo.total; // Use page count as "duration"
+        
       }
 
       // Clean up title - remove common suffixes
@@ -1944,16 +1943,14 @@ function updateTracking() {
     const pageInfo = countMangaPages();
     
     if (pageInfo.total > 0) {
-      // Use page-based progress for manga
       currentSession.mediaInfo.progress = Math.round((pageInfo.current / pageInfo.total) * 100);
       currentSession.mediaInfo.currentPage = pageInfo.current;
       currentSession.mediaInfo.totalPages = pageInfo.total;
-      currentSession.watchTime = pageInfo.current; // Pages read as "watch time"
+      currentSession.watchTime = Math.round(totalActiveTime / 1000);
     } else {
-      // Fallback to scroll progress
       currentSession.mediaInfo.progress = maxScrollProgress;
       currentSession.mediaInfo.scrollProgress = maxScrollProgress;
-      currentSession.watchTime = maxScrollProgress; // Use scroll % as proxy
+      currentSession.watchTime = Math.round(totalActiveTime / 1000);
     }
 
     // Check completion for reading content
@@ -2073,7 +2070,14 @@ function showTrackSeriesButton() {
   if (!info || info.type !== "manga") return;
   const btn = document.createElement("button");
   btn.id = "veterex-track-series";
-  btn.textContent = "Track Series";
+  btn.innerHTML = `
+    <span style="display:inline-flex;align-items:center;gap:8px;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 19.5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v14.5l-7-3-7 3Z"/>
+      </svg>
+      <span>Track Series</span>
+    </span>
+  `;
   btn.style.position = "fixed";
   btn.style.bottom = "24px";
   btn.style.right = "24px";

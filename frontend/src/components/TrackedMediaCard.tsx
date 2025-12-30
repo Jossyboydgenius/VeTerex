@@ -158,16 +158,20 @@ export function TrackedMediaCard({
             </div>
           </div>
 
-          {/* Watch Time */}
+          {/* Watch/Reading Time */}
           {formatTime(media.watchTime) && (
             <div className="flex items-center gap-1.5 text-xs text-dark-400">
               <Clock className="w-3 h-3" />
-              <span>Watched: {formatTime(media.watchTime)}</span>
+              <span>
+                {media.type === "manga" || media.type === "book"
+                  ? `Reading time: ${formatTime(media.watchTime)}`
+                  : `Watched: ${formatTime(media.watchTime)}`}
+              </span>
             </div>
           )}
 
           {/* Duration */}
-          {total && (
+          {total && media.type !== "manga" && media.type !== "book" && (
             <div className="flex items-center gap-1.5 text-xs text-dark-400 mt-1">
               <Clock className="w-3 h-3" />
               <span>Duration: {total}</span>

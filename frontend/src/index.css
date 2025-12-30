@@ -159,12 +159,13 @@ body {
 }
 
 /* Date input with white calendar icon */
-input[type="date"]::-webkit-calendar-picker-indicator {
-  filter: invert(1);
+.input-field[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) brightness(2);
+  opacity: 1;
   cursor: pointer;
 }
 
-input[type="date"] {
+.input-field[type="date"] {
   color-scheme: dark;
 }
 
