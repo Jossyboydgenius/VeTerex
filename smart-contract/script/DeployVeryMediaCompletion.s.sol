@@ -24,9 +24,14 @@ contract DeployVeryMediaCompletion is Script {
         address backend_ = vm.envOr("BACKEND", defaultBackend);
 
         vm.startBroadcast(deployerPrivateKey);
-        VeTerex implementation = new VeTerex();
+        address implementationAddress = vm.envOr("IMPLEMENTATION_ADDRESS", address(0));
+        if (implementationAddress == address(0)) {
+            VeTerex implementation = new VeTerex();
+            implementationAddress = address(implementation);
+        }
+
         bytes memory initData = abi.encodeCall(VeTerex.initialize, (name_, symbol_, initialOwner, baseURI_, backend_));
-        ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initData);
+        ERC1967Proxy proxy = new ERC1967Proxy(implementationAddress, initData);
         deployed = VeTerex(address(proxy));
         vm.stopBroadcast();
     }

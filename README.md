@@ -11,6 +11,12 @@ VeTerex/
 └── smart-contract/    # Solidity Smart Contracts (TBD)
 ```
 
+## Deployed Contracts (Verychain)
+
+- Network: Verychain (Chain ID: 4613)
+- Proxy (VeTerex): 0x249448e9867e717B7AE4fa26497abe0ff2755aa5 (https://veryscan.io/address/0x249448e9867e717B7AE4fa26497abe0ff2755aa5)
+- Implementation (VeTerex): 0x1a62E377C8843F853E0B31a9894FB77082Dd843D (https://veryscan.io/address/0x1a62E377C8843F853E0B31a9894FB77082Dd843D)
+
 ## Frontend (Chrome Extension)
 
 The frontend is built as a Chrome Extension with modern web technologies:
