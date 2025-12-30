@@ -25,6 +25,7 @@ import {
   TrackedMediaCard,
   MintNFTModal,
   CustomDropdown,
+  SeriesBookmarksPanel,
 } from "@/components";
 
 // Check if running as Chrome extension
@@ -730,6 +731,11 @@ export function HomePage() {
             </motion.div>
           )}
         </motion.section>
+      )}
+
+      {/* Series Bookmarks */}
+      {isExtension && (
+        <SeriesBookmarksPanel />
       )}
 
       {/* Stats - Temporarily disabled */}

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Wallet, ChevronDown, LogOut, Copy, Check } from "lucide-react";
+import { Wallet, ChevronDown, LogOut, Copy, Check, Bookmark } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import {
   initWepin,
@@ -39,6 +39,23 @@ export function Header() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showVeryChatModal, setShowVeryChatModal] = useState(false);
+  const [updatesCount, setUpdatesCount] = useState(0);
+
+  // Series updates counter
+  if (isExtension && typeof chrome !== "undefined") {
+    chrome.storage?.local?.get(["seriesBookmarks"], (r) => {
+      const list = r.seriesBookmarks || [];
+      const count = list.filter((b: any) => b.hasUpdate).length;
+      setUpdatesCount(count);
+    });
+    chrome.storage?.onChanged?.addListener((changes, area) => {
+      if (area === "local" && changes.seriesBookmarks) {
+        const list = changes.seriesBookmarks.newValue || [];
+        const count = list.filter((b: any) => b.hasUpdate).length;
+        setUpdatesCount(count);
+      }
+    });
+  }
 
   const handleConnect = async () => {
     // For extensions, use VeryChat authentication since Wepin doesn't support chrome-extension:// URLs
@@ -168,7 +185,7 @@ export function Header() {
             </div>
           </div>
 
-          {/* Wallet Connection */}
+          {/* Wallet Connection + Updates */}
           {!isConnected ? (
             <motion.button
               whileHover={{ scale: 1.02 }}
@@ -224,6 +241,20 @@ export function Header() {
                   }`}
                 />
               </motion.button>
+
+              {/* Compact updates counter */}
+              {isExtension && (
+                <div className="absolute -left-28 top-0 flex items-center gap-2">
+                  <button
+                    onClick={() => chrome.runtime.sendMessage({ type: "MARK_ALL_SERIES_READ" })}
+                    className="flex items-center gap-1 px-2 py-1 rounded-lg bg-dark-800 border border-dark-600 text-xs text-dark-300 hover:text-white hover:bg-dark-700"
+                    title="Mark all read"
+                  >
+                    <Bookmark className="w-3.5 h-3.5" />
+                    <span>{updatesCount}</span>
+                  </button>
+                </div>
+              )}
 
               {/* Dropdown */}
               {showDropdown && (

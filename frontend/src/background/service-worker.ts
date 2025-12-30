@@ -303,8 +303,92 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return true;
       }
 
-    default:
-      sendResponse({ success: false, error: "Unknown message type" });
+    // Series bookmarks
+    case "ADD_SERIES_BOOKMARK":
+      chrome.storage.local.get(["seriesBookmarks"], (result) => {
+        const list = result.seriesBookmarks || [];
+        const entry = {
+          ...message.data,
+          lastChecked: new Date().toISOString(),
+          hasUpdate: false,
+        };
+        chrome.storage.local.set({ seriesBookmarks: [...list, entry] }, () => {
+          sendResponse({ success: true });
+        });
+      });
+      return true;
+
+    case "CHECK_SERIES_UPDATES":
+      chrome.storage.local.get(["seriesBookmarks"], async (result) => {
+        const list = (result.seriesBookmarks || []) as Array<any>;
+        const updated: Array<any> = [];
+        let updates = 0;
+        for (const b of list) {
+          let hasUpdate = false;
+          let latestEpisode: string | undefined;
+          try {
+            const res = await fetch(b.url, { method: "GET" });
+            if (res.ok) {
+              const text = await res.text();
+              const host = (() => {
+                try { return new URL(b.url).hostname; } catch { return ""; }
+              })();
+
+              const nums = Array.from(text.matchAll(/(?:Episode|Ep\.|Chapter|Ch\.)\s*(\d+(?:\.\d+)?)/gi)).map(m => m[1]);
+              if (nums.length) latestEpisode = nums.sort((a,b)=>parseFloat(b)-parseFloat(a))[0];
+
+              if (/webtoons\.com/i.test(host)) {
+                // webtoons: presence of episode links indicates potential updates
+                hasUpdate = !!latestEpisode && (!b.currentChapter || parseFloat(latestEpisode) > parseFloat(b.currentChapter));
+              } else if (/mangadex\.org/i.test(host)) {
+                hasUpdate = !!latestEpisode && (!b.currentChapter || parseFloat(latestEpisode) > parseFloat(b.currentChapter));
+              } else if (/manganato|mangakakalot|manganelo/i.test(host)) {
+                hasUpdate = !!latestEpisode && (!b.currentChapter || parseFloat(latestEpisode) > parseFloat(b.currentChapter));
+              } else {
+                // generic
+                hasUpdate = !!latestEpisode && (!b.currentChapter || parseFloat(latestEpisode) > parseFloat(b.currentChapter));
+              }
+            }
+          } catch (e) {
+            console.warn("[VeTerex] series check failed", e);
+          }
+          if (hasUpdate) updates++;
+          updated.push({ ...b, hasUpdate, latestEpisode, lastChecked: new Date().toISOString() });
+        }
+        chrome.storage.local.set({ seriesBookmarks: updated }, () => {
+          if (updates > 0) {
+            chrome.action.setBadgeText({ text: "NEW" });
+            chrome.action.setBadgeBackgroundColor({ color: "#7c3aed" });
+            chrome.notifications.create({
+              type: "basic",
+              iconUrl: "icons/icon128.png",
+              title: "Series Updates",
+              message: `${updates} series may have new chapters`,
+              priority: 1,
+            });
+          }
+          sendResponse({ success: true, count: updated.length });
+        });
+      });
+      return true;
+
+    case "MARK_ALL_SERIES_READ":
+      chrome.storage.local.get(["seriesBookmarks"], (result) => {
+        const list = (result.seriesBookmarks || []) as Array<any>;
+        const updated = list.map((b) => ({
+          ...b,
+          currentChapter: b.latestEpisode || b.currentChapter,
+          hasUpdate: false,
+        }));
+        chrome.storage.local.set({ seriesBookmarks: updated }, () => {
+          chrome.action.setBadgeText({ text: "" });
+          sendResponse({ success: true });
+        });
+      });
+      return true;
+
+  default:
+    sendResponse({ success: false, error: "Unknown message type" });
   }
 });
 
@@ -376,6 +460,17 @@ chrome.notifications.onClicked.addListener(() => {
   chrome.action.openPopup();
 });
 
+// Scheduler: periodically check series updates
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.alarms.create("check-series-updates", { periodInMinutes: 60 });
+});
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === "check-series-updates") {
+    chrome.runtime.sendMessage({ type: "CHECK_SERIES_UPDATES" });
+  }
+});
+
 export {};
 
 // Dynamic content script registration for granted origins
@@ -417,8 +512,8 @@ chrome.permissions.onAdded.addListener(async (p) => {
     if (tab?.id) {
       try {
         await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: scriptPaths });
-      } catch {
-        // ignore
+      } catch (e) {
+        console.warn("[VeTerex] executeScript failed", e);
       }
     }
   }

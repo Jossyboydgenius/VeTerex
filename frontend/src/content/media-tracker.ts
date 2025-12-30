@@ -2068,16 +2068,28 @@ function showTrackSeriesButton() {
   if (existing) return;
   const info = extractMediaInfo();
   if (!info || info.type !== "manga") return;
+
+  // Ensure Outfit font is available
+  if (!document.querySelector('link[href*="fonts.googleapis.com/css2?family=Outfit"')) {
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = "https://fonts.googleapis.com/css2?family=Outfit:wght@500;600&display=swap";
+    document.head.appendChild(link);
+  }
   const btn = document.createElement("button");
   btn.id = "veterex-track-series";
-  btn.innerHTML = `
-    <span style="display:inline-flex;align-items:center;gap:8px;">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M4 19.5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v14.5l-7-3-7 3Z"/>
-      </svg>
-      <span>Track Series</span>
-    </span>
-  `;
+  btn.style.display = "inline-flex";
+  btn.style.alignItems = "center";
+  btn.style.gap = "8px";
+  const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  icon.setAttribute("width", "16");
+  icon.setAttribute("height", "16");
+  icon.setAttribute("viewBox", "0 0 24 24");
+  icon.innerHTML = '<path fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M4 19.5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v14.5l-7-3-7 3Z"/>';
+  const label = document.createElement("span");
+  label.textContent = "Track Series";
+  btn.appendChild(icon);
+  btn.appendChild(label);
   btn.style.position = "fixed";
   btn.style.bottom = "24px";
   btn.style.right = "24px";
@@ -2087,6 +2099,11 @@ function showTrackSeriesButton() {
   btn.style.border = "none";
   btn.style.color = "#fff";
   btn.style.background = "linear-gradient(135deg,#00d4ff,#7c3aed)";
+  btn.style.cursor = "pointer";
+  btn.style.boxShadow = "0 6px 20px rgba(124,58,237,0.35)";
+  btn.style.fontFamily = "Outfit, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+  btn.style.transform = "translateX(140%)";
+  btn.style.transition = "transform 300ms ease-out, box-shadow 200ms ease";
   btn.onclick = () => {
     const chapterInfo = extractChapterInfo();
     const entry = {
@@ -2096,12 +2113,43 @@ function showTrackSeriesButton() {
       currentChapter: chapterInfo?.chapter || "",
       status: "Reading",
     };
-    chrome.storage.local.get(["seriesBookmarks"], (r) => {
-      const list = r.seriesBookmarks || [];
-      chrome.storage.local.set({ seriesBookmarks: [...list, entry] });
-    });
+    const onAdded = () => {
+      const toast = document.createElement("div");
+      toast.textContent = "Series added";
+      toast.style.position = "fixed";
+      toast.style.bottom = "80px";
+      toast.style.right = "24px";
+      toast.style.padding = "10px 12px";
+      toast.style.borderRadius = "8px";
+      toast.style.background = "rgba(0,0,0,0.7)";
+      toast.style.color = "#fff";
+      toast.style.zIndex = "999999";
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 2000);
+    };
+    try {
+      browserAPI.runtime.sendMessage({ type: "ADD_SERIES_BOOKMARK", data: entry }, () => onAdded());
+    } catch {
+      // Fallback direct storage
+      if (typeof chrome !== "undefined" && chrome.storage) {
+        chrome.storage.local.get(["seriesBookmarks"], (r) => {
+          const list = r.seriesBookmarks || [];
+          chrome.storage.local.set({ seriesBookmarks: [...list, entry] }, onAdded);
+        });
+      }
+    }
   };
   document.body.appendChild(btn);
+  requestAnimationFrame(() => {
+    btn.style.transform = "translateX(0)";
+  });
+
+  btn.onmouseenter = () => {
+    btn.style.boxShadow = "0 10px 24px rgba(124,58,237,0.45)";
+  };
+  btn.onmouseleave = () => {
+    btn.style.boxShadow = "0 6px 20px rgba(124,58,237,0.35)";
+  };
 }
 
 /**
