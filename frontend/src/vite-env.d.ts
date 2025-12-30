@@ -8,6 +8,8 @@ interface ImportMetaEnv {
   readonly VITE_CHAIN_ID: string;
   readonly VITE_API_BASE_URL: string;
   readonly VITE_VERY_API_BASE: string;
+  readonly VITE_VETEREX_PROXY_ADDRESS: string;
+  readonly VITE_VETEREX_IMPLEMENTATION_ADDRESS: string;
 }
 
 interface ImportMeta {

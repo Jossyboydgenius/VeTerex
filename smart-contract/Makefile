@@ -39,4 +39,4 @@ encode-proxy-ctor:
 	cast abi-encode "constructor(address,bytes)" $(IMPLEMENTATION_ADDRESS) $(INIT_DATA)
 
 verify-very-proxy:
-	forge verify-contract --rpc-url $(VERY_RPC_URL) --chain $(VERY_CHAIN_ID) --verifier custom --verifier-url $(VERY_VERIFIER_URL) $(VERIFY_API_KEY_FLAG) --num-of-optimizations 200 --compiler-version 0.8.30 --constructor-args $$(cast abi-encode "constructor(address,bytes)" $(IMPLEMENTATION_ADDRESS) $(INIT_DATA)) $(PROXY_ADDRESS) lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol:ERC1967Proxy
+	forge verify-contract --rpc-url $(VERY_RPC_URL) --chain $(VERY_CHAIN_ID) --verifier custom --verifier-url $(VERY_VERIFIER_URL) $(VERIFY_API_KEY_FLAG) --num-of-optimizations 200 --compiler-version 0.8.30 --constructor-args $$(cast abi-encode "constructor(address,bytes)" $(IMPLEMENTATION_ADDRESS) $(INIT_DATA)) $(PROXY_ADDRESS) lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol:ERC1967Proxy
