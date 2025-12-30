@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Wallet, ChevronDown, LogOut, Copy, Check, Bookmark } from "lucide-react";
+import { ChevronDown, LogOut, Copy, Check } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import {
   initWepin,
@@ -10,6 +10,7 @@ import {
 } from "@/services/wepin";
 import { logout as logoutVeryChat } from "@/services/verychat";
 import { VeryChatLoginModal } from "./VeryChatLoginModal";
+import { LogoIcon, WalletImageIcon } from "./AppIcons";
 
 // Check if running as Chrome extension
 const isExtension =
@@ -39,23 +40,6 @@ export function Header() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showVeryChatModal, setShowVeryChatModal] = useState(false);
-  const [updatesCount, setUpdatesCount] = useState(0);
-
-  // Series updates counter
-  if (isExtension && typeof chrome !== "undefined") {
-    chrome.storage?.local?.get(["seriesBookmarks"], (r) => {
-      const list = r.seriesBookmarks || [];
-      const count = list.filter((b: any) => b.hasUpdate).length;
-      setUpdatesCount(count);
-    });
-    chrome.storage?.onChanged?.addListener((changes, area) => {
-      if (area === "local" && changes.seriesBookmarks) {
-        const list = changes.seriesBookmarks.newValue || [];
-        const count = list.filter((b: any) => b.hasUpdate).length;
-        setUpdatesCount(count);
-      }
-    });
-  }
 
   const handleConnect = async () => {
     // For extensions, use VeryChat authentication since Wepin doesn't support chrome-extension:// URLs
@@ -170,10 +154,10 @@ export function Header() {
           {/* Logo */}
           <div className="flex items-center gap-2">
             <div className="relative">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent-500 to-primary-500 flex items-center justify-center overflow-hidden">
-                <img src="/icons/icon.svg" alt="VeTerex" className="w-7 h-7" />
+              <div className="w-10 h-10 rounded-xl bg-main-gradient flex items-center justify-center overflow-hidden">
+                <LogoIcon size={28} className="text-white" />
               </div>
-              <div className="absolute -inset-1 bg-gradient-to-br from-accent-500 to-primary-500 rounded-xl blur opacity-30" />
+              <div className="absolute -inset-1 bg-main-gradient rounded-xl blur opacity-30" />
             </div>
             <div>
               <h1 className="text-lg font-display font-bold gradient-text">
@@ -192,11 +176,11 @@ export function Header() {
               whileTap={{ scale: 0.98 }}
               onClick={handleConnect}
               disabled={isLoading}
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-accent-500 to-primary-500 
+              className="flex items-center gap-2 px-4 py-2 bg-main-gradient 
                      rounded-xl font-medium text-white text-sm
-                     hover:from-accent-400 hover:to-primary-400 
+                     hover:shadow-neon-coral 
                      disabled:opacity-50 disabled:cursor-not-allowed
-                     transition-all duration-200 shadow-lg shadow-accent-500/25"
+                     transition-all duration-200 shadow-lg shadow-coral/25"
             >
               {isLoading ? (
                 <>
@@ -205,7 +189,7 @@ export function Header() {
                 </>
               ) : (
                 <>
-                  <Wallet className="w-4 h-4" />
+                  <WalletImageIcon size={16} inverted={false} />
                   <span>Connect</span>
                 </>
               )}
@@ -216,8 +200,8 @@ export function Header() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => setShowDropdown(!showDropdown)}
-                className="flex items-center gap-2 px-3 py-2 bg-dark-800 border border-dark-600 
-                       rounded-xl text-sm hover:border-accent-500/50 transition-all duration-200"
+                className="flex items-center gap-2 px-3 py-2 bg-dark-800 border border-dark-700 
+                       rounded-xl text-sm hover:border-coral/50 transition-all duration-200"
               >
                 {authMethod === "verychat" && verychatUser?.profileImage ? (
                   <img
@@ -226,7 +210,7 @@ export function Header() {
                     className="w-6 h-6 rounded-lg object-cover"
                   />
                 ) : (
-                  <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-accent-500 to-primary-500" />
+                  <div className="w-6 h-6 rounded-lg bg-main-gradient" />
                 )}
                 <span className="text-dark-200 font-medium">
                   {authMethod === "verychat" && verychatUser
@@ -241,20 +225,6 @@ export function Header() {
                   }`}
                 />
               </motion.button>
-
-              {/* Compact updates counter */}
-              {isExtension && (
-                <div className="absolute -left-28 top-0 flex items-center gap-2">
-                  <button
-                    onClick={() => chrome.runtime.sendMessage({ type: "MARK_ALL_SERIES_READ" })}
-                    className="flex items-center gap-1 px-2 py-1 rounded-lg bg-dark-800 border border-dark-600 text-xs text-dark-300 hover:text-white hover:bg-dark-700"
-                    title="Mark all read"
-                  >
-                    <Bookmark className="w-3.5 h-3.5" />
-                    <span>{updatesCount}</span>
-                  </button>
-                </div>
-              )}
 
               {/* Dropdown */}
               {showDropdown && (
@@ -281,7 +251,7 @@ export function Header() {
                             className="w-10 h-10 rounded-xl object-cover"
                           />
                         ) : (
-                          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent-500 to-primary-500" />
+                          <div className="w-10 h-10 rounded-xl bg-main-gradient" />
                         )}
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-white truncate">

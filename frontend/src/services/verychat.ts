@@ -144,6 +144,22 @@ export async function verifyCode(
 }
 
 /**
+ * Format error message for display
+ */
+function formatErrorMessage(message: string): string {
+  // Handle snake_case error codes from API
+  if (message === "invalid_code" || message === "INVALID_CODE") {
+    return "Invalid code";
+  }
+  if (message === "expired_code" || message === "EXPIRED_CODE") {
+    return "Expired code";
+  }
+  // Replace underscores with spaces and capitalize first letter
+  const formatted = message.replace(/_/g, " ");
+  return formatted.charAt(0).toUpperCase() + formatted.slice(1).toLowerCase();
+}
+
+/**
  * Verify code and get access tokens
  */
 export async function loginWithCode(
@@ -171,11 +187,17 @@ export async function loginWithCode(
 
     // Check for error response
     if (data.statusCode === 400 || data.statusCode === 401) {
-      throw new Error(data.message || "Invalid or expired verification code");
+      throw new Error(
+        formatErrorMessage(data.message) ||
+          "Invalid or expired verification code"
+      );
     }
 
     if (!response.ok) {
-      throw new Error(data.message || "Invalid or expired verification code");
+      throw new Error(
+        formatErrorMessage(data.message) ||
+          "Invalid or expired verification code"
+      );
     }
 
     // API returns user info at root level, normalize it

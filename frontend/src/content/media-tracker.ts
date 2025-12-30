@@ -69,7 +69,8 @@ const SUPPORTED_PLATFORMS = {
     patterns: ["filmboom.top", "moviebox.ph"],
     type: "movie",
     selectors: {
-      title: ".title, h1, .movie-title, .video-title, .detail-title, [class*='title']",
+      title:
+        ".title, h1, .movie-title, .video-title, .detail-title, [class*='title']",
       progress: ".progress-bar, [class*='progress']",
     },
     // API endpoint for metadata extraction
@@ -217,7 +218,8 @@ const SUPPORTED_PLATFORMS = {
     patterns: ["webtoons.com"],
     type: "manga",
     selectors: {
-      title: ".subj_episode, .subj, .episode__title, h1.subj_episode, .detail_lst .subj, h1",
+      title:
+        ".subj_episode, .subj, .episode__title, h1.subj_episode, .detail_lst .subj, h1",
       progress: ".progress-bar",
       episode: ".episode-num, .episode_no, [class*='episode']",
     },
@@ -1008,7 +1010,7 @@ function countMangaPages(): { current: number; total: number } {
         // At least 100px in both dimensions for manga panels
         return rect.width > 100 && rect.height > 100;
       });
-      
+
       if (filtered.length > 0) {
         images = filtered;
         break;
@@ -1063,7 +1065,11 @@ function countMangaPages(): { current: number; total: number } {
 /**
  * Extract chapter information from URL or page
  */
-function extractChapterInfo(): { chapter: string; title: string; episode?: string } | null {
+function extractChapterInfo(): {
+  chapter: string;
+  title: string;
+  episode?: string;
+} | null {
   const url = window.location.href;
 
   // Common URL patterns for chapters/episodes
@@ -1102,7 +1108,11 @@ function extractChapterInfo(): { chapter: string; title: string; episode?: strin
         if (el?.textContent?.trim()) {
           title = el.textContent.trim();
           // Clean up common suffixes
-          title = title.split(" | ")[0].split(" - ")[0].split(" Chapter ")[0].trim();
+          title = title
+            .split(" | ")[0]
+            .split(" - ")[0]
+            .split(" Chapter ")[0]
+            .trim();
           break;
         }
       }
@@ -1133,7 +1143,7 @@ function startScrollTracking() {
 
     if (currentSession) {
       currentSession.mediaInfo.scrollProgress = maxScrollProgress;
-      
+
       if (pageInfo.total > 0) {
         currentSession.mediaInfo.currentPage = pageInfo.current;
         currentSession.mediaInfo.totalPages = pageInfo.total;
@@ -1148,7 +1158,8 @@ function startScrollTracking() {
 
       // Check for completion (>85% scroll or reached last page)
       const isScrollComplete = maxScrollProgress >= 85;
-      const isPageComplete = pageInfo.total > 0 && pageInfo.current >= pageInfo.total - 1;
+      const isPageComplete =
+        pageInfo.total > 0 && pageInfo.current >= pageInfo.total - 1;
 
       if ((isScrollComplete || isPageComplete) && !currentSession.completed) {
         console.log("[VeTerex] Reading completed!", {
@@ -1362,9 +1373,14 @@ function parseFilmboomResponse(
     if (data.code !== 0 || !data.data?.subject) return null;
 
     const subject = data.data.subject;
-    const trailerDuration = (data as any)?.data?.subject?.trailer?.videoAddress?.duration || 0;
-    const cover = subject.cover?.url || (data as any)?.data?.metadata?.image || "";
-    const duration = subject.duration && subject.duration > 0 ? subject.duration : trailerDuration || undefined;
+    const trailerDuration =
+      (data as any)?.data?.subject?.trailer?.videoAddress?.duration || 0;
+    const cover =
+      subject.cover?.url || (data as any)?.data?.metadata?.image || "";
+    const duration =
+      subject.duration && subject.duration > 0
+        ? subject.duration
+        : trailerDuration || undefined;
     return {
       title: subject.title,
       thumbnail: cover,
@@ -1515,7 +1531,8 @@ function updateSessionWithMetadata(metadata: Partial<MediaInfo>) {
     if (!currentSession.mediaInfo.duration) {
       const t = currentSession.mediaInfo.type;
       if (t === "movie") currentSession.mediaInfo.duration = 2 * 60 * 60; // 2h
-      else if (t === "tvshow" || t === "anime") currentSession.mediaInfo.duration = 45 * 60; // 45m
+      else if (t === "tvshow" || t === "anime")
+        currentSession.mediaInfo.duration = 45 * 60; // 45m
     }
   }
 }
@@ -1623,7 +1640,7 @@ function extractMediaInfo(): MediaInfo | null {
     // ========== MANGA/WEBTOON/BOOK SPECIFIC EXTRACTION ==========
     if (contentType === "manga" || contentType === "book") {
       console.log("[VeTerex] Extracting manga/book info...");
-      
+
       // Try to extract chapter info first
       const chapterInfo = extractChapterInfo();
       if (chapterInfo) {
@@ -1647,16 +1664,16 @@ function extractMediaInfo(): MediaInfo | null {
         ".series-title",
         ".chapter-title",
         ".reader-header-title",
-        '[data-title]',
-        'h1',
-        'h2.title',
-        '.title',
+        "[data-title]",
+        "h1",
+        "h2.title",
+        ".title",
         // Fallback to meta
         'meta[property="og:title"]',
       ];
 
       for (const selector of mangaTitleSelectors) {
-        if (selector.startsWith('meta')) {
+        if (selector.startsWith("meta")) {
           const meta = document.querySelector(selector);
           if (meta) {
             const content = meta.getAttribute("content");
@@ -1677,12 +1694,11 @@ function extractMediaInfo(): MediaInfo | null {
       // Calculate scroll progress for reading content
       progress = calculateScrollProgress();
       maxScrollProgress = Math.max(maxScrollProgress, progress);
-      
+
       // Also check page count for manga
       const pageInfo = countMangaPages();
       if (pageInfo.total > 0) {
         progress = Math.round((pageInfo.current / pageInfo.total) * 100);
-        
       }
 
       // Clean up title - remove common suffixes
@@ -1695,17 +1711,32 @@ function extractMediaInfo(): MediaInfo | null {
           .trim();
       }
 
-      console.log("[VeTerex] Manga info extracted:", { title, chapter, episode, progress, pageInfo });
+      console.log("[VeTerex] Manga info extracted:", {
+        title,
+        chapter,
+        episode,
+        progress,
+        pageInfo,
+      });
     }
     // ========== VIDEO CONTENT EXTRACTION ==========
     else {
       // Try to find a video element first
       const video = document.querySelector("video");
-      
-      if (video && video.duration && !isNaN(video.duration) && video.duration > 0) {
+
+      if (
+        video &&
+        video.duration &&
+        !isNaN(video.duration) &&
+        video.duration > 0
+      ) {
         duration = video.duration;
         progress = (video.currentTime / video.duration) * 100;
-        console.log("[VeTerex] Video element found:", { duration, currentTime: video.currentTime, progress });
+        console.log("[VeTerex] Video element found:", {
+          duration,
+          currentTime: video.currentTime,
+          progress,
+        });
       }
 
       // Special handling for YouTube
@@ -1762,7 +1793,11 @@ function extractMediaInfo(): MediaInfo | null {
             }
           } else if (selector === "title") {
             if (document.title && document.title.trim()) {
-              title = document.title.split("|")[0].split(" - ")[0].split("—")[0].trim();
+              title = document.title
+                .split("|")[0]
+                .split(" - ")[0]
+                .split("—")[0]
+                .trim();
               break;
             }
           } else {
@@ -1776,9 +1811,13 @@ function extractMediaInfo(): MediaInfo | null {
 
         // If no video element found, try to detect iframe-based players
         if (!video || !video.duration) {
-          const iframe = document.querySelector('iframe[src*="player"], iframe[src*="embed"], iframe[src*="video"]');
+          const iframe = document.querySelector(
+            'iframe[src*="player"], iframe[src*="embed"], iframe[src*="video"]'
+          );
           if (iframe) {
-            console.log("[VeTerex] Video iframe detected, using activity tracking");
+            console.log(
+              "[VeTerex] Video iframe detected, using activity tracking"
+            );
             // We'll rely on activity tracking for progress
             progress = maxScrollProgress || 0;
           }
@@ -1804,10 +1843,12 @@ function extractMediaInfo(): MediaInfo | null {
     // For manga/book sites, we can track even without perfect title extraction
     // since we have scroll progress and page tracking
     const isMangaOrBook = contentType === "manga" || contentType === "book";
-    
+
     // Only skip if no title AND it's not a manga/book site
     if (title === "Unknown Title" && !isMangaOrBook) {
-      console.log("[VeTerex] Could not extract title for video content, skipping");
+      console.log(
+        "[VeTerex] Could not extract title for video content, skipping"
+      );
       return null;
     }
 
@@ -1817,12 +1858,14 @@ function extractMediaInfo(): MediaInfo | null {
       const pathParts = window.location.pathname.split("/").filter(Boolean);
       if (pathParts.length > 0) {
         // Convert slug to title (e.g., "the-price-is-your-everything" -> "The Price Is Your Everything")
-        const slug = pathParts.find(p => !p.match(/^\d+$/) && p.length > 3) || pathParts[0];
+        const slug =
+          pathParts.find((p) => !p.match(/^\d+$/) && p.length > 3) ||
+          pathParts[0];
         title = slug
           .replace(/-/g, " ")
           .replace(/_/g, " ")
           .split(" ")
-          .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
           .join(" ");
       }
     }
@@ -1925,7 +1968,7 @@ function updateTracking() {
   const now = Date.now();
   const platform = detectPlatform();
   const contentType = platform?.config.type;
-  
+
   currentSession.lastUpdate = now;
   currentSession.mediaInfo.progress = mediaInfo.progress;
   currentSession.mediaInfo.duration = mediaInfo.duration;
@@ -1939,11 +1982,13 @@ function updateTracking() {
     // For manga/reading content, use scroll progress and page tracking
     const scrollProgress = calculateScrollProgress();
     maxScrollProgress = Math.max(maxScrollProgress, scrollProgress);
-    
+
     const pageInfo = countMangaPages();
-    
+
     if (pageInfo.total > 0) {
-      currentSession.mediaInfo.progress = Math.round((pageInfo.current / pageInfo.total) * 100);
+      currentSession.mediaInfo.progress = Math.round(
+        (pageInfo.current / pageInfo.total) * 100
+      );
       currentSession.mediaInfo.currentPage = pageInfo.current;
       currentSession.mediaInfo.totalPages = pageInfo.total;
       currentSession.watchTime = Math.round(totalActiveTime / 1000);
@@ -1956,10 +2001,18 @@ function updateTracking() {
     // Check completion for reading content
     const progress = currentSession.mediaInfo.progress || 0;
     const isScrollComplete = maxScrollProgress >= 85;
-    const isPageComplete = pageInfo.total > 0 && pageInfo.current >= pageInfo.total - 1;
-    
-    if ((isScrollComplete || isPageComplete || progress >= 85) && !currentSession.completed) {
-      console.log("[VeTerex] Reading completed!", { maxScrollProgress, pageInfo, progress });
+    const isPageComplete =
+      pageInfo.total > 0 && pageInfo.current >= pageInfo.total - 1;
+
+    if (
+      (isScrollComplete || isPageComplete || progress >= 85) &&
+      !currentSession.completed
+    ) {
+      console.log("[VeTerex] Reading completed!", {
+        maxScrollProgress,
+        pageInfo,
+        progress,
+      });
       currentSession.completed = true;
       notifyCompletion(currentSession);
     }
@@ -1972,10 +2025,13 @@ function updateTracking() {
     } else {
       // Fallback: use active time tracking
       currentSession.watchTime = totalActiveTime / 1000;
-      
+
       // Also use active time for progress estimation if no video duration
       if (mediaInfo.duration && mediaInfo.duration > 0) {
-        currentSession.mediaInfo.progress = Math.min(100, Math.round((totalActiveTime / 1000 / mediaInfo.duration) * 100));
+        currentSession.mediaInfo.progress = Math.min(
+          100,
+          Math.round((totalActiveTime / 1000 / mediaInfo.duration) * 100)
+        );
       }
     }
 
@@ -1983,7 +2039,8 @@ function updateTracking() {
     const progress = currentSession.mediaInfo.progress ?? 0;
     const isNearEnd =
       mediaInfo.duration && mediaInfo.duration > 0
-        ? progress >= 90 || mediaInfo.duration - (progress / 100) * mediaInfo.duration < 30
+        ? progress >= 90 ||
+          mediaInfo.duration - (progress / 100) * mediaInfo.duration < 30
         : progress >= 90;
 
     if (isNearEnd && !currentSession.completed) {
@@ -1994,7 +2051,9 @@ function updateTracking() {
 
   // Get the session ID
   const sessionData = currentSession.mediaInfo as MediaInfo & { id?: string };
-  const sessionId = sessionData.id || `${currentSession.mediaInfo.platform}-${currentSession.startTime}`;
+  const sessionId =
+    sessionData.id ||
+    `${currentSession.mediaInfo.platform}-${currentSession.startTime}`;
 
   // Send progress update to background
   chrome.runtime.sendMessage({
@@ -2007,7 +2066,8 @@ function updateTracking() {
       url: currentSession.mediaInfo.url,
       progress: currentSession.mediaInfo.progress,
       duration: currentSession.mediaInfo.duration,
-      thumbnail: mediaInfo.thumbnail || currentSession.mediaInfo.thumbnail || "",
+      thumbnail:
+        mediaInfo.thumbnail || currentSession.mediaInfo.thumbnail || "",
       startTime: currentSession.startTime,
       lastUpdate: now,
       watchTime: Math.round(currentSession.watchTime),
@@ -2070,40 +2130,61 @@ function showTrackSeriesButton() {
   if (!info || info.type !== "manga") return;
 
   // Ensure Outfit font is available
-  if (!document.querySelector('link[href*="fonts.googleapis.com/css2?family=Outfit"')) {
+  if (
+    !document.querySelector(
+      'link[href*="fonts.googleapis.com/css2?family=Outfit"'
+    )
+  ) {
     const link = document.createElement("link");
     link.rel = "stylesheet";
-    link.href = "https://fonts.googleapis.com/css2?family=Outfit:wght@500;600&display=swap";
+    link.href =
+      "https://fonts.googleapis.com/css2?family=Outfit:wght@500;600&display=swap";
     document.head.appendChild(link);
   }
+
+  // Get fruit icon URL
+  const fruitIconUrl = chrome.runtime.getURL("icons/Fruit_color.png");
+
   const btn = document.createElement("button");
   btn.id = "veterex-track-series";
   btn.style.display = "inline-flex";
   btn.style.alignItems = "center";
   btn.style.gap = "8px";
-  const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  icon.setAttribute("width", "16");
-  icon.setAttribute("height", "16");
-  icon.setAttribute("viewBox", "0 0 24 24");
-  icon.innerHTML = '<path fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M4 19.5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v14.5l-7-3-7 3Z"/>';
+
+  // Fruit Icon Image
+  const icon = document.createElement("img");
+  icon.src = fruitIconUrl;
+  icon.alt = "Track";
+  icon.style.width = "20px";
+  icon.style.height = "20px";
+
   const label = document.createElement("span");
   label.textContent = "Track Series";
+  label.style.fontWeight = "600";
+
   btn.appendChild(icon);
   btn.appendChild(label);
+
+  // Styling with coral-violet gradient
   btn.style.position = "fixed";
   btn.style.bottom = "24px";
   btn.style.right = "24px";
   btn.style.zIndex = "999999";
-  btn.style.padding = "10px 14px";
-  btn.style.borderRadius = "10px";
+  btn.style.padding = "12px 20px";
+  btn.style.borderRadius = "12px";
   btn.style.border = "none";
   btn.style.color = "#fff";
-  btn.style.background = "linear-gradient(135deg,#00d4ff,#7c3aed)";
+  btn.style.background =
+    "linear-gradient(139.84deg, #FF6D75 50%, #9C86FF 96.42%)";
   btn.style.cursor = "pointer";
-  btn.style.boxShadow = "0 6px 20px rgba(124,58,237,0.35)";
-  btn.style.fontFamily = "Outfit, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+  btn.style.boxShadow = "0 8px 24px rgba(255, 109, 117, 0.35)";
+  btn.style.fontFamily =
+    "Outfit, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+  btn.style.fontSize = "14px";
   btn.style.transform = "translateX(140%)";
-  btn.style.transition = "transform 300ms ease-out, box-shadow 200ms ease";
+  btn.style.transition =
+    "transform 300ms ease-out, box-shadow 200ms ease, transform 200ms ease";
+
   btn.onclick = () => {
     const chapterInfo = extractChapterInfo();
     const entry = {
@@ -2113,42 +2194,68 @@ function showTrackSeriesButton() {
       currentChapter: chapterInfo?.chapter || "",
       status: "Reading",
     };
+
     const onAdded = () => {
+      // Show success toast
       const toast = document.createElement("div");
-      toast.textContent = "Series added";
+      toast.textContent = "✓ Series added";
       toast.style.position = "fixed";
       toast.style.bottom = "80px";
       toast.style.right = "24px";
-      toast.style.padding = "10px 12px";
-      toast.style.borderRadius = "8px";
-      toast.style.background = "rgba(0,0,0,0.7)";
+      toast.style.padding = "12px 16px";
+      toast.style.borderRadius = "10px";
+      toast.style.background =
+        "linear-gradient(135deg, #4BE15A 0%, #3DBF4D 100%)";
       toast.style.color = "#fff";
+      toast.style.fontFamily =
+        "Outfit, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+      toast.style.fontWeight = "500";
+      toast.style.fontSize = "14px";
+      toast.style.boxShadow = "0 4px 16px rgba(75, 225, 90, 0.3)";
       toast.style.zIndex = "999999";
+      toast.style.animation = "slideIn 0.3s ease-out";
       document.body.appendChild(toast);
-      setTimeout(() => toast.remove(), 2000);
+      setTimeout(() => {
+        toast.style.opacity = "0";
+        toast.style.transition = "opacity 0.3s ease";
+        setTimeout(() => toast.remove(), 300);
+      }, 2000);
     };
+
     try {
-      browserAPI.runtime.sendMessage({ type: "ADD_SERIES_BOOKMARK", data: entry }, () => onAdded());
+      browserAPI.runtime.sendMessage(
+        { type: "ADD_SERIES_BOOKMARK", data: entry },
+        () => onAdded()
+      );
     } catch {
       // Fallback direct storage
       if (typeof chrome !== "undefined" && chrome.storage) {
         chrome.storage.local.get(["seriesBookmarks"], (r) => {
           const list = r.seriesBookmarks || [];
-          chrome.storage.local.set({ seriesBookmarks: [...list, entry] }, onAdded);
+          chrome.storage.local.set(
+            { seriesBookmarks: [...list, entry] },
+            onAdded
+          );
         });
       }
     }
   };
+
   document.body.appendChild(btn);
+
+  // Slide in animation
   requestAnimationFrame(() => {
     btn.style.transform = "translateX(0)";
   });
 
+  // Hover effects
   btn.onmouseenter = () => {
-    btn.style.boxShadow = "0 10px 24px rgba(124,58,237,0.45)";
+    btn.style.boxShadow = "0 12px 28px rgba(255, 109, 117, 0.45)";
+    btn.style.transform = "translateY(-2px)";
   };
   btn.onmouseleave = () => {
-    btn.style.boxShadow = "0 6px 20px rgba(124,58,237,0.35)";
+    btn.style.boxShadow = "0 8px 24px rgba(255, 109, 117, 0.35)";
+    btn.style.transform = "translateY(0)";
   };
 }
 
@@ -2159,6 +2266,10 @@ function showCompletionBanner(mediaInfo: MediaInfo) {
   // Remove existing banner if any
   const existingBanner = document.getElementById("veterex-completion-banner");
   if (existingBanner) existingBanner.remove();
+
+  // Get icon URLs
+  const giftboxIconUrl = chrome.runtime.getURL("icons/giftbox.svg");
+  const veryCoinIconUrl = chrome.runtime.getURL("icons/very-coin.png");
 
   const banner = document.createElement("div");
   banner.id = "veterex-completion-banner";
@@ -2172,10 +2283,10 @@ function showCompletionBanner(mediaInfo: MediaInfo) {
         right: 20px;
         z-index: 999999;
         background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-        border: 1px solid #4a5568;
+        border: 1px solid rgba(255, 109, 117, 0.3);
         border-radius: 16px;
         padding: 20px 24px;
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5), 0 0 20px rgba(255, 109, 117, 0.15);
         font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         min-width: 340px;
         max-width: 400px;
@@ -2203,21 +2314,21 @@ function showCompletionBanner(mediaInfo: MediaInfo) {
       .veterex-banner-icon {
         width: 48px;
         height: 48px;
-        background: linear-gradient(135deg, #00d4ff 0%, #7c3aed 100%);
+        background: linear-gradient(135deg, #FF6D75 0%, #9C86FF 100%);
         border-radius: 12px;
         display: flex;
         align-items: center;
         justify-content: center;
+        box-shadow: 0 4px 12px rgba(255, 109, 117, 0.3);
       }
       
-      .veterex-banner-icon svg {
+      .veterex-banner-icon img {
         width: 28px;
         height: 28px;
-        fill: white;
       }
       
       .veterex-banner-title {
-        color: #00d4ff;
+        color: #FF6D75;
         font-weight: 600;
         font-size: 16px;
         margin: 0;
@@ -2275,13 +2386,22 @@ function showCompletionBanner(mediaInfo: MediaInfo) {
       }
       
       .veterex-banner-btn-primary {
-        background: linear-gradient(135deg, #00d4ff 0%, #7c3aed 100%);
+        background: linear-gradient(135deg, #FF6D75 0%, #9C86FF 100%);
         color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
       }
       
       .veterex-banner-btn-primary:hover {
         transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(0, 212, 255, 0.4);
+        box-shadow: 0 4px 12px rgba(255, 109, 117, 0.4);
+      }
+      
+      .veterex-banner-btn-primary img {
+        width: 18px;
+        height: 18px;
       }
       
       .veterex-banner-btn-secondary {
@@ -2322,9 +2442,7 @@ function showCompletionBanner(mediaInfo: MediaInfo) {
     
     <div class="veterex-banner-header">
       <div class="veterex-banner-icon">
-        <svg viewBox="0 0 24 24">
-          <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
-        </svg>
+        <img src="${giftboxIconUrl}" alt="Achievement" />
       </div>
       <div>
         <p class="veterex-banner-title">Completion Detected!</p>
@@ -2342,7 +2460,8 @@ function showCompletionBanner(mediaInfo: MediaInfo) {
         Later
       </button>
       <button class="veterex-banner-btn veterex-banner-btn-primary" id="veterex-mint-btn">
-        Mint NFT 🏆
+        <img src="${veryCoinIconUrl}" alt="" />
+        Mint NFT
       </button>
     </div>
   `;
@@ -2392,8 +2511,10 @@ function init() {
 
   // For manga/book sites, start tracking immediately since we don't need video elements
   if (isMangaOrBook) {
-    console.log("[VeTerex] Manga/book content detected, starting tracking immediately");
-    
+    console.log(
+      "[VeTerex] Manga/book content detected, starting tracking immediately"
+    );
+
     // Small delay to ensure page has loaded basic content
     setTimeout(() => {
       startTracking();

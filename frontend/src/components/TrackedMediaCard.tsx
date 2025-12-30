@@ -6,10 +6,10 @@ import {
   Tv,
   BookOpen,
   ExternalLink,
-  Award,
   Clock,
 } from "lucide-react";
 import type { TrackedMedia } from "@/store/useAppStore";
+import { OpenCookieImageIcon, VeryCoinImageIcon } from "./AppIcons";
 
 interface TrackedMediaCardProps {
   media: TrackedMedia;
@@ -35,7 +35,7 @@ const platformColors: Record<string, string> = {
   hulu: "from-green-500 to-green-600",
   goodreads: "from-amber-600 to-amber-700",
   mangadex: "from-orange-400 to-orange-500",
-  default: "from-accent-500 to-primary-500",
+  default: "from-coral to-violet",
 };
 
 export function TrackedMediaCard({
@@ -122,7 +122,7 @@ export function TrackedMediaCard({
               href={media.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-dark-400 hover:text-accent-400 transition-colors flex-shrink-0"
+              className="text-dark-400 hover:text-coral transition-colors flex-shrink-0"
             >
               <ExternalLink className="w-4 h-4" />
             </a>
@@ -189,7 +189,7 @@ export function TrackedMediaCard({
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-green-400">
-              <Award className="w-5 h-5" />
+              <OpenCookieImageIcon size={20} />
               <span className="text-sm font-medium">Completed!</span>
             </div>
             <div className="flex gap-2">
@@ -206,11 +206,11 @@ export function TrackedMediaCard({
                 <button
                   onClick={onMint}
                   className="px-4 py-1.5 text-xs font-medium text-white 
-                           bg-gradient-to-r from-accent-500 to-primary-500 
-                           rounded-lg hover:from-accent-400 hover:to-primary-400 
+                           bg-gradient-to-r from-coral to-violet 
+                           rounded-lg hover:from-coral-light hover:to-violet-light 
                            transition-all duration-200 flex items-center gap-1.5"
                 >
-                  <Award className="w-3.5 h-3.5" />
+                  <VeryCoinImageIcon size={14} />
                   Mint NFT
                 </button>
               )}

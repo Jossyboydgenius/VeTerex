@@ -442,8 +442,8 @@ export function SettingsPage() {
           <div className="card space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-accent-500/20 flex items-center justify-center">
-                  <Activity className="w-5 h-5 text-accent-400" />
+                <div className="w-10 h-10 rounded-xl bg-coral/20 flex items-center justify-center">
+                  <Activity className="w-5 h-5 text-coral" />
                 </div>
                 <div>
                   <p className="font-medium text-white">Enable Tracking</p>
@@ -455,7 +455,7 @@ export function SettingsPage() {
               <button
                 onClick={() => handleTrackingToggle(!trackingEnabled)}
                 className={`w-12 h-6 rounded-full transition-colors relative ${
-                  trackingEnabled ? "bg-accent-500" : "bg-dark-600"
+                  trackingEnabled ? "bg-coral" : "bg-dark-600"
                 }`}
               >
                 <div
@@ -468,8 +468,8 @@ export function SettingsPage() {
 
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-primary-500/20 flex items-center justify-center">
-                  <Bell className="w-5 h-5 text-primary-400" />
+                <div className="w-10 h-10 rounded-xl bg-violet/20 flex items-center justify-center">
+                  <Bell className="w-5 h-5 text-violet" />
                 </div>
                 <div>
                   <p className="font-medium text-white">Notifications</p>
@@ -484,7 +484,7 @@ export function SettingsPage() {
                   saveSettings("notificationsEnabled", !notificationsEnabled);
                 }}
                 className={`w-12 h-6 rounded-full transition-colors relative ${
-                  notificationsEnabled ? "bg-accent-500" : "bg-dark-600"
+                  notificationsEnabled ? "bg-coral" : "bg-dark-600"
                 }`}
               >
                 <div
@@ -507,7 +507,7 @@ export function SettingsPage() {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => setShowAddModal(true)}
-              className="flex items-center gap-1 text-sm text-accent-400 hover:text-accent-300"
+              className="flex items-center gap-1 text-sm text-coral hover:text-coral-light"
             >
               <Plus className="w-4 h-4" />
               <span>Add Site</span>
@@ -526,7 +526,7 @@ export function SettingsPage() {
                       href={site.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="p-2 rounded-lg bg-dark-800 hover:bg-dark-700 text-dark-400 hover:text-accent-400 transition-colors"
+                      className="p-2 rounded-lg bg-dark-800 hover:bg-dark-700 text-dark-400 hover:text-coral transition-colors"
                       title={`Visit ${site.name}`}
                     >
                       <ExternalLink className="w-4 h-4" />
@@ -556,7 +556,7 @@ export function SettingsPage() {
                       <div className="group relative">
                         <button
                           onClick={() => toggleSite(site.id)}
-                          className="text-xs text-accent-400 hover:text-accent-300"
+                          className="text-xs text-coral hover:text-coral-light"
                         >
                           Enable
                         </button>
@@ -567,7 +567,7 @@ export function SettingsPage() {
                     )}
                     <button
                       onClick={() => editCustomSite(site)}
-                      className="p-2 text-dark-400 hover:text-accent-400 transition-colors"
+                      className="p-2 text-dark-400 hover:text-coral transition-colors"
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>
@@ -608,7 +608,7 @@ export function SettingsPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by name, type, or domain..."
               className="w-full pl-10 pr-10 py-2.5 bg-dark-800 border border-dark-700 rounded-xl text-white 
-                       placeholder:text-dark-500 focus:outline-none focus:border-accent-500/50
+                       placeholder:text-dark-500 focus:outline-none focus:border-coral/50
                        transition-all duration-200"
             />
             {searchQuery && (
@@ -641,7 +641,7 @@ export function SettingsPage() {
                       href={`https://${platform.domain}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="p-2 rounded-lg bg-dark-800 hover:bg-dark-700 text-dark-400 hover:text-accent-400 transition-colors"
+                      className="p-2 rounded-lg bg-dark-800 hover:bg-dark-700 text-dark-400 hover:text-coral transition-colors"
                       title={`Visit ${platform.name}`}
                     >
                       <ExternalLink className="w-4 h-4" />
@@ -672,7 +672,7 @@ export function SettingsPage() {
                     ) : (
                       <button
                         onClick={() => requestPermission(platform.domain)}
-                        className="text-xs text-accent-400 hover:text-accent-300"
+                        className="text-xs text-coral hover:text-coral-light"
                       >
                         Enable
                       </button>
@@ -803,7 +803,7 @@ export function SettingsPage() {
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={addCustomSite}
-                      className="flex-1 py-2.5 rounded-xl bg-accent-500 text-white font-medium"
+                      className="flex-1 py-2.5 rounded-xl bg-coral text-white font-medium"
                     >
                       {editingSite ? "Update Site" : "Add Site"}
                     </motion.button>

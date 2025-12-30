@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
-  Award,
   ArrowLeft,
   Play,
   Film,
@@ -11,10 +10,10 @@ import {
   BookOpen,
   ExternalLink,
   Clock,
-  CheckCircle,
   Loader2,
 } from "lucide-react";
 import { useAppStore, type TrackedMedia } from "@/store/useAppStore";
+import { NFTMiningImageIcon, ConfettiImageIcon } from "@/components/AppIcons";
 
 // Check if running as Chrome extension
 const isExtension =
@@ -38,7 +37,7 @@ const platformColors: Record<string, string> = {
   hulu: "from-green-500 to-green-600",
   goodreads: "from-amber-600 to-amber-700",
   mangadex: "from-orange-400 to-orange-500",
-  default: "from-accent-500 to-primary-500",
+  default: "from-coral to-violet",
 };
 
 export function MintPage() {
@@ -142,7 +141,7 @@ export function MintPage() {
     return (
       <div className="px-4 py-8 flex flex-col items-center justify-center min-h-[60vh]">
         <div className="w-20 h-20 rounded-2xl bg-dark-800 flex items-center justify-center mb-4">
-          <Award className="w-10 h-10 text-dark-500" />
+          <NFTMiningImageIcon size={48} inverted={true} />
         </div>
         <h2 className="text-xl font-bold text-white mb-2">Nothing to Mint</h2>
         <p className="text-dark-400 text-sm text-center mb-6">
@@ -183,9 +182,9 @@ export function MintPage() {
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ type: "spring", delay: 0.2 }}
-            className="w-24 h-24 mx-auto mb-6 rounded-full bg-green-500/20 flex items-center justify-center"
+            className="w-24 h-24 mx-auto mb-6 flex items-center justify-center"
           >
-            <CheckCircle className="w-12 h-12 text-green-400" />
+            <ConfettiImageIcon size={80} />
           </motion.div>
           <h2 className="text-2xl font-bold text-white mb-2">NFT Minted!</h2>
           <p className="text-dark-400">
@@ -241,7 +240,7 @@ export function MintPage() {
                 href={mediaToMint.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-4 flex items-center gap-2 text-sm text-accent-400 hover:text-accent-300 transition-colors"
+                className="mt-4 flex items-center gap-2 text-sm text-coral hover:text-coral-light transition-colors"
               >
                 <ExternalLink className="w-4 h-4" />
                 View original content
@@ -264,7 +263,7 @@ export function MintPage() {
                 <div
                   className={`w-24 h-24 rounded-2xl bg-gradient-to-br ${colorClass} flex items-center justify-center mb-4`}
                 >
-                  <Award className="w-12 h-12 text-white" />
+                  <NFTMiningImageIcon size={56} />
                 </div>
                 <p className="text-white font-semibold text-center mb-1 truncate max-w-full px-4">
                   {mediaToMint.title}
@@ -272,15 +271,15 @@ export function MintPage() {
                 <p className="text-dark-400 text-sm capitalize">
                   {mediaToMint.type} • {mediaToMint.platform}
                 </p>
-                <div className="mt-4 px-3 py-1 rounded-full bg-green-500/20 text-green-400 text-xs">
+                <div className="mt-4 px-3 py-1 rounded-full bg-brand-green/20 text-brand-green text-xs">
                   ✓ Completed
                 </div>
               </div>
               {/* Decorative elements */}
-              <div className="absolute top-4 left-4 w-2 h-2 rounded-full bg-accent-500/50" />
-              <div className="absolute top-4 right-4 w-2 h-2 rounded-full bg-primary-500/50" />
-              <div className="absolute bottom-4 left-4 w-2 h-2 rounded-full bg-primary-500/50" />
-              <div className="absolute bottom-4 right-4 w-2 h-2 rounded-full bg-accent-500/50" />
+              <div className="absolute top-4 left-4 w-2 h-2 rounded-full bg-coral/50" />
+              <div className="absolute top-4 right-4 w-2 h-2 rounded-full bg-violet/50" />
+              <div className="absolute bottom-4 left-4 w-2 h-2 rounded-full bg-violet/50" />
+              <div className="absolute bottom-4 right-4 w-2 h-2 rounded-full bg-coral/50" />
             </div>
           </motion.div>
 
@@ -295,9 +294,9 @@ export function MintPage() {
               onClick={handleMint}
               disabled={isMinting || !isConnected}
               className="w-full flex items-center justify-center gap-2 py-4 px-4 rounded-xl
-                       bg-gradient-to-r from-accent-500 to-primary-500 
+                       bg-main-gradient 
                        text-white font-semibold text-lg
-                       hover:from-accent-400 hover:to-primary-400
+                       hover:shadow-neon-coral
                        disabled:opacity-50 disabled:cursor-not-allowed
                        transition-all duration-200"
             >
@@ -308,7 +307,7 @@ export function MintPage() {
                 </>
               ) : (
                 <>
-                  <Award className="w-5 h-5" />
+                  <NFTMiningImageIcon size={20} />
                   Mint NFT
                 </>
               )}
@@ -318,7 +317,7 @@ export function MintPage() {
               onClick={handleLater}
               disabled={isMinting}
               className="w-full py-3 px-4 rounded-xl
-                       bg-dark-800 border border-dark-600
+                       bg-dark-800 border border-dark-700
                        text-dark-300 font-medium
                        hover:bg-dark-700 hover:text-white
                        disabled:opacity-50 disabled:cursor-not-allowed

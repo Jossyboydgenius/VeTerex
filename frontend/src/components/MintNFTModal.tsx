@@ -1,17 +1,14 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  X,
-  Award,
-  Star,
-  Calendar,
-  Loader2,
-  CheckCircle,
-  Sparkles,
-} from "lucide-react";
+import { X, Star, Calendar, Loader2, Sparkles } from "lucide-react";
 import type { MediaItem } from "@/types";
 import { useAppStore } from "@/store/useAppStore";
 import { mintCompletionNFT } from "@/services/api";
+import {
+  NFTMiningImageIcon,
+  ConfettiImageIcon,
+  VeryCoinImageIcon,
+} from "./AppIcons";
 
 interface MintNFTModalProps {
   media: MediaItem;
@@ -116,8 +113,8 @@ export function MintNFTModal({
                   </button>
 
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-accent-500 to-primary-500 flex items-center justify-center">
-                      <Award className="w-6 h-6 text-white" />
+                    <div className="w-12 h-12 rounded-xl bg-main-gradient flex items-center justify-center">
+                      <NFTMiningImageIcon size={28} />
                     </div>
                     <div>
                       <h2 className="text-lg font-semibold text-white">
@@ -137,9 +134,9 @@ export function MintNFTModal({
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
                       transition={{ type: "spring", bounce: 0.5 }}
-                      className="w-20 h-20 mx-auto mb-4 rounded-full bg-green-500/20 flex items-center justify-center"
+                      className="w-20 h-20 mx-auto mb-4 flex items-center justify-center"
                     >
-                      <CheckCircle className="w-10 h-10 text-green-400" />
+                      <ConfettiImageIcon size={72} />
                     </motion.div>
                     <h3 className="text-xl font-semibold text-white mb-2">
                       NFT Minted!
@@ -213,7 +210,7 @@ export function MintNFTModal({
                             <Star
                               className={`w-6 h-6 transition-colors ${
                                 value <= rating
-                                  ? "text-yellow-400 fill-yellow-400"
+                                  ? "text-brand-yellow fill-brand-yellow"
                                   : "text-dark-600 hover:text-dark-500"
                               }`}
                             />
@@ -255,7 +252,7 @@ export function MintNFTModal({
                         </>
                       ) : (
                         <>
-                          <Sparkles className="w-5 h-5" />
+                          <VeryCoinImageIcon size={20} />
                           <span>Mint NFT</span>
                         </>
                       )}

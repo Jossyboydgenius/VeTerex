@@ -14,7 +14,7 @@ export function NotFoundPage() {
         transition={{ type: "spring", stiffness: 200, damping: 15 }}
         className="relative mb-8"
       >
-        <div className="w-32 h-32 rounded-3xl bg-gradient-to-br from-accent-500/20 to-primary-500/20 flex items-center justify-center border border-accent-500/30">
+        <div className="w-32 h-32 rounded-3xl bg-gradient-to-br from-coral/20 to-violet/20 flex items-center justify-center border border-coral/30">
           <motion.div
             animate={{
               rotate: [0, 10, -10, 0],
@@ -26,17 +26,17 @@ export function NotFoundPage() {
               ease: "easeInOut",
             }}
           >
-            <Sparkles className="w-16 h-16 text-accent-400" />
+            <Sparkles className="w-16 h-16 text-coral" />
           </motion.div>
         </div>
         {/* Floating particles */}
         <motion.div
-          className="absolute -top-2 -right-2 w-4 h-4 rounded-full bg-accent-500"
+          className="absolute -top-2 -right-2 w-4 h-4 rounded-full bg-coral"
           animate={{ y: [0, -10, 0], opacity: [0.5, 1, 0.5] }}
           transition={{ duration: 2, repeat: Infinity }}
         />
         <motion.div
-          className="absolute -bottom-1 -left-1 w-3 h-3 rounded-full bg-primary-500"
+          className="absolute -bottom-1 -left-1 w-3 h-3 rounded-full bg-violet"
           animate={{ y: [0, -8, 0], opacity: [0.5, 1, 0.5] }}
           transition={{ duration: 2.5, repeat: Infinity, delay: 0.5 }}
         />

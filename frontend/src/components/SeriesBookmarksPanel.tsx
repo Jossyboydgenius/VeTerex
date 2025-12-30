@@ -59,10 +59,16 @@ export function SeriesBookmarksPanel() {
   const markAsRead = (b: SeriesBookmark) => {
     const next = bookmarks.map((x) =>
       x.id === b.id
-        ? { ...x, currentChapter: b.latestEpisode || x.currentChapter, hasUpdate: false }
+        ? {
+            ...x,
+            currentChapter: b.latestEpisode || x.currentChapter,
+            hasUpdate: false,
+          }
         : x
     );
-    chrome.storage.local.set({ seriesBookmarks: next }, () => setSelected(null));
+    chrome.storage.local.set({ seriesBookmarks: next }, () =>
+      setSelected(null)
+    );
   };
 
   if (!bookmarks.length) return null;
@@ -71,8 +77,10 @@ export function SeriesBookmarksPanel() {
     <section>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <Bookmark className="w-5 h-5 text-accent-400" />
-          <h2 className="text-base font-semibold text-white">Series Bookmarks</h2>
+          <Bookmark className="w-5 h-5 text-coral" />
+          <h2 className="text-base font-semibold text-white">
+            Series Bookmarks
+          </h2>
         </div>
         <button
           onClick={checkUpdates}
@@ -100,7 +108,9 @@ export function SeriesBookmarksPanel() {
                 {b.hasUpdate ? " • Update available" : ""}
               </p>
               {b.lastChecked && (
-                <p className="text-xs text-dark-500">Last checked: {new Date(b.lastChecked).toLocaleString()}</p>
+                <p className="text-xs text-dark-500">
+                  Last checked: {new Date(b.lastChecked).toLocaleString()}
+                </p>
               )}
             </div>
             <button
@@ -114,7 +124,7 @@ export function SeriesBookmarksPanel() {
               href={b.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-2 py-1 rounded-lg bg-dark-800 hover:bg-dark-700 text-dark-300 hover:text-accent-400 text-xs"
+              className="px-2 py-1 rounded-lg bg-dark-800 hover:bg-dark-700 text-dark-300 hover:text-coral text-xs"
               title="Open"
             >
               <ExternalLink className="w-4 h-4" />
@@ -133,18 +143,48 @@ export function SeriesBookmarksPanel() {
       {/* Details Modal */}
       {selected && (
         <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60" onClick={() => setSelected(null)} />
-          <motion.div initial={{ opacity: 0, y: 12, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} className="bg-dark-900 rounded-2xl border border-dark-700 p-5 w-full max-w-sm relative z-[151]">
-            <h3 className="text-base font-semibold text-white mb-2">Series Details</h3>
-            <p className="text-xs text-dark-400 mb-3 truncate">{selected.title}</p>
+          <div
+            className="absolute inset-0 bg-black/60"
+            onClick={() => setSelected(null)}
+          />
+          <motion.div
+            initial={{ opacity: 0, y: 12, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            className="bg-dark-900 rounded-2xl border border-dark-700 p-5 w-full max-w-sm relative z-[151]"
+          >
+            <h3 className="text-base font-semibold text-white mb-2">
+              Series Details
+            </h3>
+            <p className="text-xs text-dark-400 mb-3 truncate">
+              {selected.title}
+            </p>
             <div className="space-y-2 text-xs">
-              <p className="text-dark-300">Current: {selected.currentChapter || "—"}</p>
-              <p className="text-dark-300">Latest detected: {selected.latestEpisode || "—"}</p>
-              <p className="text-dark-500">Last checked: {selected.lastChecked ? new Date(selected.lastChecked).toLocaleString() : "—"}</p>
+              <p className="text-dark-300">
+                Current: {selected.currentChapter || "—"}
+              </p>
+              <p className="text-dark-300">
+                Latest detected: {selected.latestEpisode || "—"}
+              </p>
+              <p className="text-dark-500">
+                Last checked:{" "}
+                {selected.lastChecked
+                  ? new Date(selected.lastChecked).toLocaleString()
+                  : "—"}
+              </p>
             </div>
             <div className="flex gap-2 mt-4">
-              <button onClick={() => markAsRead(selected)} className="flex-1 py-2 rounded-xl bg-accent-500 text-white text-xs">Mark as read</button>
-              <button onClick={() => setSelected(null)} className="flex-1 py-2 rounded-xl bg-dark-700 text-dark-300 text-xs">Close</button>
+              <button
+                onClick={() => markAsRead(selected)}
+                className="flex-1 py-2 rounded-xl bg-coral text-white text-xs"
+              >
+                Mark as read
+              </button>
+              <button
+                onClick={() => setSelected(null)}
+                className="flex-1 py-2 rounded-xl bg-dark-700 text-dark-300 text-xs"
+              >
+                Close
+              </button>
             </div>
           </motion.div>
         </div>

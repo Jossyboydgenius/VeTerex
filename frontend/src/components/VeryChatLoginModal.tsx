@@ -1,7 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, ArrowRight, Loader2, CheckCircle } from "lucide-react";
+import { X, ArrowRight, Loader2 } from "lucide-react";
 import { requestVerificationCode, loginWithCode } from "@/services/verychat";
+import {
+  VeryCardImageIcon,
+  PinImageIcon,
+  ConfettiImageIcon,
+  VeryLogoImageIcon,
+} from "./AppIcons";
 
 interface VeryChatLoginModalProps {
   isOpen: boolean;
@@ -133,17 +139,12 @@ export function VeryChatLoginModal({
           onClick={(e) => e.stopPropagation()}
           className="w-full max-w-md"
         >
-          <div className="bg-dark-900 rounded-2xl border border-dark-700 p-6 shadow-xl">
+          <div className="bg-dark-800 rounded-2xl border border-dark-700 p-6 shadow-xl">
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-accent-500/20 flex items-center justify-center overflow-hidden">
-                  <img
-                    src="/icons/very_logo.png"
-                    alt="VeryChat"
-                    className="w-6 h-6 object-contain"
-                  />
-                </div>
+                <VeryLogoImageIcon size={40} />
+
                 <div>
                   <h3 className="text-lg font-semibold text-white">
                     Connect with VeryChat
@@ -165,19 +166,19 @@ export function VeryChatLoginModal({
             <div className="flex items-center gap-2 mb-6">
               <div
                 className={`flex-1 h-1 rounded-full transition-colors ${
-                  step === "handle" ? "bg-accent-500" : "bg-accent-500"
+                  step === "handle" ? "bg-coral" : "bg-coral"
                 }`}
               />
               <div
                 className={`flex-1 h-1 rounded-full transition-colors ${
                   step === "code" || step === "success"
-                    ? "bg-accent-500"
+                    ? "bg-coral"
                     : "bg-dark-700"
                 }`}
               />
               <div
                 className={`flex-1 h-1 rounded-full transition-colors ${
-                  step === "success" ? "bg-accent-500" : "bg-dark-700"
+                  step === "success" ? "bg-coral" : "bg-dark-700"
                 }`}
               />
             </div>
@@ -192,6 +193,10 @@ export function VeryChatLoginModal({
                   exit={{ opacity: 0, x: -20 }}
                   className="space-y-4"
                 >
+                  {/* Handle Step Icon - No container wrapper */}
+                  <div className="flex justify-center mb-4">
+                    <VeryCardImageIcon size={64} />
+                  </div>
                   <div>
                     <label className="block text-sm font-medium text-dark-300 mb-2">
                       VeryChat Handle
@@ -222,9 +227,9 @@ export function VeryChatLoginModal({
                     onClick={handleRequestCode}
                     disabled={isLoading || !handleId.trim()}
                     className="w-full flex items-center justify-center gap-2 py-3 rounded-xl 
-                             bg-accent-500 text-white font-medium
+                             bg-coral text-white font-medium
                              disabled:opacity-50 disabled:cursor-not-allowed
-                             hover:bg-accent-400 transition-colors"
+                             hover:bg-coral-light transition-colors"
                   >
                     {isLoading ? (
                       <>
@@ -249,6 +254,10 @@ export function VeryChatLoginModal({
                   exit={{ opacity: 0, x: -20 }}
                   className="space-y-4"
                 >
+                  {/* Code Step Icon - No container wrapper */}
+                  <div className="flex justify-center mb-4">
+                    <PinImageIcon size={64} />
+                  </div>
                   <div>
                     <label className="block text-sm font-medium text-dark-300 mb-2">
                       Verification Code
@@ -265,7 +274,7 @@ export function VeryChatLoginModal({
                     />
                     <p className="text-xs text-dark-500 mt-2">
                       Check your VeryChat for the 6-digit code sent to{" "}
-                      <span className="text-accent-400">
+                      <span className="text-coral">
                         @{handleId.replace("@", "")}
                       </span>
                     </p>
@@ -295,9 +304,9 @@ export function VeryChatLoginModal({
                       onClick={handleVerifyCode}
                       disabled={isLoading || verificationCode.length !== 6}
                       className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl 
-                               bg-accent-500 text-white font-medium
+                               bg-coral text-white font-medium
                                disabled:opacity-50 disabled:cursor-not-allowed
-                               hover:bg-accent-400 transition-colors"
+                               hover:bg-coral-light transition-colors"
                     >
                       {isLoading ? (
                         <>
@@ -316,7 +325,7 @@ export function VeryChatLoginModal({
                     className={`w-full text-sm transition-colors ${
                       resendCooldown > 0
                         ? "text-dark-500 cursor-not-allowed"
-                        : "text-dark-400 hover:text-accent-400"
+                        : "text-dark-400 hover:text-coral"
                     }`}
                   >
                     {resendCooldown > 0
@@ -337,10 +346,9 @@ export function VeryChatLoginModal({
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     transition={{ type: "spring", bounce: 0.5 }}
-                    className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-500/20 
-                             flex items-center justify-center"
+                    className="w-20 h-20 mx-auto mb-4 flex items-center justify-center"
                   >
-                    <CheckCircle className="w-8 h-8 text-green-400" />
+                    <ConfettiImageIcon size={72} />
                   </motion.div>
                   <h4 className="text-lg font-semibold text-white mb-2">
                     Connected Successfully!

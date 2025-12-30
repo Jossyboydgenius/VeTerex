@@ -4,33 +4,51 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Primary gradient colors - Modern Web3 palette
-        primary: {
-          50: "#f0f9ff",
-          100: "#e0f2fe",
-          200: "#bae6fd",
-          300: "#7dd3fc",
-          400: "#38bdf8",
-          500: "#0ea5e9",
-          600: "#0284c7",
-          700: "#0369a1",
-          800: "#075985",
-          900: "#0c4a6e",
-          950: "#082f49",
+        // Main brand colors from Figma
+        coral: {
+          DEFAULT: "#FF6D75",
+          light: "#FF8A90",
+          dark: "#E55A62",
         },
-        // Accent colors - Vibrant purple/violet
+        violet: {
+          DEFAULT: "#7C60FD",
+          light: "#9D87FF",
+          dark: "#6349E0",
+        },
+        // Primary - using coral as primary
+        primary: {
+          50: "#fff1f2",
+          100: "#ffe4e6",
+          200: "#fecdd3",
+          300: "#fda4ab",
+          400: "#ff8a90",
+          500: "#FF6D75",
+          600: "#e55a62",
+          700: "#c14851",
+          800: "#9f3d44",
+          900: "#83363d",
+          950: "#4a1a1e",
+        },
+        // Accent colors - Violet/Purple
         accent: {
-          50: "#faf5ff",
-          100: "#f3e8ff",
-          200: "#e9d5ff",
-          300: "#d8b4fe",
-          400: "#c084fc",
-          500: "#a855f7",
-          600: "#9333ea",
-          700: "#7c3aed",
-          800: "#6b21a8",
-          900: "#581c87",
-          950: "#3b0764",
+          50: "#f5f3ff",
+          100: "#ede9fe",
+          200: "#ddd6fe",
+          300: "#c4b5fd",
+          400: "#9D87FF",
+          500: "#7C60FD",
+          600: "#6349E0",
+          700: "#5137c4",
+          800: "#432da0",
+          900: "#382983",
+          950: "#221863",
+        },
+        // Brand red
+        brand: {
+          red: "#F72349",
+          yellow: "#FEEA46",
+          green: "#4BE15A",
+          disable: "#994146",
         },
         // NFT badge colors
         nft: {
@@ -39,7 +57,7 @@ export default {
           bronze: "#f59e0b",
           platinum: "#e5e7eb",
         },
-        // Dark theme colors
+        // Dark theme colors - updated for new BG gradient
         dark: {
           50: "#f8fafc",
           100: "#f1f5f9",
@@ -49,30 +67,46 @@ export default {
           500: "#64748b",
           600: "#475569",
           700: "#334155",
-          800: "#1e293b",
-          900: "#0f172a",
-          950: "#020617",
+          800: "#1D212B",
+          900: "#292347",
+          950: "#151821",
         },
       },
       backgroundImage: {
         "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
         "gradient-conic":
           "conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))",
-        "web3-gradient": "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-        "nft-gradient": "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+        // Main gradient from Figma
+        "main-gradient":
+          "linear-gradient(139.84deg, #FF6D75 50%, #9C86FF 96.42%)",
+        // Background gradient
+        "bg-gradient":
+          "linear-gradient(109.28deg, #1D212B 12.96%, #292347 87.04%)",
+        // Web3/NFT gradients
+        "web3-gradient": "linear-gradient(135deg, #FF6D75 0%, #7C60FD 100%)",
+        "nft-gradient": "linear-gradient(135deg, #FF6D75 0%, #9D87FF 100%)",
         "card-gradient":
-          "linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)",
+          "linear-gradient(135deg, rgba(255,109,117,0.1) 0%, rgba(124,96,253,0.1) 100%)",
+        // Button gradients
+        "coral-gradient":
+          "linear-gradient(139.84deg, #FF6D75 50%, #9C86FF 96.42%)",
+        "violet-gradient": "linear-gradient(135deg, #9D87FF 0%, #7C60FD 100%)",
       },
       animation: {
         glow: "glow 2s ease-in-out infinite alternate",
+        "glow-coral": "glow-coral 2s ease-in-out infinite alternate",
         float: "float 3s ease-in-out infinite",
         "pulse-slow": "pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite",
         shimmer: "shimmer 2s linear infinite",
       },
       keyframes: {
         glow: {
-          "0%": { boxShadow: "0 0 20px rgba(168, 85, 247, 0.4)" },
-          "100%": { boxShadow: "0 0 30px rgba(168, 85, 247, 0.8)" },
+          "0%": { boxShadow: "0 0 20px rgba(124, 96, 253, 0.4)" },
+          "100%": { boxShadow: "0 0 30px rgba(124, 96, 253, 0.8)" },
+        },
+        "glow-coral": {
+          "0%": { boxShadow: "0 0 20px rgba(255, 109, 117, 0.4)" },
+          "100%": { boxShadow: "0 0 30px rgba(255, 109, 117, 0.8)" },
         },
         float: {
           "0%, 100%": { transform: "translateY(0)" },
@@ -84,9 +118,13 @@ export default {
         },
       },
       boxShadow: {
-        neon: '0 0 5px theme("colors.accent.400"), 0 0 20px theme("colors.accent.600")',
+        neon: "0 0 5px rgba(124, 96, 253, 0.5), 0 0 20px rgba(124, 96, 253, 0.3)",
         "neon-lg":
-          '0 0 10px theme("colors.accent.400"), 0 0 40px theme("colors.accent.600")',
+          "0 0 10px rgba(124, 96, 253, 0.5), 0 0 40px rgba(124, 96, 253, 0.3)",
+        "neon-coral":
+          "0 0 5px rgba(255, 109, 117, 0.5), 0 0 20px rgba(255, 109, 117, 0.3)",
+        "neon-coral-lg":
+          "0 0 10px rgba(255, 109, 117, 0.5), 0 0 40px rgba(255, 109, 117, 0.3)",
         card: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
         "card-hover":
           "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",

@@ -551,10 +551,10 @@ export function HomePage() {
           className={`flex items-center gap-3 p-3 rounded-xl border ${
             currentSite.isSupported
               ? currentSite.isTracking
-                ? "bg-green-500/10 border-green-500/30"
+                ? "bg-brand-green/10 border-brand-green/30"
                 : currentSite.isEnabled
-                ? "bg-accent-500/10 border-accent-500/30"
-                : "bg-yellow-500/10 border-yellow-500/30"
+                ? "bg-coral/10 border-coral/30"
+                : "bg-brand-yellow/10 border-brand-yellow/30"
               : "bg-dark-800 border-dark-700"
           }`}
         >
@@ -562,20 +562,20 @@ export function HomePage() {
             className={`w-10 h-10 rounded-lg flex items-center justify-center ${
               currentSite.isSupported
                 ? currentSite.isTracking
-                  ? "bg-green-500/20"
+                  ? "bg-brand-green/20"
                   : currentSite.isEnabled
-                  ? "bg-accent-500/20"
-                  : "bg-yellow-500/20"
+                  ? "bg-coral/20"
+                  : "bg-brand-yellow/20"
                 : "bg-dark-700"
             }`}
           >
             {currentSite.isSupported ? (
               currentSite.isTracking ? (
-                <CheckCircle className="w-5 h-5 text-green-400" />
+                <CheckCircle className="w-5 h-5 text-brand-green" />
               ) : currentSite.isEnabled ? (
-                <Globe className="w-5 h-5 text-accent-400" />
+                <Globe className="w-5 h-5 text-coral" />
               ) : (
-                <Power className="w-5 h-5 text-yellow-400" />
+                <Power className="w-5 h-5 text-brand-yellow" />
               )
             ) : (
               <AlertCircle className="w-5 h-5 text-dark-400" />
@@ -589,10 +589,10 @@ export function HomePage() {
               className={`text-xs ${
                 currentSite.isSupported
                   ? currentSite.isTracking
-                    ? "text-green-400"
+                    ? "text-brand-green"
                     : currentSite.isEnabled
-                    ? "text-accent-400"
-                    : "text-yellow-400"
+                    ? "text-coral"
+                    : "text-brand-yellow"
                   : "text-dark-400"
               }`}
             >
@@ -606,13 +606,13 @@ export function HomePage() {
             </p>
           </div>
           {currentSite.isTracking ? (
-            <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+            <div className="w-2 h-2 rounded-full bg-brand-green animate-pulse" />
           ) : currentSite.isSupported && !currentSite.isEnabled ? (
             <button
               onClick={handleEnableSite}
               className="px-3 py-1.5 text-xs font-medium text-white 
-                       bg-gradient-to-r from-yellow-500 to-orange-500 
-                       rounded-lg hover:from-yellow-400 hover:to-orange-400 
+                       bg-gradient-to-r from-brand-yellow to-brand-yellow 
+                       rounded-lg hover:opacity-90 
                        transition-all duration-200 flex items-center gap-1.5"
             >
               <Power className="w-3.5 h-3.5" />
@@ -622,8 +622,8 @@ export function HomePage() {
             <button
               onClick={handleAddCustomSite}
               className="px-3 py-1.5 text-xs font-medium text-white 
-                       bg-gradient-to-r from-accent-500 to-primary-500 
-                       rounded-lg hover:from-accent-400 hover:to-primary-400 
+                       bg-main-gradient 
+                       rounded-lg hover:opacity-90 
                        transition-all duration-200 flex items-center gap-1.5"
             >
               <Plus className="w-3.5 h-3.5" />
@@ -641,7 +641,7 @@ export function HomePage() {
         >
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <Activity className="w-5 h-5 text-accent-400" />
+              <Activity className="w-5 h-5 text-coral" />
               <h2 className="text-lg font-semibold text-white">
                 Tracking Your Progress
               </h2>
@@ -715,7 +715,7 @@ export function HomePage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.4 }}
-              className="text-sm text-accent-400"
+              className="text-sm text-coral"
             >
               Connect your wallet to start tracking
             </motion.p>
@@ -724,9 +724,9 @@ export function HomePage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.4 }}
-              className="flex items-center justify-center gap-2 text-sm text-green-400"
+              className="flex items-center justify-center gap-2 text-sm text-brand-green"
             >
-              <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+              <div className="w-2 h-2 rounded-full bg-brand-green animate-pulse" />
               <span>Wallet Connected</span>
             </motion.div>
           )}
@@ -734,9 +734,7 @@ export function HomePage() {
       )}
 
       {/* Series Bookmarks */}
-      {isExtension && (
-        <SeriesBookmarksPanel />
-      )}
+      {isExtension && <SeriesBookmarksPanel />}
 
       {/* Stats - Temporarily disabled */}
       {SHOW_STATS && (
@@ -754,7 +752,7 @@ export function HomePage() {
               transition={{ delay: 0.4 + index * 0.1 }}
               className="card text-center py-4"
             >
-              <Icon className="w-5 h-5 mx-auto text-accent-400 mb-2" />
+              <Icon className="w-5 h-5 mx-auto text-coral mb-2" />
               <p className="text-lg font-bold text-white">{value}</p>
               <p className="text-xs text-dark-400">{label}</p>
             </motion.div>
@@ -768,7 +766,7 @@ export function HomePage() {
           <h2 className="text-lg font-semibold text-white">Explore by Type</h2>
           <Link
             to="/explore"
-            className="flex items-center gap-1 text-sm text-accent-400 hover:text-accent-300"
+            className="flex items-center gap-1 text-sm text-coral hover:text-coral-light"
           >
             <span>See all</span>
             <ArrowRight className="w-4 h-4" />
@@ -817,7 +815,7 @@ export function HomePage() {
             <h2 className="text-lg font-semibold text-white">Your Progress</h2>
             <Link
               to="/collection"
-              className="flex items-center gap-1 text-sm text-accent-400 hover:text-accent-300"
+              className="flex items-center gap-1 text-sm text-coral hover:text-coral-light"
             >
               <span>View all</span>
               <ArrowRight className="w-4 h-4" />
@@ -827,16 +825,16 @@ export function HomePage() {
           <div className="card">
             <div className="flex items-center gap-4">
               <div
-                className="w-14 h-14 rounded-xl bg-gradient-to-br from-accent-500/20 to-primary-500/20 
-                            flex items-center justify-center border border-accent-500/30"
+                className="w-14 h-14 rounded-xl bg-gradient-to-br from-coral/20 to-violet/20 
+                            flex items-center justify-center border border-coral/30"
               >
-                <Award className="w-7 h-7 text-accent-400" />
+                <Award className="w-7 h-7 text-coral" />
               </div>
               <div className="flex-1">
                 <p className="text-2xl font-bold text-white">
                   {completions.length}
                 </p>
-                <p className="text-sm text-dark-400">NFTs in your collection</p>
+                <p className="text-xs text-dark-400">NFTs in your collection</p>
               </div>
               <Link to="/explore" className="btn-primary text-sm py-2 px-4">
                 Add More
@@ -859,10 +857,10 @@ export function HomePage() {
           <motion.div
             whileHover={{ scale: 1.01 }}
             whileTap={{ scale: 0.99 }}
-            className="card flex items-center gap-4 hover:border-accent-500/50"
+            className="card flex items-center gap-4 hover:border-coral/50"
           >
-            <div className="w-10 h-10 rounded-xl bg-accent-500/20 flex items-center justify-center">
-              <BookOpen className="w-5 h-5 text-accent-400" />
+            <div className="w-10 h-10 rounded-xl bg-coral/20 flex items-center justify-center">
+              <BookOpen className="w-5 h-5 text-coral" />
             </div>
             <div className="flex-1">
               <p className="font-medium text-white">Record a Completion</p>
@@ -878,10 +876,10 @@ export function HomePage() {
           <motion.div
             whileHover={{ scale: 1.01 }}
             whileTap={{ scale: 0.99 }}
-            className="card flex items-center gap-4 hover:border-accent-500/50"
+            className="card flex items-center gap-4 hover:border-coral/50"
           >
-            <div className="w-10 h-10 rounded-xl bg-primary-500/20 flex items-center justify-center">
-              <Users className="w-5 h-5 text-primary-400" />
+            <div className="w-10 h-10 rounded-xl bg-violet/20 flex items-center justify-center">
+              <Users className="w-5 h-5 text-violet" />
             </div>
             <div className="flex-1">
               <p className="font-medium text-white">Find Your Community</p>
@@ -1125,7 +1123,7 @@ function AddCustomSiteModal({
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={handleAddSite}
-                className="flex-1 py-2.5 rounded-xl bg-accent-500 text-white font-medium"
+                className="flex-1 py-2.5 rounded-xl bg-coral text-white font-medium"
               >
                 Add Site
               </motion.button>

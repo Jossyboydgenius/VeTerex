@@ -331,7 +331,7 @@ export function GroupDetailPage() {
                       addToast({ type: "info", message: "Report submitted" });
                       setShowMoreMenu(false);
                     }}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-left text-red-400 hover:bg-dark-700 transition-colors"
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left text-coral hover:bg-dark-700 transition-colors"
                   >
                     <Flag className="w-4 h-4" />
                     <span className="text-sm">Report group</span>
@@ -392,8 +392,8 @@ export function GroupDetailPage() {
               onClick={() => setIsJoined(!isJoined)}
               className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
                 isJoined
-                  ? "bg-dark-700 text-dark-300 border border-dark-600"
-                  : "bg-accent-500 text-white"
+                  ? "bg-dark-700 text-dark-300 border border-dark-700"
+                  : "bg-coral text-white"
               }`}
             >
               {isJoined ? "Joined" : "Join Group"}
@@ -414,7 +414,7 @@ export function GroupDetailPage() {
                 transition-all duration-200
                 ${
                   activeTab === "discussion"
-                    ? "bg-accent-500 text-white"
+                    ? "bg-coral text-white"
                     : "text-dark-400 hover:text-white"
                 }
               `}
@@ -429,7 +429,7 @@ export function GroupDetailPage() {
                 transition-all duration-200
                 ${
                   activeTab === "members"
-                    ? "bg-accent-500 text-white"
+                    ? "bg-coral text-white"
                     : "text-dark-400 hover:text-white"
                 }
               `}
@@ -460,7 +460,7 @@ export function GroupDetailPage() {
                       whileTap={{ scale: 0.98 }}
                       onClick={handlePost}
                       disabled={!newPost.trim()}
-                      className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent-500 text-white text-sm font-medium disabled:opacity-50"
+                      className="flex items-center gap-2 px-4 py-2 rounded-lg bg-coral text-white text-sm font-medium disabled:opacity-50"
                     >
                       <Send className="w-4 h-4" />
                       <span>Post</span>
@@ -499,17 +499,17 @@ export function GroupDetailPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-4 pt-3 border-t border-dark-700">
-                    <button className="flex items-center gap-1 text-sm text-dark-400 hover:text-accent-400 transition-colors">
+                    <button className="flex items-center gap-1 text-sm text-dark-400 hover:text-coral transition-colors">
                       <Heart className="w-4 h-4" />
                       <span>{post.likes}</span>
                     </button>
-                    <button className="flex items-center gap-1 text-sm text-dark-400 hover:text-accent-400 transition-colors">
+                    <button className="flex items-center gap-1 text-sm text-dark-400 hover:text-coral transition-colors">
                       <MessageCircle className="w-4 h-4" />
                       <span>{post.replies}</span>
                     </button>
                     <button
                       onClick={() => sharePost(post.content)}
-                      className="flex items-center gap-1 text-sm text-dark-400 hover:text-accent-400 transition-colors ml-auto"
+                      className="flex items-center gap-1 text-sm text-dark-400 hover:text-coral transition-colors ml-auto"
                     >
                       <Share2 className="w-4 h-4" />
                     </button>
@@ -621,10 +621,10 @@ export function GroupDetailPage() {
                   <div className="space-y-3">
                     <button
                       onClick={copyShareLink}
-                      className="w-full flex items-center gap-3 p-3 rounded-xl bg-dark-700 hover:bg-dark-600 transition-colors"
+                      className="w-full flex items-center gap-3 p-3 rounded-xl bg-dark-700 hover:bg-dark-700/80 transition-colors"
                     >
                       {copied ? (
-                        <Check className="w-5 h-5 text-green-400" />
+                        <Check className="w-5 h-5 text-brand-green" />
                       ) : (
                         <Link className="w-5 h-5 text-dark-400" />
                       )}

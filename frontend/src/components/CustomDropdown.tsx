@@ -70,7 +70,7 @@ export function CustomDropdown({
         ref={buttonRef}
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between px-4 py-3 bg-dark-800 border border-dark-600 rounded-xl text-left transition-all hover:border-dark-500 focus:border-accent-500 focus:outline-none"
+        className="w-full flex items-center justify-between px-4 py-3 bg-dark-800 border border-dark-600 rounded-xl text-left transition-all hover:border-dark-500 focus:border-coral focus:outline-none"
       >
         <span className={selectedOption ? "text-white" : "text-dark-500"}>
           {selectedOption ? selectedOption.label : placeholder}
@@ -113,13 +113,13 @@ export function CustomDropdown({
                     }}
                     className={`w-full flex items-center justify-between px-4 py-3 text-left transition-colors ${
                       option.value === value
-                        ? "bg-accent-500/20 text-accent-400"
+                        ? "bg-coral/20 text-coral"
                         : "text-white hover:bg-dark-700"
                     }`}
                   >
                     <span>{option.label}</span>
                     {option.value === value && (
-                      <Check className="w-4 h-4 text-accent-400" />
+                      <Check className="w-4 h-4 text-coral" />
                     )}
                   </button>
                 ))}

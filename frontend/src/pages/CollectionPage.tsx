@@ -250,7 +250,7 @@ export function CollectionPage() {
           className="text-center"
         >
           <motion.div
-            className="w-24 h-24 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-accent-500/20 to-primary-500/20 flex items-center justify-center border border-accent-500/30"
+            className="w-24 h-24 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-coral/20 to-violet/20 flex items-center justify-center border border-coral/30"
             animate={{
               boxShadow: [
                 "0 0 20px rgba(168, 85, 247, 0.2)",
@@ -260,7 +260,7 @@ export function CollectionPage() {
             }}
             transition={{ duration: 2, repeat: Infinity }}
           >
-            <Library className="w-12 h-12 text-accent-400" />
+            <Library className="w-12 h-12 text-coral" />
           </motion.div>
           <h2 className="text-2xl font-bold gradient-text mb-3">
             Your Collection
@@ -291,7 +291,7 @@ export function CollectionPage() {
           </div>
 
           <p className="text-sm text-dark-500">
-            <span className="text-accent-400 font-semibold">12,450+</span> NFTs
+            <span className="text-coral font-semibold">12,450+</span> NFTs
             minted by users
           </p>
         </motion.div>
@@ -314,7 +314,7 @@ export function CollectionPage() {
             onClick={() => setViewMode("grid")}
             className={`p-2 rounded-md transition-colors ${
               viewMode === "grid"
-                ? "bg-accent-500 text-white"
+                ? "bg-coral text-white"
                 : "text-dark-400 hover:text-white"
             }`}
           >
@@ -324,7 +324,7 @@ export function CollectionPage() {
             onClick={() => setViewMode("list")}
             className={`p-2 rounded-md transition-colors ${
               viewMode === "list"
-                ? "bg-accent-500 text-white"
+                ? "bg-coral text-white"
                 : "text-dark-400 hover:text-white"
             }`}
           >
@@ -352,7 +352,7 @@ export function CollectionPage() {
                   )
                 }
               >
-                <Icon className="w-5 h-5 mx-auto text-accent-400 mb-1" />
+                <Icon className="w-5 h-5 mx-auto text-coral mb-1" />
                 <p className="text-lg font-bold text-white">{count}</p>
                 <p className="text-xs text-dark-400 capitalize">{type}s</p>
               </motion.div>
@@ -373,7 +373,7 @@ export function CollectionPage() {
               transition-all duration-200
               ${
                 selectedType === type
-                  ? "bg-accent-500 text-white"
+                  ? "bg-coral text-white"
                   : "bg-dark-800 text-dark-300 hover:bg-dark-700"
               }
             `}
@@ -407,7 +407,7 @@ export function CollectionPage() {
         </div>
       ) : (
         <div className="text-center py-12">
-          <Award className="w-12 h-12 mx-auto text-dark-600 mb-4" />
+          <Award className="w-12 h-12 mx-auto text-dark-700 mb-4" />
           <p className="text-dark-400">No NFTs in this category</p>
           <p className="text-sm text-dark-500 mt-1">
             Complete more {selectedType}s to earn NFTs!

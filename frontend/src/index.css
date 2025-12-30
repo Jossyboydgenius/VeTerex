@@ -3,10 +3,24 @@
 @tailwind utilities;
 
 :root {
-  --color-primary: #a855f7;
-  --color-secondary: #6366f1;
-  --color-background: #0f172a;
-  --color-surface: #1e293b;
+  /* Main brand colors */
+  --color-coral: #ff6d75;
+  --color-violet: #7c60fd;
+  --color-violet-light: #9d87ff;
+  --color-red: #f72349;
+  --color-disable: #994146;
+  --color-yellow: #feea46;
+  --color-green: #4be15a;
+
+  /* Background colors */
+  --color-bg-dark: #1d212b;
+  --color-bg-purple: #292347;
+
+  /* Legacy compatibility */
+  --color-primary: #ff6d75;
+  --color-secondary: #7c60fd;
+  --color-background: #1d212b;
+  --color-surface: #292347;
   --color-text: #f8fafc;
   --color-text-muted: #94a3b8;
 }
@@ -21,7 +35,7 @@ html,
 body {
   font-size: 16px;
   font-family: "Outfit", system-ui, -apple-system, sans-serif;
-  background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+  background: linear-gradient(109.28deg, #1d212b 12.96%, #292347 87.04%);
   color: var(--color-text);
   width: 100%;
   min-height: 100vh;
@@ -45,17 +59,17 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(30, 41, 59, 0.5);
+  background: rgba(29, 33, 43, 0.5);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(135deg, #a855f7 0%, #6366f1 100%);
+  background: linear-gradient(139.84deg, #ff6d75 50%, #9c86ff 96.42%);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(135deg, #c084fc 0%, #818cf8 100%);
+  background: linear-gradient(139.84deg, #ff8a90 50%, #b0a0ff 96.42%);
 }
 
 /* Glass morphism effect */
@@ -67,7 +81,7 @@ body {
 }
 
 .glass-dark {
-  background: rgba(15, 23, 42, 0.8);
+  background: rgba(29, 33, 43, 0.8);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.05);
@@ -75,38 +89,55 @@ body {
 
 /* Gradient text */
 .gradient-text {
-  background: linear-gradient(135deg, #a855f7 0%, #6366f1 50%, #38bdf8 100%);
+  background: linear-gradient(139.84deg, #ff6d75 50%, #9c86ff 96.42%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-text-violet {
+  background: linear-gradient(135deg, #9d87ff 0%, #7c60fd 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 /* Glow effects */
+.glow-coral {
+  box-shadow: 0 0 20px rgba(255, 109, 117, 0.3),
+    0 0 40px rgba(255, 109, 117, 0.2), 0 0 60px rgba(255, 109, 117, 0.1);
+}
+
+.glow-violet {
+  box-shadow: 0 0 20px rgba(124, 96, 253, 0.3), 0 0 40px rgba(124, 96, 253, 0.2),
+    0 0 60px rgba(124, 96, 253, 0.1);
+}
+
 .glow-purple {
-  box-shadow: 0 0 20px rgba(168, 85, 247, 0.3), 0 0 40px rgba(168, 85, 247, 0.2),
-    0 0 60px rgba(168, 85, 247, 0.1);
+  box-shadow: 0 0 20px rgba(124, 96, 253, 0.3), 0 0 40px rgba(124, 96, 253, 0.2),
+    0 0 60px rgba(124, 96, 253, 0.1);
 }
 
 .glow-blue {
-  box-shadow: 0 0 20px rgba(56, 189, 248, 0.3), 0 0 40px rgba(56, 189, 248, 0.2),
-    0 0 60px rgba(56, 189, 248, 0.1);
+  box-shadow: 0 0 20px rgba(157, 135, 255, 0.3),
+    0 0 40px rgba(157, 135, 255, 0.2), 0 0 60px rgba(157, 135, 255, 0.1);
 }
 
 /* NFT Card styles */
 .nft-card {
   background: linear-gradient(
     135deg,
-    rgba(168, 85, 247, 0.1) 0%,
-    rgba(99, 102, 241, 0.1) 100%
+    rgba(255, 109, 117, 0.1) 0%,
+    rgba(124, 96, 253, 0.1) 100%
   );
-  border: 1px solid rgba(168, 85, 247, 0.3);
+  border: 1px solid rgba(255, 109, 117, 0.3);
   transition: all 0.3s ease;
 }
 
 .nft-card:hover {
   transform: translateY(-4px);
-  border-color: rgba(168, 85, 247, 0.6);
-  box-shadow: 0 20px 40px rgba(168, 85, 247, 0.2);
+  border-color: rgba(255, 109, 117, 0.6);
+  box-shadow: 0 20px 40px rgba(255, 109, 117, 0.2);
 }
 
 /* Shimmer animation */
@@ -132,16 +163,20 @@ body {
 
 /* Button styles */
 .btn-primary {
-  @apply px-6 py-3 bg-gradient-to-r from-accent-500 to-primary-500 rounded-xl font-semibold text-white;
+  @apply px-6 py-3 rounded-xl font-semibold text-white;
+  background: linear-gradient(139.84deg, #ff6d75 50%, #9c86ff 96.42%);
   @apply transition-all duration-300 ease-out;
-  @apply hover:from-accent-400 hover:to-primary-400 hover:shadow-neon;
-  @apply active:scale-95;
+  @apply hover:shadow-neon-coral active:scale-95;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(139.84deg, #ff8a90 50%, #b0a0ff 96.42%);
 }
 
 .btn-secondary {
-  @apply px-6 py-3 bg-dark-800 border border-dark-600 rounded-xl font-semibold text-white;
+  @apply px-6 py-3 bg-dark-800 border border-dark-700 rounded-xl font-semibold text-white;
   @apply transition-all duration-300 ease-out;
-  @apply hover:bg-dark-700 hover:border-accent-500/50;
+  @apply hover:bg-dark-700 hover:border-coral/50;
   @apply active:scale-95;
 }
 
@@ -151,10 +186,24 @@ body {
   @apply hover:bg-dark-800/50 hover:text-white;
 }
 
+.btn-coral {
+  @apply px-6 py-3 rounded-xl font-semibold text-white;
+  background: var(--color-coral);
+  @apply transition-all duration-300 ease-out;
+  @apply hover:shadow-neon-coral active:scale-95;
+}
+
+.btn-violet {
+  @apply px-6 py-3 rounded-xl font-semibold text-white;
+  background: var(--color-violet);
+  @apply transition-all duration-300 ease-out;
+  @apply hover:shadow-neon active:scale-95;
+}
+
 /* Input styles */
 .input-field {
-  @apply w-full px-4 py-3 bg-dark-800/50 border border-dark-600 rounded-xl text-white;
-  @apply placeholder:text-dark-400 focus:outline-none focus:border-accent-500;
+  @apply w-full px-4 py-3 bg-dark-800/50 border border-dark-700 rounded-xl text-white;
+  @apply placeholder:text-dark-400 focus:outline-none focus:border-coral;
   @apply transition-all duration-200;
 }
 
@@ -170,13 +219,14 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"><path fill="%23ffffff" d="M20 3h-1V1h-2v2H7V1H5v2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 18H4V8h16v13z"/></svg>') !important;
 }
 
-.input-field[type="date"], input[type="date"] {
+.input-field[type="date"],
+input[type="date"] {
   color-scheme: dark;
 }
 
 .input-field-search {
-  @apply w-full pl-12 pr-10 py-3 bg-dark-800/50 border border-dark-600 rounded-xl text-white;
-  @apply placeholder:text-dark-400 focus:outline-none focus:border-accent-500;
+  @apply w-full pl-12 pr-10 py-3 bg-dark-800/50 border border-dark-700 rounded-xl text-white;
+  @apply placeholder:text-dark-400 focus:outline-none focus:border-coral;
   @apply transition-all duration-200;
 }
 
@@ -184,7 +234,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 .card {
   @apply p-4 rounded-2xl glass-dark border border-dark-700/50;
   @apply transition-all duration-300;
-  @apply hover:border-accent-500/30;
+  @apply hover:border-coral/30;
 }
 
 /* Media type badge colors */
@@ -192,7 +242,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   @apply bg-emerald-500/20 text-emerald-400 border-emerald-500/30;
 }
 .badge-movie {
-  @apply bg-red-500/20 text-red-400 border-red-500/30;
+  @apply bg-coral/20 text-coral border-coral/30;
 }
 .badge-anime {
   @apply bg-pink-500/20 text-pink-400 border-pink-500/30;
@@ -201,10 +251,10 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   @apply bg-orange-500/20 text-orange-400 border-orange-500/30;
 }
 .badge-comic {
-  @apply bg-yellow-500/20 text-yellow-400 border-yellow-500/30;
+  @apply bg-brand-yellow/20 text-brand-yellow border-brand-yellow/30;
 }
 .badge-tvshow {
-  @apply bg-blue-500/20 text-blue-400 border-blue-500/30;
+  @apply bg-violet/20 text-violet-light border-violet/30;
 }
 
 /* Achievement rarity */
@@ -212,14 +262,60 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   @apply border-gray-400 text-gray-400;
 }
 .rarity-uncommon {
-  @apply border-green-400 text-green-400;
+  @apply border-brand-green text-brand-green;
 }
 .rarity-rare {
-  @apply border-blue-400 text-blue-400;
+  @apply border-violet text-violet;
 }
 .rarity-epic {
-  @apply border-purple-400 text-purple-400;
+  @apply border-coral text-coral;
 }
 .rarity-legendary {
-  @apply border-yellow-400 text-yellow-400;
+  @apply border-brand-yellow text-brand-yellow;
+}
+
+/* App-specific gradient backgrounds */
+.bg-app-gradient {
+  background: linear-gradient(109.28deg, #1d212b 12.96%, #292347 87.04%);
+}
+
+.bg-main-gradient {
+  background: linear-gradient(139.84deg, #ff6d75 50%, #9c86ff 96.42%);
+}
+
+/* Icon containers */
+.icon-container {
+  @apply flex items-center justify-center rounded-xl;
+}
+
+.icon-container-sm {
+  @apply w-8 h-8;
+}
+
+.icon-container-md {
+  @apply w-10 h-10;
+}
+
+.icon-container-lg {
+  @apply w-12 h-12;
+}
+
+.icon-container-xl {
+  @apply w-16 h-16;
+}
+
+.icon-container-coral {
+  @apply bg-coral/20;
+}
+
+.icon-container-violet {
+  @apply bg-violet/20;
+}
+
+.icon-container-green {
+  @apply bg-brand-green/20;
+}
+
+.icon-container-yellow {
+  @apply bg-brand-yellow/20;
 }

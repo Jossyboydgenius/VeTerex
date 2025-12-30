@@ -116,7 +116,7 @@ export function MediaDetailPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-accent-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-coral border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -165,9 +165,9 @@ export function MediaDetailPage() {
 
           {/* Completed Badge */}
           {hasCompleted && (
-            <div className="absolute top-4 right-4 flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-500/20 border border-green-500/30">
-              <Check className="w-4 h-4 text-green-400" />
-              <span className="text-sm font-medium text-green-400">
+            <div className="absolute top-4 right-4 flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand-green/20 border border-brand-green/30">
+              <Check className="w-4 h-4 text-brand-green" />
+              <span className="text-sm font-medium text-brand-green">
                 Completed
               </span>
             </div>
@@ -217,7 +217,7 @@ export function MediaDetailPage() {
             className="flex gap-4"
           >
             <div className="flex-1 card text-center py-4">
-              <Users className="w-5 h-5 mx-auto text-accent-400 mb-1" />
+              <Users className="w-5 h-5 mx-auto text-coral mb-1" />
               <p className="text-lg font-bold text-white">
                 {media.totalCompletions.toLocaleString()}
               </p>
@@ -226,7 +226,7 @@ export function MediaDetailPage() {
 
             {media.metadata?.rating && (
               <div className="flex-1 card text-center py-4">
-                <Star className="w-5 h-5 mx-auto text-yellow-400 mb-1" />
+                <Star className="w-5 h-5 mx-auto text-brand-yellow mb-1" />
                 <p className="text-lg font-bold text-white">
                   {media.metadata.rating}
                 </p>
@@ -235,7 +235,7 @@ export function MediaDetailPage() {
             )}
 
             <div className="flex-1 card text-center py-4">
-              <Calendar className="w-5 h-5 mx-auto text-primary-400 mb-1" />
+              <Calendar className="w-5 h-5 mx-auto text-violet mb-1" />
               <p className="text-lg font-bold text-white">
                 {media.releaseYear}
               </p>
@@ -309,9 +309,9 @@ export function MediaDetailPage() {
               }
               target="_blank"
               rel="noopener noreferrer"
-              className="card flex items-center gap-3 hover:border-accent-500/50"
+              className="card flex items-center gap-3 hover:border-coral/50"
             >
-              <ExternalLink className="w-5 h-5 text-accent-400" />
+              <ExternalLink className="w-5 h-5 text-coral" />
               <span className="text-dark-300">
                 View on{" "}
                 {media.type === "movie" || media.type === "tvshow"
@@ -356,8 +356,8 @@ export function MediaDetailPage() {
               transition-all duration-200
               ${
                 hasCompleted
-                  ? "bg-green-500/20 border border-green-500/30 cursor-default"
-                  : "bg-gradient-to-r from-accent-500 to-primary-500 shadow-lg shadow-accent-500/30 hover:shadow-accent-500/50"
+                  ? "bg-brand-green/20 border border-brand-green/30 cursor-default"
+                  : "bg-main-gradient shadow-lg shadow-coral/30 hover:shadow-coral/50"
               }
             `}
           >

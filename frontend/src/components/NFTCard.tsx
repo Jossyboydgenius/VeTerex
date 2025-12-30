@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
-import { Award, Calendar, Star, ExternalLink } from "lucide-react";
+import { Calendar, Star, ExternalLink } from "lucide-react";
 import type { CompletionNFT } from "@/types";
+import { CrownIcon, StarIcon } from "./AppIcons";
 
 const rarityColors = {
   common: "from-gray-500 to-gray-600",
@@ -54,7 +55,7 @@ export function NFTCard({ nft, onClick }: NFTCardProps) {
             />
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-dark-700 to-dark-800 flex items-center justify-center">
-              <Award className="w-10 h-10 text-dark-500" />
+              <StarIcon isActive={true} size={40} />
             </div>
           )}
 
@@ -72,9 +73,7 @@ export function NFTCard({ nft, onClick }: NFTCardProps) {
 
           {/* Verified Badge */}
           <div className="absolute top-2 left-2">
-            <div className="w-6 h-6 rounded-md bg-dark-900/80 backdrop-blur flex items-center justify-center">
-              <Award className="w-3 h-3 text-accent-400" />
-            </div>
+            <CrownIcon isActive={true} size={20} />
           </div>
 
           {/* Gradient Overlay */}
@@ -121,7 +120,7 @@ export function NFTCard({ nft, onClick }: NFTCardProps) {
               #{nft.tokenId.slice(0, 8)}
             </span>
             <button
-              className="flex items-center gap-0.5 text-accent-400 hover:text-accent-300 transition-colors flex-shrink-0"
+              className="flex items-center gap-0.5 text-coral hover:text-coral-light transition-colors flex-shrink-0"
               onClick={(e) => {
                 e.stopPropagation();
                 // Open transaction in explorer

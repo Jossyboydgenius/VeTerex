@@ -72,7 +72,7 @@ export function MediaCard({
 
       {/* Info */}
       <div className="p-4">
-        <h3 className="font-semibold text-white text-sm line-clamp-2 mb-1 group-hover:text-accent-300 transition-colors">
+        <h3 className="font-semibold text-white text-sm line-clamp-2 mb-1 group-hover:text-coral-light transition-colors">
           {media.title}
         </h3>
         <p className="text-xs text-dark-400 mb-3">

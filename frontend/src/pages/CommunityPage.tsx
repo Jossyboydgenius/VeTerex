@@ -163,7 +163,7 @@ export function CommunityPage() {
           className="text-center"
         >
           <motion.div
-            className="w-24 h-24 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-primary-500/20 to-accent-500/20 flex items-center justify-center border border-primary-500/30"
+            className="w-24 h-24 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-violet/20 to-coral/20 flex items-center justify-center border border-violet/30"
             animate={{
               boxShadow: [
                 "0 0 20px rgba(99, 102, 241, 0.2)",
@@ -173,7 +173,7 @@ export function CommunityPage() {
             }}
             transition={{ duration: 2, repeat: Infinity }}
           >
-            <Users className="w-12 h-12 text-primary-400" />
+            <Users className="w-12 h-12 text-violet" />
           </motion.div>
           <h2 className="text-2xl font-bold gradient-text mb-3">Community</h2>
           <p className="text-dark-400 max-w-xs mx-auto mb-8">
@@ -202,14 +202,14 @@ export function CommunityPage() {
                 />
               </div>
             ))}
-            <div className="w-12 h-12 rounded-full bg-accent-500/20 border-2 border-dark-900 flex items-center justify-center">
-              <span className="text-xs text-accent-400 font-bold">+99</span>
+            <div className="w-12 h-12 rounded-full bg-coral/20 border-2 border-dark-900 flex items-center justify-center">
+              <span className="text-xs text-coral font-bold">+99</span>
             </div>
           </div>
 
           <p className="text-sm text-dark-500">
-            <span className="text-primary-400 font-semibold">3,200+</span>{" "}
-            active members
+            <span className="text-violet font-semibold">3,200+</span> active
+            members
           </p>
         </motion.div>
       </div>
@@ -233,7 +233,7 @@ export function CommunityPage() {
             transition-all duration-200
             ${
               activeTab === "groups"
-                ? "bg-accent-500 text-white"
+                ? "bg-coral text-white"
                 : "text-dark-400 hover:text-white"
             }
           `}
@@ -248,7 +248,7 @@ export function CommunityPage() {
             transition-all duration-200
             ${
               activeTab === "matches"
-                ? "bg-accent-500 text-white"
+                ? "bg-coral text-white"
                 : "text-dark-400 hover:text-white"
             }
           `}
@@ -332,10 +332,10 @@ export function CommunityPage() {
       ) : (
         <div className="space-y-6">
           {/* Matches Info */}
-          <div className="card bg-gradient-to-br from-accent-500/10 to-primary-500/10 border-accent-500/30">
+          <div className="card bg-gradient-to-br from-coral/10 to-violet/10 border-coral/30">
             <div className="flex items-start gap-4">
-              <div className="w-10 h-10 rounded-xl bg-accent-500/20 flex items-center justify-center flex-shrink-0">
-                <Sparkles className="w-5 h-5 text-accent-400" />
+              <div className="w-10 h-10 rounded-xl bg-coral/20 flex items-center justify-center flex-shrink-0">
+                <Sparkles className="w-5 h-5 text-coral" />
               </div>
               <div>
                 <h3 className="font-semibold text-white mb-1">NFT Matching</h3>
@@ -373,7 +373,7 @@ export function CommunityPage() {
                     <h3 className="font-semibold text-white">
                       {user.username}
                     </h3>
-                    <div className="flex items-center gap-1 text-sm text-accent-400">
+                    <div className="flex items-center gap-1 text-sm text-coral">
                       <Award className="w-3 h-3" />
                       <span>{user.commonNFTs} matching NFTs</span>
                     </div>
@@ -384,8 +384,8 @@ export function CommunityPage() {
                     onClick={() => toggleFriend(user.id)}
                     className={`p-2 rounded-lg transition-colors ${
                       addedFriends.has(user.id)
-                        ? "bg-green-500/20 text-green-400"
-                        : "bg-accent-500/20 text-accent-400 hover:bg-accent-500/30"
+                        ? "bg-brand-green/20 text-brand-green"
+                        : "bg-coral/20 text-coral hover:bg-coral/30"
                     }`}
                   >
                     {addedFriends.has(user.id) ? (
@@ -456,7 +456,7 @@ export function CommunityPage() {
                       className="w-full flex items-center gap-3 p-3 rounded-xl bg-dark-700 hover:bg-dark-600 transition-colors"
                     >
                       {copied ? (
-                        <Check className="w-5 h-5 text-green-400" />
+                        <Check className="w-5 h-5 text-brand-green" />
                       ) : (
                         <Link className="w-5 h-5 text-dark-400" />
                       )}

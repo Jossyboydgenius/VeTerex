@@ -156,7 +156,7 @@ export function ProfilePage() {
           className="text-center"
         >
           <motion.div
-            className="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-accent-500/20 to-primary-500/20 flex items-center justify-center border border-accent-500/30"
+            className="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-coral/20 to-violet/20 flex items-center justify-center border border-coral/30"
             animate={{
               boxShadow: [
                 "0 0 20px rgba(168, 85, 247, 0.2)",
@@ -166,7 +166,7 @@ export function ProfilePage() {
             }}
             transition={{ duration: 2, repeat: Infinity }}
           >
-            <User className="w-12 h-12 text-accent-400" />
+            <User className="w-12 h-12 text-coral" />
           </motion.div>
           <h2 className="text-2xl font-bold gradient-text mb-3">
             Your Profile
@@ -197,7 +197,7 @@ export function ProfilePage() {
             <button
               onClick={handleConnect}
               disabled={isConnecting}
-              className="text-accent-400 font-semibold cursor-pointer hover:text-accent-300 transition-colors hover:underline"
+              className="text-coral font-semibold cursor-pointer hover:text-coral-light transition-colors hover:underline"
             >
               Google
             </button>
@@ -205,7 +205,7 @@ export function ProfilePage() {
             <button
               onClick={handleConnect}
               disabled={isConnecting}
-              className="text-accent-400 font-semibold cursor-pointer hover:text-accent-300 transition-colors hover:underline"
+              className="text-coral font-semibold cursor-pointer hover:text-coral-light transition-colors hover:underline"
             >
               Apple
             </button>
@@ -213,7 +213,7 @@ export function ProfilePage() {
             <button
               onClick={handleConnect}
               disabled={isConnecting}
-              className="text-accent-400 font-semibold cursor-pointer hover:text-accent-300 transition-colors hover:underline"
+              className="text-coral font-semibold cursor-pointer hover:text-coral-light transition-colors hover:underline"
             >
               Email
             </button>
@@ -233,7 +233,7 @@ export function ProfilePage() {
       >
         {/* Avatar */}
         <div className="relative inline-block mb-4">
-          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-accent-500 to-primary-500 p-[3px]">
+          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-coral to-violet p-[3px]">
             <div className="w-full h-full rounded-full bg-dark-900 flex items-center justify-center overflow-hidden">
               {authMethod === "verychat" && verychatUser?.profileImage ? (
                 <img
@@ -246,7 +246,7 @@ export function ProfilePage() {
               )}
             </div>
           </div>
-          <button className="absolute bottom-0 right-0 p-2 rounded-full bg-accent-500 text-white hover:bg-accent-400 transition-colors">
+          <button className="absolute bottom-0 right-0 p-2 rounded-full bg-coral text-white hover:bg-coral-light transition-colors">
             <Edit3 className="w-4 h-4" />
           </button>
         </div>
@@ -264,7 +264,7 @@ export function ProfilePage() {
                 className="p-1 rounded hover:bg-dark-700 transition-colors"
               >
                 {copied ? (
-                  <Check className="w-4 h-4 text-green-400" />
+                  <Check className="w-4 h-4 text-brand-green" />
                 ) : (
                   <Copy className="w-4 h-4" />
                 )}
@@ -275,7 +275,7 @@ export function ProfilePage() {
 
         {/* Network Badge */}
         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-dark-800 text-sm">
-          <div className="w-2 h-2 rounded-full bg-green-400" />
+          <div className="w-2 h-2 rounded-full bg-brand-green" />
           <span className="text-dark-300">
             {authMethod === "verychat"
               ? "VeryChat"
@@ -293,7 +293,7 @@ export function ProfilePage() {
       >
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-semibold text-white">Your Achievements</h2>
-          <div className="flex items-center gap-1 text-accent-400">
+          <div className="flex items-center gap-1 text-coral">
             <Award className="w-4 h-4" />
             <span className="font-bold">{completions.length}</span>
           </div>
@@ -310,12 +310,12 @@ export function ProfilePage() {
                   <div
                     className={`
                   w-10 h-10 mx-auto rounded-xl flex items-center justify-center mb-1
-                  ${count > 0 ? "bg-accent-500/20" : "bg-dark-700"}
+                  ${count > 0 ? "bg-coral/20" : "bg-dark-700"}
                 `}
                   >
                     <Icon
                       className={`w-5 h-5 ${
-                        count > 0 ? "text-accent-400" : "text-dark-500"
+                        count > 0 ? "text-coral" : "text-dark-500"
                       }`}
                     />
                   </div>
@@ -401,7 +401,7 @@ export function ProfilePage() {
 
         <button
           onClick={() => navigate("/settings")}
-          className="card w-full flex items-center gap-4 hover:border-dark-600 transition-colors"
+          className="card w-full flex items-center gap-4 hover:border-dark-700 transition-colors"
         >
           <div className="w-10 h-10 rounded-xl bg-dark-700 flex items-center justify-center">
             <Settings className="w-5 h-5 text-dark-400" />
@@ -417,9 +417,9 @@ export function ProfilePage() {
 
         <button
           onClick={handleLogout}
-          className="card w-full flex items-center gap-4 border-red-500/20 hover:border-red-500/40 hover:bg-red-500/5 transition-colors"
+          className="card w-full flex items-center gap-4 border-brand-red/20 hover:border-brand-red/40 hover:bg-brand-red/5 transition-colors"
         >
-          <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-brand-red/10 flex items-center justify-center">
             <LogOut className="w-5 h-5 text-red-400" />
           </div>
           <div className="flex-1 text-left">

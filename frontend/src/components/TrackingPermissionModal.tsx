@@ -107,8 +107,8 @@ export function TrackingPermissionModal({
                 </button>
 
                 {/* Icon - Commented out as requested */}
-                {/* <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-accent-500/20 to-primary-500/20 flex items-center justify-center border border-accent-500/30">
-                  <Shield className="w-8 h-8 text-accent-400" />
+                {/* <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-coral/20 to-violet/20 flex items-center justify-center border border-coral/30">
+                  <Shield className="w-8 h-8 text-coral" />
                 </div> */}
 
                 <h2 className="text-xl font-bold text-white mb-2">
@@ -125,7 +125,7 @@ export function TrackingPermissionModal({
                 {features.map(({ icon: Icon, title, description }) => (
                   <div key={title} className="flex gap-4">
                     <div className="w-10 h-10 rounded-xl bg-dark-800 flex items-center justify-center flex-shrink-0">
-                      <Icon className="w-5 h-5 text-accent-400" />
+                      <Icon className="w-5 h-5 text-coral" />
                     </div>
                     <div>
                       <p className="text-white font-medium text-sm">{title}</p>
@@ -141,9 +141,9 @@ export function TrackingPermissionModal({
                   onClick={handleAllow}
                   disabled={isRequesting}
                   className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl
-                           bg-gradient-to-r from-accent-500 to-primary-500 
+                           bg-gradient-to-r from-coral to-violet 
                            text-white font-medium
-                           hover:from-accent-400 hover:to-primary-400
+                           hover:from-coral-light hover:to-violet-light
                            disabled:opacity-50 disabled:cursor-not-allowed
                            transition-all duration-200"
                 >

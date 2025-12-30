@@ -227,7 +227,7 @@ export function ExplorePage() {
               transition-all duration-200
               ${
                 selectedType === type
-                  ? "bg-accent-500 text-white"
+                  ? "bg-coral text-white"
                   : "bg-dark-800 text-dark-300 hover:bg-dark-700"
               }
             `}
@@ -272,7 +272,7 @@ export function ExplorePage() {
             ))
           ) : (
             <div className="col-span-2 text-center py-12">
-              <Search className="w-12 h-12 mx-auto text-dark-600 mb-4" />
+              <Search className="w-12 h-12 mx-auto text-dark-700 mb-4" />
               <p className="text-dark-400">No results found</p>
               <p className="text-sm text-dark-500 mt-1">
                 Try adjusting your search or filters

@@ -1,30 +1,30 @@
-import { motion, AnimatePresence } from 'framer-motion'
-import { X, CheckCircle, AlertCircle, Info, AlertTriangle } from 'lucide-react'
-import { useAppStore } from '@/store/useAppStore'
+import { motion, AnimatePresence } from "framer-motion";
+import { X, CheckCircle, AlertCircle, Info, AlertTriangle } from "lucide-react";
+import { useAppStore } from "@/store/useAppStore";
 
 const icons = {
   success: CheckCircle,
   error: AlertCircle,
   info: Info,
   warning: AlertTriangle,
-}
+};
 
 const colors = {
-  success: 'bg-green-500/10 border-green-500/30 text-green-400',
-  error: 'bg-red-500/10 border-red-500/30 text-red-400',
-  info: 'bg-blue-500/10 border-blue-500/30 text-blue-400',
-  warning: 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400',
-}
+  success: "bg-brand-green/10 border-brand-green/30 text-brand-green",
+  error: "bg-coral/10 border-coral/30 text-coral",
+  info: "bg-violet/10 border-violet/30 text-violet-light",
+  warning: "bg-brand-yellow/10 border-brand-yellow/30 text-brand-yellow",
+};
 
 export function ToastContainer() {
-  const { toasts, removeToast } = useAppStore()
-  
+  const { toasts, removeToast } = useAppStore();
+
   return (
     <div className="fixed top-16 right-4 z-[100] flex flex-col gap-2 max-w-[calc(100%-2rem)] w-80">
       <AnimatePresence mode="popLayout">
         {toasts.map((toast) => {
-          const Icon = icons[toast.type]
-          
+          const Icon = icons[toast.type];
+
           return (
             <motion.div
               key={toast.id}
@@ -45,9 +45,9 @@ export function ToastContainer() {
                 <X className="w-4 h-4" />
               </button>
             </motion.div>
-          )
+          );
         })}
       </AnimatePresence>
     </div>
-  )
+  );
 }
