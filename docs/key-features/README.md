@@ -1,8 +1,10 @@
-# features
+# Key Features
 
-## 🎬 Media Tracking
+##
 
-### Automatic Progress Detection
+### 🎬 Media Tracking
+
+#### Automatic Progress Detection
 
 VeTerex monitors your media consumption on supported platforms:
 
@@ -10,7 +12,7 @@ VeTerex monitors your media consumption on supported platforms:
 * **Reading Platforms** - Goodreads, Kindle, MangaDex
 * **Tracking Sites** - MyAnimeList, AniList
 
-### Smart Completion Detection
+#### Smart Completion Detection
 
 * Tracks watch/read time and progress percentage
 * Detects when you've genuinely completed content
@@ -18,9 +20,9 @@ VeTerex monitors your media consumption on supported platforms:
 
 ***
 
-## 🎖️ Soulbound NFTs
+### 🎖️ Soulbound NFTs
 
-### Non-Transferable Achievements
+#### Non-Transferable Achievements
 
 Each completion mints a unique soulbound NFT:
 
@@ -38,7 +40,7 @@ Each completion mints a unique soulbound NFT:
 └─────────────────────────────┘
 ```
 
-### NFT Properties
+#### NFT Properties
 
 * **Bound to your wallet** - Cannot be transferred or sold
 * **Permanent record** - Stored on Verychain forever
@@ -46,9 +48,9 @@ Each completion mints a unique soulbound NFT:
 
 ***
 
-## 👥 Community Features
+### 👥 Community Features
 
-### Find Your Tribe
+#### Find Your Tribe
 
 Connect with users who have the same completions:
 
@@ -56,7 +58,7 @@ Connect with users who have the same completions:
 * **Similar Users** - Discover people with matching NFTs
 * **Messaging** - Chat with users who completed the same media
 
-### Group Membership
+#### Group Membership
 
 * Join groups only if you've completed the media
 * Leave groups anytime
@@ -64,30 +66,30 @@ Connect with users who have the same completions:
 
 ***
 
-## 🔐 Secure Wallet
+### 🔐 Secure Wallet
 
-### Powered by Wepin SDK
+#### Powered by Wepin SDK
 
 * Easy login with Google, Apple, or Discord
 * No complex seed phrases for beginners
 * Works as Chrome Extension or Web App
 
-### Multi-Platform
+#### Multi-Platform
 
 * Use as a **Chrome Extension** for tracking
 * Access as a **Web App** for management
 
 ***
 
-## 📊 Your Collection
+### 📊 Your Collection
 
-### Track Everything
+#### Track Everything
 
 * View all your minted NFTs in one place
 * Filter by media type
 * Track completion history
 
-### Profile Dashboard
+#### Profile Dashboard
 
 * See your total completions
 * View achievement timeline
@@ -95,4 +97,4 @@ Connect with users who have the same completions:
 
 ***
 
-Next: [Learn about Verychain →](/broken/pages/637d0123b8804a89c72418857a45bf97755f72f7)
+**Next:** Learn about Verychain →
