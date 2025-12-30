@@ -15,12 +15,16 @@ import {
   Globe,
   CheckCircle,
   AlertCircle,
+  Plus,
+  X,
+  Power,
 } from "lucide-react";
 import { useAppStore, type TrackedMedia } from "@/store/useAppStore";
 import {
   TrackingPermissionModal,
   TrackedMediaCard,
   MintNFTModal,
+  CustomDropdown,
 } from "@/components";
 
 // Check if running as Chrome extension
@@ -36,6 +40,8 @@ interface CurrentSiteInfo {
   isSupported: boolean;
   platformName: string | null;
   isTracking: boolean;
+  isEnabled: boolean;
+  domain: string; // The domain to request permission for
 }
 
 const mediaTypes = [
@@ -99,6 +105,145 @@ const SUPPORTED_PLATFORMS: Record<string, string[]> = {
   MangaDex: ["mangadex.org"],
   MyAnimeList: ["myanimelist.net"],
   AniList: ["anilist.co"],
+  // Free streaming sites - Movies & TV
+  Hurawatch: ["hurawatch.tw", "hurawatch.cc"],
+  Filmboom: ["filmboom.top", "moviebox.ph"],
+  "9anime": ["9animetv.to", "9anime.to", "9anime.gs"],
+  Moviebox: ["moviebox.ph"],
+  Fmovies: ["fmovies.to", "fmovies.wtf", "fmovies.co", "ww4.fmovies.co"],
+  SolarMovie: [
+    "solarmovie.pe",
+    "solarmovie.to",
+    "solarmovie.one",
+    "wwv.solarmovie.one",
+    "solarmovie.cr",
+    "www3.solarmovie.cr",
+  ],
+  GogoAnime: ["gogoanime.hu", "gogoanime.gg", "anitaku.to", "gogoanime.by"],
+  Zoro: ["zoro.to", "aniwatch.to", "zoroto.se", "www.zoroto.se"],
+  Animixplay: ["animixplay.to"],
+  Webtoon: ["webtoons.com"],
+  Tapas: ["tapas.io"],
+  Comick: ["comick.io", "comick.fun", "comick.dev"],
+  Mangakakalot: ["mangakakalot.com", "manganato.com", "mangakakalot.to"],
+  Mangasee: ["mangasee123.com", "weebcentral.com"],
+  Bato: ["bato.to", "bato.si"],
+  ReadComicOnline: ["readcomiconline.li"],
+  "123Movies": ["123movies.ai", "123movies.to"],
+  Putlocker: ["putlocker.vip"],
+  YesMovies: ["yesmovies.ag", "yesmovies.to"],
+  Soap2day: ["soap2day.to", "soap2day.rs", "soap2day.day", "ww25.soap2day.day"],
+  Animepahe: ["animepahe.com", "animepahe.ru"],
+  // Drama sites
+  KissKH: ["kisskh.id", "kisskh.me", "kisskh.co"],
+  Dramahood: ["dramahood.mom", "dramahood.se", "dramahood.cc"],
+  GoPlay: ["goplay.ml", "goplay.gg"],
+  DramaCool: ["dramacool.net.lc", "dramacool.sr", "dramacool.cr", "asianc.co"],
+  // Additional manga sites
+  ComixTo: ["comix.to"],
+  WeebCentral: ["weebcentral.com"],
+  // ========== ANIME STREAMING SITES ==========
+  AnimeKai: ["animekai.to", "animekai.cc"],
+  AniWave: ["aniwave.to", "aniwave.cc", "aniwave.se", "aniwave.live"],
+  AniWatch: ["aniwatch.to", "aniwatch.cc"],
+  AllAnimeG: ["allanimeg.to", "allanimeg.com"],
+  AniZone: ["anizone.to", "anizone.cc"],
+  AnimeSuge: ["animesuge.to", "animesuge.cc"],
+  Anix: ["anix.to", "anix.vc"],
+  HiAnime: ["hianime.to", "hianime.tv"],
+  Kaido: ["kaido.to", "kaido.cc"],
+  AnimeOnsen: ["animeonsen.xyz"],
+  AnimeOwl: ["animeowl.live", "animeowl.me"],
+  AnimeFox: ["animefox.tv", "animefox.cc"],
+  AnimeDao: ["animedao.to", "animedao.cc"],
+  AnimeFLV: ["animeflv.net", "animeflv.ws"],
+  AniCrush: ["anicrush.to"],
+  AnimeGG: ["animegg.org"],
+  AnimeLand: ["animeland.tv"],
+  Animension: ["animension.to"],
+  AnimeSA: ["animesa.ga"],
+  AnimeSaturn: ["animesaturn.cx", "animesaturn.tv"],
+  AnimeToast: ["animetoast.cc"],
+  AnimeXin: ["animexin.vip"],
+  AsianLoad: ["asianload.cc", "asianload.io"],
+  YugenAnime: ["yugenanime.ro", "yugenanime.tv"],
+  KickAssAnime: ["kickassanime.am", "kickassanime.mx"],
+  AnimeFire: ["animefire.plus", "animefire.net"],
+  AnimeFenix: ["animefenix.tv"],
+  AnimeKisa: ["animekisa.in"],
+  AnimeKu: ["animeku.me"],
+  BetterAnime: ["betteranime.net"],
+  Bilibili: ["bilibili.tv", "bilibili.com"],
+  MonosChinos: ["monoschinos.net", "monoschinos2.com"],
+  Nanime: ["nanime.co", "nanime.biz"],
+  NekoSama: ["neko-sama.fr"],
+  OtakuDesu: ["otakudesu.cloud", "otakudesu.cam"],
+  SuperAnimes: ["superanimes.org"],
+  TioAnime: ["tioanime.com"],
+  WCOFun: ["wcofun.cc", "wcofun.org", "wcoforever.org", "wcoforever.net"],
+  JKAnime: ["jkanime.net"],
+  // ========== MANGA/MANHWA/MANHUA SITES ==========
+  MangaHere: ["mangahere.cc", "mangahere.us"],
+  MangaPark: ["mangapark.net", "mangapark.to"],
+  MangaReader: ["mangareader.to", "mangareader.cc"],
+  MangaBuddy: ["mangabuddy.com"],
+  MangaClash: ["mangaclash.com"],
+  MangaFire: ["mangafire.to"],
+  MangaGo: ["mangago.me"],
+  MangaHub: ["mangahub.io"],
+  MangaIro: ["mangairo.com"],
+  MangaKomi: ["mangakomi.io"],
+  MangaLife: ["mangalife.us", "manga4life.com"],
+  Manganato: ["manganato.com", "chapmanganato.to"],
+  MangaOwl: ["mangaowl.to"],
+  MangaPill: ["mangapill.com"],
+  MangaPlex: ["mangaplex.com"],
+  MangaTX: ["mangatx.com"],
+  MangaWorld: ["mangaworld.ac"],
+  TCBScans: ["tcbscans.me", "tcbscans.com"],
+  Toonily: ["toonily.com", "toonily.net"],
+  Toonkor: ["toonkor.se"],
+  ReaperScans: ["reaperscans.com"],
+  AsuraScans: ["asurascans.com", "asuracomic.net"],
+  FlameComics: ["flamecomics.com", "flamecomics.me"],
+  LuminousScans: ["luminousscans.net", "luminousscans.com"],
+  // ========== DONGHUA SITES ==========
+  DonghuaStream: ["donghuastream.com"],
+  LuciferDonghua: ["luciferdonghua.in"],
+  MyAnime: ["myanime.live"],
+  AnimeKhor: ["animekhor.xyz"],
+  iQIYI: ["iq.com", "iqiyi.com"],
+  Youku: ["youku.tv", "youku.com"],
+  // ========== NOVEL/LIGHT NOVEL SITES ==========
+  NovelUpdates: ["novelupdates.com"],
+  WuxiaWorld: ["wuxiaworld.com", "wuxiaworld.site"],
+  RoyalRoad: ["royalroad.com"],
+  WebNovel: ["webnovel.com"],
+  LightNovelCave: ["lightnovelcave.com", "lightnovelworld.com"],
+  ReadLightNovel: ["readlightnovel.me", "readlightnovel.today"],
+  NovelFull: ["novelfull.com"],
+  NovelBin: ["novelbin.com", "novelbin.me"],
+  ScribbleHub: ["scribblehub.com"],
+  FreeWebNovel: ["freewebnovel.com"],
+  MTLNovel: ["mtlnovel.com"],
+  // ========== MOVIE/TV STREAMING SITES ==========
+  FlixHQ: ["flixhq.to", "flixhq.net"],
+  LookMovie: ["lookmovie.io", "lookmovie2.to"],
+  HDToday: ["hdtoday.cc", "hdtoday.tv"],
+  MoviesJoy: ["moviesjoy.to", "moviesjoy.is"],
+  KissAsian: ["kissasian.li", "kissasian.fan"],
+  DopeBox: ["dopebox.to", "dopebox.se"],
+  Sflix: ["sflix.to", "sflix.se"],
+  BFlixTo: ["bflix.to", "bflix.gs"],
+  MyFlixer: ["myflixer.to", "myflixer.today"],
+  CineZone: ["cinezone.to"],
+  WatchOMovies: ["watchomovies.com"],
+  Goojara: ["goojara.to", "goojarawatch.com"],
+  Vumoo: ["vumoo.to", "vumoo.life"],
+  PrimeWire: ["primewire.tf", "primewire.li"],
+  AZMovies: ["azmovies.net"],
+  WatchSeries: ["watchseries.id", "watchserieshd.tv"],
+  StreamingCommunity: ["streamingcommunity.photos"],
 };
 
 export function HomePage() {
@@ -138,9 +283,18 @@ export function HomePage() {
 
         // Check if it's a supported platform
         let platformName: string | null = null;
+        let platformDomain: string = hostname;
+
         for (const [name, patterns] of Object.entries(SUPPORTED_PLATFORMS)) {
           if (patterns.some((p) => hostname.includes(p.replace("www.", "")))) {
             platformName = name;
+            // Find the matching pattern domain
+            const matchingPattern = patterns.find((p) =>
+              hostname.includes(p.replace("www.", ""))
+            );
+            if (matchingPattern) {
+              platformDomain = matchingPattern.replace("www.", "");
+            }
             break;
           }
         }
@@ -159,6 +313,7 @@ export function HomePage() {
                 siteDomain.includes(hostname)
               ) {
                 platformName = site.name || siteDomain;
+                platformDomain = siteDomain;
                 break;
               }
             } catch {
@@ -172,10 +327,19 @@ export function HomePage() {
                 siteDomain.includes(hostname)
               ) {
                 platformName = site.name || siteDomain;
+                platformDomain = siteDomain;
                 break;
               }
             }
           }
+        }
+
+        // Check if we have permission for this domain
+        let isEnabled = false;
+        if (platformName) {
+          const permissions = await chrome.permissions.getAll();
+          const origins = permissions.origins || [];
+          isEnabled = origins.some((o) => o.includes(platformDomain));
         }
 
         setCurrentSite({
@@ -184,6 +348,8 @@ export function HomePage() {
           isSupported: platformName !== null,
           platformName,
           isTracking: activeTracking.some((t) => t.url.includes(hostname)),
+          isEnabled,
+          domain: platformDomain,
         });
       } catch (error) {
         console.error("[VeTerex] Error detecting current site:", error);
@@ -309,6 +475,65 @@ export function HomePage() {
     removePendingMint(id);
   };
 
+  // Add custom site handler
+  const [showAddSiteModal, setShowAddSiteModal] = useState(false);
+  const [prefillSiteUrl, setPrefillSiteUrl] = useState("");
+  const [prefillSiteName, setPrefillSiteName] = useState("");
+
+  const handleAddCustomSite = () => {
+    if (currentSite) {
+      setPrefillSiteUrl(currentSite.hostname);
+      // Generate a clean name from hostname (e.g., "9animetv.to" -> "9animetv")
+      // and capitalize the first letter (e.g., "everythingmoe" -> "Everythingmoe")
+      const cleanName = currentSite.hostname
+        .replace(
+          /\.(com|net|org|io|to|tv|cc|ph|top|tw|gs|hu|gg|pe|ag|rs|ai|vip|li|fun|dev|si|id|mom|ml|lc|cr|se|by|day|one|co)$/i,
+          ""
+        )
+        .replace(/^www\./, "")
+        .replace(/^ww\d*\./, ""); // Remove prefixes like ww4., ww25., etc.
+      // Capitalize first letter
+      const capitalizedName =
+        cleanName.charAt(0).toUpperCase() + cleanName.slice(1);
+      setPrefillSiteName(capitalizedName);
+      setShowAddSiteModal(true);
+    }
+  };
+
+  // Enable tracking for a supported but disabled site
+  const handleEnableSite = async () => {
+    if (!currentSite || !isExtension) return;
+
+    try {
+      const domain = currentSite.domain;
+      const granted = await chrome.permissions.request({
+        origins: [`https://*.${domain}/*`],
+      });
+
+      if (granted) {
+        addToast({
+          type: "success",
+          message: `Tracking enabled for ${currentSite.platformName || domain}`,
+        });
+        // Update current site state to reflect the change
+        setCurrentSite((prev) => (prev ? { ...prev, isEnabled: true } : null));
+      } else {
+        addToast({
+          type: "error",
+          message: `Permission denied for ${
+            currentSite.platformName || domain
+          }`,
+        });
+      }
+    } catch (error) {
+      console.error("[VeTerex] Failed to enable tracking:", error);
+      addToast({
+        type: "error",
+        message: "Failed to enable tracking",
+      });
+    }
+  };
+
   // Combine active tracking and pending mints
   const allTrackedMedia = [
     ...pendingMints,
@@ -326,7 +551,9 @@ export function HomePage() {
             currentSite.isSupported
               ? currentSite.isTracking
                 ? "bg-green-500/10 border-green-500/30"
-                : "bg-accent-500/10 border-accent-500/30"
+                : currentSite.isEnabled
+                ? "bg-accent-500/10 border-accent-500/30"
+                : "bg-yellow-500/10 border-yellow-500/30"
               : "bg-dark-800 border-dark-700"
           }`}
         >
@@ -335,15 +562,19 @@ export function HomePage() {
               currentSite.isSupported
                 ? currentSite.isTracking
                   ? "bg-green-500/20"
-                  : "bg-accent-500/20"
+                  : currentSite.isEnabled
+                  ? "bg-accent-500/20"
+                  : "bg-yellow-500/20"
                 : "bg-dark-700"
             }`}
           >
             {currentSite.isSupported ? (
               currentSite.isTracking ? (
                 <CheckCircle className="w-5 h-5 text-green-400" />
-              ) : (
+              ) : currentSite.isEnabled ? (
                 <Globe className="w-5 h-5 text-accent-400" />
+              ) : (
+                <Power className="w-5 h-5 text-yellow-400" />
               )
             ) : (
               <AlertCircle className="w-5 h-5 text-dark-400" />
@@ -358,20 +589,46 @@ export function HomePage() {
                 currentSite.isSupported
                   ? currentSite.isTracking
                     ? "text-green-400"
-                    : "text-accent-400"
+                    : currentSite.isEnabled
+                    ? "text-accent-400"
+                    : "text-yellow-400"
                   : "text-dark-400"
               }`}
             >
               {currentSite.isSupported
                 ? currentSite.isTracking
                   ? "Currently tracking"
-                  : "Supported site - Play media to track"
+                  : currentSite.isEnabled
+                  ? "Supported site - Play media to track"
+                  : "Supported site - Enable to track"
                 : "Not a supported site"}
             </p>
           </div>
-          {currentSite.isTracking && (
+          {currentSite.isTracking ? (
             <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-          )}
+          ) : currentSite.isSupported && !currentSite.isEnabled ? (
+            <button
+              onClick={handleEnableSite}
+              className="px-3 py-1.5 text-xs font-medium text-white 
+                       bg-gradient-to-r from-yellow-500 to-orange-500 
+                       rounded-lg hover:from-yellow-400 hover:to-orange-400 
+                       transition-all duration-200 flex items-center gap-1.5"
+            >
+              <Power className="w-3.5 h-3.5" />
+              Enable
+            </button>
+          ) : !currentSite.isSupported ? (
+            <button
+              onClick={handleAddCustomSite}
+              className="px-3 py-1.5 text-xs font-medium text-white 
+                       bg-gradient-to-r from-accent-500 to-primary-500 
+                       rounded-lg hover:from-accent-400 hover:to-primary-400 
+                       transition-all duration-200 flex items-center gap-1.5"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Add Site
+            </button>
+          ) : null}
         </motion.div>
       )}
 
@@ -676,6 +933,200 @@ export function HomePage() {
           }}
         />
       )}
+
+      {/* Add Custom Site Modal */}
+      <AddCustomSiteModal
+        isOpen={showAddSiteModal}
+        onClose={() => {
+          setShowAddSiteModal(false);
+          setPrefillSiteUrl("");
+          setPrefillSiteName("");
+        }}
+        prefillUrl={prefillSiteUrl}
+        prefillName={prefillSiteName}
+        onSuccess={() => {
+          setShowAddSiteModal(false);
+          setPrefillSiteUrl("");
+          setPrefillSiteName("");
+          addToast({
+            type: "success",
+            message: "Custom site added successfully!",
+          });
+          // Refresh current site detection
+          if (currentSite) {
+            setCurrentSite({
+              ...currentSite,
+              isSupported: true,
+              platformName: prefillSiteName,
+            });
+          }
+        }}
+      />
     </div>
+  );
+}
+
+// Add Custom Site Modal Component
+interface AddCustomSiteModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  prefillUrl: string;
+  prefillName: string;
+  onSuccess: () => void;
+}
+
+function AddCustomSiteModal({
+  isOpen,
+  onClose,
+  prefillUrl,
+  prefillName,
+  onSuccess,
+}: AddCustomSiteModalProps) {
+  const [siteName, setSiteName] = useState(prefillName);
+  const [siteUrl, setSiteUrl] = useState(prefillUrl);
+  const [siteType, setSiteType] = useState("movie");
+  const { addToast } = useAppStore();
+
+  // Update state when prefill values change
+  useEffect(() => {
+    setSiteName(prefillName);
+    setSiteUrl(prefillUrl);
+  }, [prefillName, prefillUrl]);
+
+  const handleAddSite = async () => {
+    if (!siteName || !siteUrl) {
+      addToast({ type: "error", message: "Please fill in all fields" });
+      return;
+    }
+
+    try {
+      const url = new URL(
+        siteUrl.startsWith("http") ? siteUrl : `https://${siteUrl}`
+      );
+
+      const newSite = {
+        id: `custom-${Date.now()}`,
+        url: url.origin,
+        name: siteName,
+        type: siteType,
+        enabled: true,
+      };
+
+      // Get existing custom sites and add new one
+      if (typeof chrome !== "undefined" && chrome.storage) {
+        chrome.storage.local.get(["customSites"], (result) => {
+          const existingCustomSites = result.customSites || [];
+          const updatedSites = [...existingCustomSites, newSite];
+          chrome.storage.local.set({ customSites: updatedSites }, () => {
+            onSuccess();
+          });
+        });
+      } else {
+        // Fallback for non-extension environment
+        onSuccess();
+      }
+    } catch {
+      addToast({ type: "error", message: "Invalid URL format" });
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[150]"
+      />
+      <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.95 }}
+          className="w-full max-w-md"
+        >
+          <div className="bg-dark-900 rounded-2xl border border-dark-700 p-6 shadow-xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-white">
+                Add Custom Website
+              </h3>
+              <button
+                onClick={onClose}
+                className="p-2 rounded-lg hover:bg-dark-700 transition-colors"
+              >
+                <X className="w-5 h-5 text-dark-400" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-dark-300 mb-2">
+                  Website Name
+                </label>
+                <input
+                  type="text"
+                  value={siteName}
+                  onChange={(e) => setSiteName(e.target.value)}
+                  placeholder="e.g., 9anime"
+                  className="input-field"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-dark-300 mb-2">
+                  Website URL
+                </label>
+                <input
+                  type="text"
+                  value={siteUrl}
+                  onChange={(e) => setSiteUrl(e.target.value)}
+                  placeholder="e.g., 9animetv.to"
+                  className="input-field"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-dark-300 mb-2">
+                  Media Type
+                </label>
+                <CustomDropdown
+                  value={siteType}
+                  onChange={setSiteType}
+                  options={[
+                    { value: "movie", label: "Movie" },
+                    { value: "tvshow", label: "TV Show" },
+                    { value: "anime", label: "Anime" },
+                    { value: "book", label: "Book" },
+                    { value: "manga", label: "Manga" },
+                    { value: "video", label: "Video" },
+                  ]}
+                  placeholder="Select media type"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={onClose}
+                className="flex-1 py-2.5 rounded-xl bg-dark-700 text-dark-300 font-medium"
+              >
+                Cancel
+              </button>
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={handleAddSite}
+                className="flex-1 py-2.5 rounded-xl bg-accent-500 text-white font-medium"
+              >
+                Add Site
+              </motion.button>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    </>
   );
 }

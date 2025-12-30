@@ -389,7 +389,7 @@ export function CollectionPage() {
         <div
           className={
             viewMode === "grid"
-              ? "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4"
+              ? "grid grid-cols-2 gap-3 auto-rows-fr"
               : "space-y-4"
           }
         >
@@ -399,6 +399,7 @@ export function CollectionPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
+              className="h-full"
             >
               <NFTCard nft={nft} />
             </motion.div>

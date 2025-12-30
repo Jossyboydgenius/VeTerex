@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
@@ -13,6 +13,7 @@ import {
   Edit2,
   Activity,
   ExternalLink,
+  Search,
 } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import { isExtension } from "@/services/tracking";
@@ -38,6 +39,123 @@ const defaultPlatforms = [
   { name: "MangaDex", domain: "mangadex.org", type: "manga" },
   { name: "MyAnimeList", domain: "myanimelist.net", type: "anime" },
   { name: "AniList", domain: "anilist.co", type: "anime" },
+  // Free streaming sites - Movies & TV
+  { name: "Hurawatch", domain: "hurawatch.tw", type: "movie" },
+  { name: "Filmboom", domain: "filmboom.top", type: "movie" },
+  { name: "Moviebox", domain: "moviebox.ph", type: "movie" },
+  { name: "Fmovies", domain: "ww4.fmovies.co", type: "movie" },
+  { name: "SolarMovie", domain: "wwv.solarmovie.one", type: "movie" },
+  { name: "123Movies", domain: "123movies.ai", type: "movie" },
+  { name: "Putlocker", domain: "putlocker.vip", type: "movie" },
+  { name: "YesMovies", domain: "yesmovies.ag", type: "movie" },
+  { name: "Soap2day", domain: "ww25.soap2day.day", type: "tvshow" },
+  { name: "FlixHQ", domain: "flixhq.to", type: "movie" },
+  { name: "LookMovie", domain: "lookmovie.io", type: "movie" },
+  { name: "HDToday", domain: "hdtoday.cc", type: "movie" },
+  { name: "MoviesJoy", domain: "moviesjoy.to", type: "movie" },
+  { name: "DopeBox", domain: "dopebox.to", type: "movie" },
+  { name: "Sflix", domain: "sflix.to", type: "movie" },
+  { name: "BFlixTo", domain: "bflix.to", type: "movie" },
+  { name: "MyFlixer", domain: "myflixer.to", type: "movie" },
+  { name: "CineZone", domain: "cinezone.to", type: "movie" },
+  { name: "WatchOMovies", domain: "watchomovies.com", type: "movie" },
+  { name: "Goojara", domain: "goojara.to", type: "movie" },
+  { name: "Vumoo", domain: "vumoo.to", type: "movie" },
+  { name: "PrimeWire", domain: "primewire.tf", type: "movie" },
+  { name: "AZMovies", domain: "azmovies.net", type: "movie" },
+  { name: "WatchSeries", domain: "watchseries.id", type: "tvshow" },
+  {
+    name: "StreamingCommunity",
+    domain: "streamingcommunity.photos",
+    type: "movie",
+  },
+  // Free streaming sites - Anime
+  { name: "9anime", domain: "9animetv.to", type: "anime" },
+  { name: "GogoAnime", domain: "gogoanime.by", type: "anime" },
+  { name: "Zoro", domain: "www.zoroto.se", type: "anime" },
+  { name: "Animixplay", domain: "animixplay.to", type: "anime" },
+  { name: "Animepahe", domain: "animepahe.com", type: "anime" },
+  { name: "AnimeKai", domain: "animekai.to", type: "anime" },
+  { name: "AniWave", domain: "aniwave.to", type: "anime" },
+  { name: "AniWatch", domain: "aniwatch.to", type: "anime" },
+  { name: "AllAnimeG", domain: "allanimeg.to", type: "anime" },
+  { name: "AniZone", domain: "anizone.to", type: "anime" },
+  { name: "AnimeSuge", domain: "animesuge.to", type: "anime" },
+  { name: "Anix", domain: "anix.to", type: "anime" },
+  { name: "HiAnime", domain: "hianime.to", type: "anime" },
+  { name: "Kaido", domain: "kaido.to", type: "anime" },
+  { name: "AnimeOnsen", domain: "animeonsen.xyz", type: "anime" },
+  { name: "AnimeOwl", domain: "animeowl.live", type: "anime" },
+  { name: "AnimeFox", domain: "animefox.tv", type: "anime" },
+  { name: "AnimeDao", domain: "animedao.to", type: "anime" },
+  { name: "AnimeFLV", domain: "animeflv.net", type: "anime" },
+  { name: "AniCrush", domain: "anicrush.to", type: "anime" },
+  { name: "YugenAnime", domain: "yugenanime.ro", type: "anime" },
+  { name: "KickAssAnime", domain: "kickassanime.am", type: "anime" },
+  { name: "AnimeFire", domain: "animefire.plus", type: "anime" },
+  { name: "AnimeFenix", domain: "animefenix.tv", type: "anime" },
+  { name: "AnimeKisa", domain: "animekisa.in", type: "anime" },
+  { name: "BetterAnime", domain: "betteranime.net", type: "anime" },
+  { name: "Bilibili", domain: "bilibili.tv", type: "anime" },
+  { name: "MonosChinos", domain: "monoschinos.net", type: "anime" },
+  { name: "NekoSama", domain: "neko-sama.fr", type: "anime" },
+  { name: "OtakuDesu", domain: "otakudesu.cloud", type: "anime" },
+  { name: "TioAnime", domain: "tioanime.com", type: "anime" },
+  { name: "WCOFun", domain: "wcofun.cc", type: "anime" },
+  { name: "JKAnime", domain: "jkanime.net", type: "anime" },
+  // Drama & Asian content
+  { name: "KissKH", domain: "kisskh.id", type: "tvshow" },
+  { name: "Dramahood", domain: "dramahood.mom", type: "tvshow" },
+  { name: "GoPlay", domain: "goplay.ml", type: "tvshow" },
+  { name: "DramaCool", domain: "dramacool.net.lc", type: "tvshow" },
+  { name: "KissAsian", domain: "kissasian.li", type: "tvshow" },
+  { name: "AsianLoad", domain: "asianload.cc", type: "tvshow" },
+  // Donghua
+  { name: "DonghuaStream", domain: "donghuastream.com", type: "anime" },
+  { name: "LuciferDonghua", domain: "luciferdonghua.in", type: "anime" },
+  { name: "AnimeKhor", domain: "animekhor.xyz", type: "anime" },
+  { name: "iQIYI", domain: "iq.com", type: "anime" },
+  { name: "Youku", domain: "youku.tv", type: "anime" },
+  // Manga & Comics
+  { name: "Webtoon", domain: "webtoons.com", type: "manga" },
+  { name: "Tapas", domain: "tapas.io", type: "manga" },
+  { name: "Comick", domain: "comick.dev", type: "manga" },
+  { name: "Mangakakalot", domain: "mangakakalot.to", type: "manga" },
+  { name: "Bato", domain: "bato.si", type: "manga" },
+  { name: "ReadComicOnline", domain: "readcomiconline.li", type: "manga" },
+  { name: "WeebCentral", domain: "weebcentral.com", type: "manga" },
+  { name: "ComixTo", domain: "comix.to", type: "manga" },
+  { name: "MangaHere", domain: "mangahere.cc", type: "manga" },
+  { name: "MangaPark", domain: "mangapark.net", type: "manga" },
+  { name: "MangaReader", domain: "mangareader.to", type: "manga" },
+  { name: "MangaBuddy", domain: "mangabuddy.com", type: "manga" },
+  { name: "MangaClash", domain: "mangaclash.com", type: "manga" },
+  { name: "MangaFire", domain: "mangafire.to", type: "manga" },
+  { name: "MangaGo", domain: "mangago.me", type: "manga" },
+  { name: "MangaHub", domain: "mangahub.io", type: "manga" },
+  { name: "MangaLife", domain: "mangalife.us", type: "manga" },
+  { name: "Manganato", domain: "manganato.com", type: "manga" },
+  { name: "MangaOwl", domain: "mangaowl.to", type: "manga" },
+  { name: "MangaPill", domain: "mangapill.com", type: "manga" },
+  { name: "TCBScans", domain: "tcbscans.me", type: "manga" },
+  { name: "Toonily", domain: "toonily.com", type: "manga" },
+  { name: "Toonkor", domain: "toonkor.se", type: "manga" },
+  { name: "ReaperScans", domain: "reaperscans.com", type: "manga" },
+  { name: "AsuraScans", domain: "asurascans.com", type: "manga" },
+  { name: "FlameComics", domain: "flamecomics.com", type: "manga" },
+  { name: "LuminousScans", domain: "luminousscans.net", type: "manga" },
+  // Novels & Light Novels
+  { name: "NovelUpdates", domain: "novelupdates.com", type: "book" },
+  { name: "WuxiaWorld", domain: "wuxiaworld.com", type: "book" },
+  { name: "RoyalRoad", domain: "royalroad.com", type: "book" },
+  { name: "WebNovel", domain: "webnovel.com", type: "book" },
+  { name: "LightNovelCave", domain: "lightnovelcave.com", type: "book" },
+  { name: "ReadLightNovel", domain: "readlightnovel.me", type: "book" },
+  { name: "NovelFull", domain: "novelfull.com", type: "book" },
+  { name: "NovelBin", domain: "novelbin.com", type: "book" },
+  { name: "ScribbleHub", domain: "scribblehub.com", type: "book" },
+  { name: "FreeWebNovel", domain: "freewebnovel.com", type: "book" },
+  { name: "MTLNovel", domain: "mtlnovel.com", type: "book" },
 ];
 
 export function SettingsPage() {
@@ -60,6 +178,20 @@ export function SettingsPage() {
   const [permissionStatus, setPermissionStatus] = useState<
     Record<string, boolean>
   >({});
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Filter platforms based on search query
+  const filteredPlatforms = useMemo(() => {
+    if (!searchQuery.trim()) return defaultPlatforms;
+
+    const query = searchQuery.toLowerCase().trim();
+    return defaultPlatforms.filter(
+      (platform) =>
+        platform.name.toLowerCase().includes(query) ||
+        platform.domain.toLowerCase().includes(query) ||
+        platform.type.toLowerCase().includes(query)
+    );
+  }, [searchQuery]);
 
   // Sync local state with global state
   useEffect(() => {
@@ -365,65 +497,7 @@ export function SettingsPage() {
           </div>
         </section>
 
-        {/* Supported Platforms */}
-        <section>
-          <h2 className="text-sm font-semibold text-dark-400 uppercase tracking-wider mb-3">
-            Supported Platforms
-          </h2>
-          <div className="card space-y-3">
-            {defaultPlatforms.map((platform) => (
-              <div
-                key={platform.domain}
-                className="flex items-center justify-between py-2 border-b border-dark-700 last:border-0"
-              >
-                <div className="flex items-center gap-3">
-                  <a
-                    href={`https://${platform.domain}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-2 rounded-lg bg-dark-800 hover:bg-dark-700 text-dark-400 hover:text-accent-400 transition-colors"
-                    title={`Visit ${platform.name}`}
-                  >
-                    <ExternalLink className="w-4 h-4" />
-                  </a>
-                  <div>
-                    <p className="text-sm font-medium text-white">
-                      {platform.name}
-                    </p>
-                    <p className="text-xs text-dark-500 capitalize">
-                      {platform.type}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {permissionStatus[platform.domain] ? (
-                    <div className="group relative">
-                      <button
-                        onClick={() => revokePermission(platform.domain)}
-                        className="flex items-center gap-1 text-xs text-green-400 hover:text-red-400 transition-colors"
-                      >
-                        <Check className="w-3 h-3" />
-                        Enabled
-                      </button>
-                      <div className="absolute bottom-full right-0 mb-2 px-2 py-1 bg-dark-700 border border-dark-600 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
-                        Click to disable
-                      </div>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => requestPermission(platform.domain)}
-                      className="text-xs text-accent-400 hover:text-accent-300"
-                    >
-                      Enable
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Custom Websites */}
+        {/* Custom Websites - Show first */}
         <section>
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-semibold text-dark-400 uppercase tracking-wider">
@@ -516,6 +590,98 @@ export function SettingsPage() {
               </p>
             </div>
           )}
+        </section>
+
+        {/* Supported Platforms */}
+        <section>
+          <h2 className="text-sm font-semibold text-dark-400 uppercase tracking-wider mb-3">
+            Supported Platforms ({filteredPlatforms.length} of{" "}
+            {defaultPlatforms.length})
+          </h2>
+
+          {/* Search Input */}
+          <div className="relative mb-4">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-500" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by name, type, or domain..."
+              className="w-full pl-10 pr-10 py-2.5 bg-dark-800 border border-dark-700 rounded-xl text-white 
+                       placeholder:text-dark-500 focus:outline-none focus:border-accent-500/50
+                       transition-all duration-200"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-dark-500 hover:text-white transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
+          <div className="card space-y-3 max-h-[400px] overflow-y-auto">
+            {filteredPlatforms.length === 0 ? (
+              <div className="text-center py-8">
+                <Search className="w-8 h-8 text-dark-500 mx-auto mb-2" />
+                <p className="text-dark-400 text-sm">No platforms found</p>
+                <p className="text-dark-500 text-xs mt-1">
+                  Try a different search term
+                </p>
+              </div>
+            ) : (
+              filteredPlatforms.map((platform) => (
+                <div
+                  key={platform.domain}
+                  className="flex items-center justify-between py-2 border-b border-dark-700 last:border-0"
+                >
+                  <div className="flex items-center gap-3">
+                    <a
+                      href={`https://${platform.domain}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 rounded-lg bg-dark-800 hover:bg-dark-700 text-dark-400 hover:text-accent-400 transition-colors"
+                      title={`Visit ${platform.name}`}
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                    <div>
+                      <p className="text-sm font-medium text-white">
+                        {platform.name}
+                      </p>
+                      <p className="text-xs text-dark-500 capitalize">
+                        {platform.type}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {permissionStatus[platform.domain] ? (
+                      <div className="group relative">
+                        <button
+                          onClick={() => revokePermission(platform.domain)}
+                          className="flex items-center gap-1 text-xs text-green-400 hover:text-red-400 transition-colors"
+                        >
+                          <Check className="w-3 h-3" />
+                          Enabled
+                        </button>
+                        <div className="absolute bottom-full right-0 mb-2 px-2 py-1 bg-dark-700 border border-dark-600 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                          Click to disable
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => requestPermission(platform.domain)}
+                        className="text-xs text-accent-400 hover:text-accent-300"
+                      >
+                        Enable
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </section>
 
         {/* Info */}
