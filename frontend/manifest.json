@@ -64,6 +64,8 @@
         "https://*.disneyplus.com/*",
         "https://*.hulu.com/watch/*",
         "https://*.crunchyroll.com/watch/*",
+        "https://*.webtoons.com/*",
+        "https://filmboom.top/*",
         "https://*.goodreads.com/book/*",
         "https://*.mangadex.org/chapter/*",
         "https://*.myanimelist.net/anime/*",

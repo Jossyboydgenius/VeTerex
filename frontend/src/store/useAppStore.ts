@@ -148,11 +148,24 @@ export const useAppStore = create<AppState>()(
           );
           if (existing >= 0) {
             const updated = [...state.activeTracking];
-            updated[existing] = {
-              ...updated[existing],
-              ...media,
-              id: updated[existing].id,
+            const prev = updated[existing];
+            const next = {
+              ...prev,
+              // Only override fields when the incoming value is not undefined
+              platform: media.platform ?? prev.platform,
+              type: media.type ?? prev.type,
+              title: media.title ?? prev.title,
+              url: media.url ?? prev.url,
+              progress: media.progress ?? prev.progress,
+              duration: media.duration ?? prev.duration,
+              startTime: media.startTime ?? prev.startTime,
+              lastUpdate: media.lastUpdate ?? prev.lastUpdate,
+              watchTime: media.watchTime ?? prev.watchTime,
+              completed: media.completed ?? prev.completed,
+              thumbnail: media.thumbnail ?? prev.thumbnail,
+              id: prev.id,
             };
+            updated[existing] = next;
             return { activeTracking: updated };
           }
           return { activeTracking: [...state.activeTracking, media] };

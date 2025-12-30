@@ -933,7 +933,30 @@ let customSites: Array<{
 /**
  * Calculate scroll progress as a percentage
  */
+function getScrollContainer(): HTMLElement | null {
+  const candidates = [
+    ".reader_viewer",
+    ".viewer_wrap",
+    "#_viewer",
+    "[data-scroll-container]",
+    ".container",
+    "main",
+  ];
+  for (const sel of candidates) {
+    const el = document.querySelector(sel) as HTMLElement | null;
+    if (el && getComputedStyle(el).overflowY === "auto") return el;
+  }
+  return null;
+}
+
 function calculateScrollProgress(): number {
+  const container = getScrollContainer();
+  if (container) {
+    const scrollTop = container.scrollTop;
+    const scrollHeight = container.scrollHeight - container.clientHeight;
+    if (scrollHeight <= 0) return 100;
+    return Math.min(100, Math.round((scrollTop / scrollHeight) * 100));
+  }
   const scrollTop = window.scrollY || document.documentElement.scrollTop;
   const scrollHeight =
     document.documentElement.scrollHeight - window.innerHeight;
@@ -1151,7 +1174,12 @@ function startScrollTracking() {
     }, 200);
   };
 
-  window.addEventListener("scroll", handleScroll, { passive: true });
+  const container = getScrollContainer();
+  if (container) {
+    container.addEventListener("scroll", handleScroll, { passive: true });
+  } else {
+    window.addEventListener("scroll", handleScroll, { passive: true });
+  }
 
   // Also check periodically for page changes
   scrollTrackingInterval = setInterval(updateScrollProgress, 3000);
@@ -1335,10 +1363,13 @@ function parseFilmboomResponse(
     if (data.code !== 0 || !data.data?.subject) return null;
 
     const subject = data.data.subject;
+    const trailerDuration = (data as any)?.data?.subject?.trailer?.videoAddress?.duration || 0;
+    const cover = subject.cover?.url || (data as any)?.data?.metadata?.image || "";
+    const duration = subject.duration && subject.duration > 0 ? subject.duration : trailerDuration || undefined;
     return {
       title: subject.title,
-      thumbnail: subject.cover?.url || "",
-      duration: subject.duration,
+      thumbnail: cover,
+      duration,
       description: subject.description,
       genre: subject.genre,
       releaseDate: subject.releaseDate,
@@ -1479,6 +1510,13 @@ function updateSessionWithMetadata(metadata: Partial<MediaInfo>) {
     }
     if (metadata.episode) {
       currentSession.mediaInfo.episode = metadata.episode;
+    }
+
+    // Heuristic duration defaults if still missing
+    if (!currentSession.mediaInfo.duration) {
+      const t = currentSession.mediaInfo.type;
+      if (t === "movie") currentSession.mediaInfo.duration = 2 * 60 * 60; // 2h
+      else if (t === "tvshow" || t === "anime") currentSession.mediaInfo.duration = 45 * 60; // 45m
     }
   }
 }
@@ -2028,6 +2066,40 @@ function notifyCompletion(session: TrackingSession) {
   showCompletionBanner(session.mediaInfo);
 }
 
+function showTrackSeriesButton() {
+  const existing = document.getElementById("veterex-track-series");
+  if (existing) return;
+  const info = extractMediaInfo();
+  if (!info || info.type !== "manga") return;
+  const btn = document.createElement("button");
+  btn.id = "veterex-track-series";
+  btn.textContent = "Track Series";
+  btn.style.position = "fixed";
+  btn.style.bottom = "24px";
+  btn.style.right = "24px";
+  btn.style.zIndex = "999999";
+  btn.style.padding = "10px 14px";
+  btn.style.borderRadius = "10px";
+  btn.style.border = "none";
+  btn.style.color = "#fff";
+  btn.style.background = "linear-gradient(135deg,#00d4ff,#7c3aed)";
+  btn.onclick = () => {
+    const chapterInfo = extractChapterInfo();
+    const entry = {
+      id: `series-${Date.now()}`,
+      title: info.title,
+      url: window.location.href,
+      currentChapter: chapterInfo?.chapter || "",
+      status: "Reading",
+    };
+    chrome.storage.local.get(["seriesBookmarks"], (r) => {
+      const list = r.seriesBookmarks || [];
+      chrome.storage.local.set({ seriesBookmarks: [...list, entry] });
+    });
+  };
+  document.body.appendChild(btn);
+}
+
 /**
  * Show a banner to the user offering to mint NFT
  */
@@ -2275,6 +2347,7 @@ function init() {
       startTracking();
       startScrollTracking();
       startActivityTracking();
+      showTrackSeriesButton();
     }, 1500);
   } else {
     // For video content, use mutation observer to wait for video to load
@@ -2333,4 +2406,14 @@ function init() {
 }
 
 // Start initialization
+document.addEventListener(
+  "play",
+  (e) => {
+    const el = e.target as HTMLVideoElement;
+    if (el && el.duration > 0 && !currentSession) {
+      startTracking();
+    }
+  },
+  true
+);
 init();

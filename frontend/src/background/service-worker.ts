@@ -377,3 +377,53 @@ chrome.notifications.onClicked.addListener(() => {
 });
 
 export {};
+
+// Dynamic content script registration for granted origins
+chrome.permissions.getAll().then((p) => {
+  const origins = p.origins || [];
+  const manifest = chrome.runtime.getManifest();
+  const scriptPaths = ((manifest.content_scripts || []).flatMap((cs) => cs.js || [])
+    .filter((s): s is string => typeof s === "string")) as string[];
+  if (origins.length && scriptPaths.length) {
+    chrome.scripting.registerContentScripts([
+      {
+        id: "veterex-dynamic",
+        matches: origins,
+        js: scriptPaths,
+        runAt: "document_idle",
+      },
+    ]);
+  }
+});
+
+chrome.permissions.onAdded.addListener(async (p) => {
+  const origins = p.origins || [];
+  const manifest = chrome.runtime.getManifest();
+  const scriptPaths = ((manifest.content_scripts || []).flatMap((cs) => cs.js || [])
+    .filter((s): s is string => typeof s === "string")) as string[];
+  if (origins.length && scriptPaths.length) {
+    chrome.scripting.registerContentScripts([
+      {
+        id: "veterex-dynamic",
+        matches: origins,
+        js: scriptPaths,
+        runAt: "document_idle",
+      },
+    ]);
+
+    // Fallback: inject into active tab immediately
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    const tab = tabs[0];
+    if (tab?.id) {
+      try {
+        await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: scriptPaths });
+      } catch {
+        // ignore
+      }
+    }
+  }
+});
+
+chrome.permissions.onRemoved.addListener(() => {
+  chrome.scripting.unregisterContentScripts({ ids: ["veterex-dynamic"] });
+});
