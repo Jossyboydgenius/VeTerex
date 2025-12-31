@@ -19,78 +19,10 @@ import {
   BellOff,
 } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
-import type { Group } from "@/types";
+import type { Group, User } from "@/types";
+import { mediaInfo as readMediaInfo, getGroupMemberCount, getGroupMemberAt } from "@/services/nft";
 
-// Mock groups data (same as in CommunityPage)
-const mockGroups: Group[] = [
-  {
-    id: "1",
-    mediaId: "1",
-    media: {
-      id: "1",
-      externalId: "tt0111161",
-      title: "The Shawshank Redemption",
-      type: "movie",
-      description:
-        "Two imprisoned men bond over a number of years, finding solace and eventual redemption through acts of common decency.",
-      coverImage:
-        "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=300&h=400&fit=crop",
-      releaseYear: 1994,
-      creator: "Frank Darabont",
-      genre: ["Drama"],
-      totalCompletions: 2453,
-    },
-    members: [],
-    memberCount: 892,
-    createdAt: new Date("2023-01-15"),
-    recentActivity: [],
-  },
-  {
-    id: "2",
-    mediaId: "3",
-    media: {
-      id: "3",
-      externalId: "21",
-      title: "Death Note",
-      type: "anime",
-      description:
-        "A high school student discovers a supernatural notebook that allows him to kill anyone by writing their name in it.",
-      coverImage:
-        "https://images.unsplash.com/photo-1578632767115-351597cf2477?w=300&h=400&fit=crop",
-      releaseYear: 2006,
-      creator: "Madhouse",
-      genre: ["Thriller", "Supernatural"],
-      totalCompletions: 3241,
-    },
-    members: [],
-    memberCount: 1456,
-    createdAt: new Date("2023-03-20"),
-    recentActivity: [],
-  },
-  {
-    id: "3",
-    mediaId: "4",
-    media: {
-      id: "4",
-      externalId: "tt0903747",
-      title: "Breaking Bad",
-      type: "tvshow",
-      description:
-        "A high school chemistry teacher diagnosed with inoperable lung cancer turns to manufacturing methamphetamine.",
-      coverImage:
-        "https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=300&h=400&fit=crop",
-      releaseYear: 2008,
-      creator: "Vince Gilligan",
-      genre: ["Drama", "Crime"],
-      totalCompletions: 4521,
-    },
-    members: [],
-    memberCount: 2103,
-    createdAt: new Date("2023-02-10"),
-    recentActivity: [],
-  },
-];
-
+ 
 // Mock discussion posts
 const mockPosts = [
   {
@@ -134,41 +66,37 @@ const mockPosts = [
   },
 ];
 
-// Mock members
-const mockMembers = [
-  {
-    id: "1",
-    name: "MovieBuff42",
-    avatar:
-      "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop",
-    nfts: 12,
-    joinedAt: new Date("2023-02-15"),
-  },
-  {
-    id: "2",
-    name: "CinemaLover",
-    avatar:
-      "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop",
-    nfts: 8,
-    joinedAt: new Date("2023-03-20"),
-  },
-  {
-    id: "3",
-    name: "StorytellerPro",
-    avatar:
-      "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop",
-    nfts: 15,
-    joinedAt: new Date("2023-01-10"),
-  },
-  {
-    id: "4",
-    name: "MediaEnthusiast",
-    avatar:
-      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop",
-    nfts: 6,
-    joinedAt: new Date("2023-04-05"),
-  },
-];
+// Helper to extract YouTube video ID
+function getYoutubeId(url: string) {
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+  const match = url.match(regExp);
+  return (match && match[2].length === 11) ? match[2] : null;
+}
+
+// Helper to generate thumbnail URL
+function getThumbnail(url: string) {
+  if (!url) return "";
+  if (url.includes("youtube.com") || url.includes("youtu.be")) {
+    const id = getYoutubeId(url);
+    if (id) return `https://img.youtube.com/vi/${id}/maxresdefault.jpg`;
+  }
+  return ""; 
+}
+
+// Helper to format title from URL
+function formatTitle(url: string) {
+  if (!url) return "Achievement";
+  try {
+    const urlObj = new URL(url);
+    const hostname = urlObj.hostname.replace('www.', '');
+    if (hostname.includes('youtube')) return 'YouTube Video';
+    if (hostname.includes('webtoons')) return 'Webtoon Chapter';
+    if (hostname.includes('netflix')) return 'Netflix Show';
+    return `${hostname} Content`;
+  } catch {
+    return url.length > 30 ? url.substring(0, 27) + '...' : url;
+  }
+}
 
 export function GroupDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -212,10 +140,73 @@ export function GroupDetailPage() {
   };
 
   useEffect(() => {
-    // Find the group by ID
-    const foundGroup = mockGroups.find((g) => g.id === id);
-    setGroup(foundGroup || null);
-  }, [id]);
+    async function loadGroup() {
+      if (!id) return
+      const mediaIdHex = id as `0x${string}`
+      const info = await readMediaInfo(mediaIdHex)
+      const count = await getGroupMemberCount(mediaIdHex)
+      
+      // Parse metadata
+      let title = info[2] || "Achievement"
+      let coverImage = ""
+      const uri = info[2]
+      
+      if (uri && uri.startsWith("data:application/json")) {
+        try {
+          const base64 = uri.split(",")[1];
+          if (base64) {
+            const json = JSON.parse(atob(base64));
+            if (json.name) title = json.name;
+            if (json.image) coverImage = json.image;
+          }
+        } catch {
+    console.warn("Failed to parse group metadata");
+  }
+      } else if (uri) {
+        title = formatTitle(uri);
+        coverImage = getThumbnail(uri);
+      }
+
+      const type = info[1] === 1 ? "book" : info[1] === 2 ? "movie" : info[1] === 3 ? "anime" : info[1] === 4 ? "comic" : info[1] === 5 ? "manga" : "tvshow"
+      const members: User[] = []
+      const max = Number(count)
+      const limit = Math.min(max, 20)
+      for (let i = 0; i < limit; i++) {
+        const addr = await getGroupMemberAt(mediaIdHex, BigInt(i))
+        members.push({
+          id: addr,
+          address: addr,
+          joinedAt: new Date(),
+          completions: [],
+          favorites: [],
+          following: [],
+          followers: [],
+        } as User)
+      }
+      const g: Group = {
+        id: mediaIdHex,
+        mediaId: mediaIdHex,
+        media: {
+          id: mediaIdHex,
+          externalId: info[2] || "",
+          title,
+          type,
+          description: "",
+          coverImage,
+          releaseYear: new Date().getFullYear(),
+          creator: "",
+          genre: [],
+          totalCompletions: Number(count),
+        },
+        members,
+        memberCount: Number(count),
+        createdAt: new Date(),
+        recentActivity: [],
+      }
+      setGroup(g)
+    }
+    loadGroup()
+  }, [id])
 
   if (!group) {
     return (
@@ -383,7 +374,7 @@ export function GroupDetailPage() {
             </div>
             <div className="flex items-center gap-2 text-sm text-dark-400">
               <MessageCircle className="w-4 h-4" />
-              <span>{mockPosts.length} posts</span>
+              <span>Posts</span>
             </div>
             <div className="flex-1" />
             <motion.button
@@ -519,7 +510,7 @@ export function GroupDetailPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {mockMembers.map((member, index) => (
+              {group.members.map((member, index) => (
                 <motion.div
                   key={member.id}
                   initial={{ opacity: 0, x: -20 }}
@@ -527,22 +518,20 @@ export function GroupDetailPage() {
                   transition={{ delay: index * 0.05 }}
                   className="card flex items-center gap-4"
                 >
-                  <img
-                    src={member.avatar}
-                    alt={member.name}
-                    className="w-12 h-12 rounded-full object-cover"
-                  />
+                  <div className="w-12 h-12 rounded-full bg-dark-800 border border-dark-700 flex items-center justify-center text-white">
+                    {member.address.slice(2,4).toUpperCase()}
+                  </div>
                   <div className="flex-1">
-                    <h3 className="font-semibold text-white">{member.name}</h3>
+                    <h3 className="font-semibold text-white">{member.address}</h3>
                     <div className="flex items-center gap-3 text-xs text-dark-400">
                       <div className="flex items-center gap-1">
                         <Award className="w-3 h-3" />
-                        <span>{member.nfts} NFTs</span>
+                        <span>Member</span>
                       </div>
                       <div className="flex items-center gap-1">
                         <Calendar className="w-3 h-3" />
                         <span>
-                          Joined {member.joinedAt.toLocaleDateString()}
+                          Joined {new Date().toLocaleDateString()}
                         </span>
                       </div>
                     </div>

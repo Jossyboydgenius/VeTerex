@@ -2,6 +2,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { ChevronDown, LogOut, Copy, Check } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
+import { useNavigate } from "react-router-dom";
 import {
   initWepin,
   loginWithWepin,
@@ -40,6 +41,7 @@ export function Header() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showVeryChatModal, setShowVeryChatModal] = useState(false);
+  const navigate = useNavigate();
 
   const handleConnect = async () => {
     // For extensions, use VeryChat authentication since Wepin doesn't support chrome-extension:// URLs
@@ -152,12 +154,14 @@ export function Header() {
       <header className="sticky top-0 z-50 glass-dark border-b border-dark-700/50">
         <div className="flex items-center justify-between px-4 py-3">
           {/* Logo */}
-          <div className="flex items-center gap-2">
+          <div 
+            className="flex items-center gap-2 cursor-pointer" 
+            onClick={() => navigate('/')}
+          >
             <div className="relative">
-              <div className="w-10 h-10 rounded-xl bg-main-gradient flex items-center justify-center overflow-hidden">
-                <LogoIcon size={28} className="text-white" />
+              <div className="w-10 h-10 flex items-center justify-center overflow-hidden">
+                <LogoIcon size={32} className="text-white" />
               </div>
-              <div className="absolute -inset-1 bg-main-gradient rounded-xl blur opacity-30" />
             </div>
             <div>
               <h1 className="text-lg font-display font-bold gradient-text">

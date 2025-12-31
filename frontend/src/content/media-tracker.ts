@@ -2268,7 +2268,7 @@ function showCompletionBanner(mediaInfo: MediaInfo) {
   if (existingBanner) existingBanner.remove();
 
   // Get icon URLs
-  const giftboxIconUrl = chrome.runtime.getURL("icons/giftbox.svg");
+  const giftboxIconUrl = chrome.runtime.getURL("icons/gift-box.svg");
   const veryCoinIconUrl = chrome.runtime.getURL("icons/very-coin.png");
 
   const banner = document.createElement("div");
@@ -2314,17 +2314,14 @@ function showCompletionBanner(mediaInfo: MediaInfo) {
       .veterex-banner-icon {
         width: 48px;
         height: 48px;
-        background: linear-gradient(135deg, #FF6D75 0%, #9C86FF 100%);
-        border-radius: 12px;
         display: flex;
         align-items: center;
         justify-content: center;
-        box-shadow: 0 4px 12px rgba(255, 109, 117, 0.3);
       }
       
       .veterex-banner-icon img {
-        width: 28px;
-        height: 28px;
+        width: 48px;
+        height: 48px;
       }
       
       .veterex-banner-title {

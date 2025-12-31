@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Library,
@@ -14,200 +14,52 @@ import {
 import { useAppStore } from "@/store/useAppStore";
 import { NFTCard } from "@/components/NFTCard";
 import type { MediaType, CompletionNFT } from "@/types";
+import { readUserNfts, getTokensMetadata } from "@/services/nft";
 
-// Mock NFT data
-const mockNFTs: CompletionNFT[] = [
-  {
-    id: "1",
-    tokenId: "0x1234567890abcdef",
-    mediaId: "1",
-    media: {
-      id: "1",
-      externalId: "tt0111161",
-      title: "The Shawshank Redemption",
-      type: "movie",
-      description: "Two imprisoned men bond over years...",
-      coverImage:
-        "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=300&h=400&fit=crop",
-      releaseYear: 1994,
-      creator: "Frank Darabont",
-      genre: ["Drama"],
-      totalCompletions: 2453,
-    },
-    mintedAt: new Date("2024-01-15"),
-    transactionHash: "0xabc123...",
-    completedAt: new Date("2024-01-10"),
-    rating: 5,
-    review: "An absolute masterpiece.",
-    rarity: "rare",
-  },
-  {
-    id: "2",
-    tokenId: "0x2345678901bcdef0",
-    mediaId: "3",
-    media: {
-      id: "3",
-      externalId: "21",
-      title: "Death Note",
-      type: "anime",
-      description: "A supernatural notebook...",
-      coverImage:
-        "https://images.unsplash.com/photo-1578632767115-351597cf2477?w=300&h=400&fit=crop",
-      releaseYear: 2006,
-      creator: "Madhouse",
-      genre: ["Thriller"],
-      totalCompletions: 3241,
-    },
-    mintedAt: new Date("2024-02-20"),
-    transactionHash: "0xdef456...",
-    completedAt: new Date("2024-02-18"),
-    rating: 4,
-    rarity: "epic",
-  },
-  {
-    id: "3",
-    tokenId: "0x3456789012cdef01",
-    mediaId: "2",
-    media: {
-      id: "2",
-      externalId: "978-0-06-112008-4",
-      title: "To Kill a Mockingbird",
-      type: "book",
-      description: "A classic novel...",
-      coverImage:
-        "https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=300&h=400&fit=crop",
-      releaseYear: 1960,
-      creator: "Harper Lee",
-      genre: ["Classic"],
-      totalCompletions: 1892,
-    },
-    mintedAt: new Date("2024-03-05"),
-    transactionHash: "0xghi789...",
-    completedAt: new Date("2024-03-01"),
-    rating: 5,
-    review: "Changed my perspective.",
-    rarity: "legendary",
-  },
-  {
-    id: "4",
-    tokenId: "0x4567890123def012",
-    mediaId: "4",
-    media: {
-      id: "4",
-      externalId: "tt0903747",
-      title: "Breaking Bad",
-      type: "tvshow",
-      description: "A chemistry teacher turned methamphetamine manufacturer...",
-      coverImage:
-        "https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=300&h=400&fit=crop",
-      releaseYear: 2008,
-      creator: "Vince Gilligan",
-      genre: ["Drama", "Crime"],
-      totalCompletions: 4521,
-    },
-    mintedAt: new Date("2024-01-25"),
-    transactionHash: "0xjkl012...",
-    completedAt: new Date("2024-01-20"),
-    rating: 5,
-    review: "Best TV show ever made.",
-    rarity: "epic",
-  },
-  {
-    id: "5",
-    tokenId: "0x5678901234ef0123",
-    mediaId: "5",
-    media: {
-      id: "5",
-      externalId: "13",
-      title: "One Piece",
-      type: "manga",
-      description: "Follows the adventures of Monkey D. Luffy...",
-      coverImage:
-        "https://images.unsplash.com/photo-1618336753974-aae8e04506aa?w=300&h=400&fit=crop",
-      releaseYear: 1997,
-      creator: "Eiichiro Oda",
-      genre: ["Adventure", "Action"],
-      totalCompletions: 5123,
-    },
-    mintedAt: new Date("2024-02-10"),
-    transactionHash: "0xmno345...",
-    completedAt: new Date("2024-02-05"),
-    rating: 5,
-    rarity: "legendary",
-  },
-  {
-    id: "6",
-    tokenId: "0x6789012345f01234",
-    mediaId: "6",
-    media: {
-      id: "6",
-      externalId: "tt0816692",
-      title: "Interstellar",
-      type: "movie",
-      description: "A team of explorers travel through a wormhole...",
-      coverImage:
-        "https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=300&h=400&fit=crop",
-      releaseYear: 2014,
-      creator: "Christopher Nolan",
-      genre: ["Sci-Fi", "Drama"],
-      totalCompletions: 3892,
-    },
-    mintedAt: new Date("2024-03-15"),
-    transactionHash: "0xpqr678...",
-    completedAt: new Date("2024-03-10"),
-    rating: 5,
-    review: "Mind-bending and emotional.",
-    rarity: "rare",
-  },
-  {
-    id: "7",
-    tokenId: "0x7890123456012345",
-    mediaId: "7",
-    media: {
-      id: "7",
-      externalId: "1535",
-      title: "Attack on Titan",
-      type: "anime",
-      description:
-        "Humanity lives inside cities surrounded by enormous walls...",
-      coverImage:
-        "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=300&h=400&fit=crop",
-      releaseYear: 2013,
-      creator: "Wit Studio",
-      genre: ["Action", "Dark Fantasy"],
-      totalCompletions: 4156,
-    },
-    mintedAt: new Date("2024-02-28"),
-    transactionHash: "0xstu901...",
-    completedAt: new Date("2024-02-25"),
-    rating: 5,
-    rarity: "epic",
-  },
-  {
-    id: "8",
-    tokenId: "0x8901234567123456",
-    mediaId: "8",
-    media: {
-      id: "8",
-      externalId: "978-0-7432-7356-5",
-      title: "1984",
-      type: "book",
-      description: "A dystopian social science fiction novel...",
-      coverImage:
-        "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=300&h=400&fit=crop",
-      releaseYear: 1949,
-      creator: "George Orwell",
-      genre: ["Dystopian", "Political"],
-      totalCompletions: 2789,
-    },
-    mintedAt: new Date("2024-03-20"),
-    transactionHash: "0xvwx234...",
-    completedAt: new Date("2024-03-18"),
-    rating: 4,
-    review: "Eerily relevant today.",
-    rarity: "rare",
-  },
-];
+// Helper to extract YouTube video ID
+function getYoutubeId(url: string) {
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+  const match = url.match(regExp);
+
+  return (match && match[2].length === 11) ? match[2] : null;
+}
+
+// Helper to generate thumbnail URL
+function getThumbnail(url: string, _type: string) {
+  if (!url) return "";
+  
+  // YouTube
+  if (url.includes("youtube.com") || url.includes("youtu.be")) {
+    const id = getYoutubeId(url);
+    if (id) return `https://img.youtube.com/vi/${id}/maxresdefault.jpg`;
+  }
+  
+  // Webtoons (try to find image in URL or return generic cover based on type)
+  // Since we can't scrape, we might return a type-specific placeholder if real image not found
+  // But for now, if it's the test data, we know the thumbnail is not in the URL
+  // The smart contract 'uri' is the content link, not image. 
+  // We don't have the image stored on-chain.
+  
+  return ""; 
+}
+
+// Helper to format title from URL
+function formatTitle(url: string) {
+  if (!url) return "Achievement";
+  
+  try {
+    const urlObj = new URL(url);
+    const hostname = urlObj.hostname.replace('www.', '');
+    
+    if (hostname.includes('youtube')) return 'YouTube Video';
+    if (hostname.includes('webtoons')) return 'Webtoon Chapter';
+    if (hostname.includes('netflix')) return 'Netflix Show';
+    
+    return `${hostname} Content`;
+  } catch {
+    return url.length > 30 ? url.substring(0, 27) + '...' : url;
+  }
+}
 
 const typeFilters = [
   { type: null, label: "All", icon: Library },
@@ -219,22 +71,72 @@ const typeFilters = [
 ];
 
 export function CollectionPage() {
-  const { isConnected, completions } = useAppStore();
+  const { isConnected, completions, setCompletions, currentAccount } = useAppStore();
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [selectedType, setSelectedType] = useState<MediaType | null>(null);
 
-  // Use mock data for demo, real app would use `completions` from store
-  const displayNFTs = isConnected
-    ? completions.length > 0
-      ? completions
-      : mockNFTs
-    : [];
+  useEffect(() => {
+    async function load() {
+      if (!isConnected || !currentAccount?.address) return
+      const ids = await readUserNfts(currentAccount.address as `0x${string}`)
+      const metas = await getTokensMetadata(ids)
+      const items: CompletionNFT[] = metas.map((m) => {
+        // Try to parse metadata from data URI if present
+        let externalId = m.uri || "";
+        let title = m.uri ? formatTitle(m.uri) : "Achievement";
+        let coverImage = (m.uri ? getThumbnail(m.uri, "") : "") || m.tokenURI || "";
+        let description = m.uri || "";
+
+        if (m.uri && m.uri.startsWith("data:application/json")) {
+          try {
+            // Extract base64 part
+            const base64 = m.uri.split(",")[1];
+            if (base64) {
+              const json = JSON.parse(atob(base64));
+              if (json.name) title = json.name;
+              if (json.image) coverImage = json.image;
+              if (json.external_url) externalId = json.external_url;
+              if (json.description) description = json.description;
+            }
+          } catch (e) {
+            console.warn("Failed to parse metadata URI", e);
+          }
+        }
+
+        return {
+          id: String(m.tokenId),
+          tokenId: String(m.tokenId),
+          mediaId: m.mediaId,
+          media: {
+            id: m.mediaId,
+            externalId,
+            title,
+            type: m.kind === 1 ? "book" : m.kind === 2 ? "movie" : m.kind === 3 ? "anime" : m.kind === 4 ? "comic" : m.kind === 5 ? "manga" : "tvshow",
+            description,
+            coverImage,
+            releaseYear: new Date().getFullYear(),
+            creator: "",
+            genre: [],
+            totalCompletions: 0,
+          },
+          mintedAt: new Date(),
+          transactionHash: "",
+          completedAt: new Date(),
+          rarity: ["common", "rare", "epic", "legendary"][Number(m.tokenId) % 4] as any,
+        };
+      })
+      setCompletions(items)
+    }
+    load()
+  }, [isConnected, currentAccount?.address, setCompletions])
+
+  const displayNFTs = isConnected ? completions : [];
 
   const filteredNFTs = selectedType
     ? displayNFTs.filter((nft) => nft.media.type === selectedType)
     : displayNFTs;
 
-  // Stats
+          // Stats
   const totalNFTs = displayNFTs.length;
   const typeStats = displayNFTs.reduce((acc, nft) => {
     acc[nft.media.type] = (acc[nft.media.type] || 0) + 1;
@@ -406,11 +308,15 @@ export function CollectionPage() {
           ))}
         </div>
       ) : (
-        <div className="text-center py-12">
-          <Award className="w-12 h-12 mx-auto text-dark-700 mb-4" />
-          <p className="text-dark-400">No NFTs in this category</p>
-          <p className="text-sm text-dark-500 mt-1">
-            Complete more {selectedType}s to earn NFTs!
+        <div className="text-center py-12 flex flex-col items-center">
+          <div className="w-16 h-16 flex items-center justify-center mb-4">
+            <img src="/icons/cloud.svg" alt="Cloud" className="w-12 h-12 opacity-50" />
+          </div>
+          <h3 className="text-lg font-medium text-white mb-2">No NFTs Found</h3>
+          <p className="text-dark-400 max-w-xs">
+            {selectedType
+              ? `You haven't earned any ${selectedType} NFTs yet.`
+              : "Start tracking media to earn your first NFT!"}
           </p>
         </div>
       )}

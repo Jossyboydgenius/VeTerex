@@ -1,8 +1,7 @@
 import type { MediaItem, MediaType, CompletionNFT, Group } from '@/types'
 
-// VeryChat API Configuration
-const VERY_API_BASE = 'https://gapi.veryapi.io'
-const PROJECT_ID = import.meta.env.VITE_VERY_PROJECT_ID || 'veterex-hackathon'
+const VERY_API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://gapi.veryapi.io'
+const PROJECT_ID = import.meta.env.VITE_VERY_PROJECT_ID || import.meta.env.VITE_VERYCHAT_PROJECT_ID || 'veterex-hackathon'
 
 /**
  * Generic API request handler
