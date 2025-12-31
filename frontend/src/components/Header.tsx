@@ -159,8 +159,8 @@ export function Header() {
             onClick={() => navigate('/')}
           >
             <div className="relative">
-              <div className="w-10 h-10 flex items-center justify-center overflow-hidden">
-                <LogoIcon size={32} className="text-white" />
+              <div className="w-12 h-12 flex items-center justify-center overflow-hidden">
+                <LogoIcon size={40} className="text-white" />
               </div>
             </div>
             <div>

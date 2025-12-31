@@ -103,6 +103,9 @@ export function CollectionPage() {
           }
         }
 
+        // Preserve existing completion info (e.g., transaction hash) by tokenId
+        const existing = completions.find((c) => c.tokenId === String(m.tokenId));
+
         return {
           id: String(m.tokenId),
           tokenId: String(m.tokenId),
@@ -119,8 +122,8 @@ export function CollectionPage() {
             genre: [],
             totalCompletions: 0,
           },
-          mintedAt: new Date(),
-          transactionHash: "",
+          mintedAt: existing?.mintedAt || new Date(),
+          transactionHash: existing?.transactionHash || "",
           completedAt: new Date(),
           rarity: ["common", "rare", "epic", "legendary"][Number(m.tokenId) % 4] as any,
         };
@@ -128,7 +131,7 @@ export function CollectionPage() {
       setCompletions(items)
     }
     load()
-  }, [isConnected, currentAccount?.address, setCompletions])
+  }, [isConnected, currentAccount?.address, setCompletions, completions])
 
   const displayNFTs = isConnected ? completions : [];
 
@@ -309,8 +312,8 @@ export function CollectionPage() {
         </div>
       ) : (
         <div className="text-center py-12 flex flex-col items-center">
-          <div className="w-16 h-16 flex items-center justify-center mb-4">
-            <img src="/icons/cloud.svg" alt="Cloud" className="w-12 h-12 opacity-50" />
+          <div className="w-24 h-24 flex items-center justify-center mb-4">
+            <img src="/icons/cloud.svg" alt="Cloud" className="w-20 h-20" />
           </div>
           <h3 className="text-lg font-medium text-white mb-2">No NFTs Found</h3>
           <p className="text-dark-400 max-w-xs">

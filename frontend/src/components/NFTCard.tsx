@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { Calendar, Star, ExternalLink } from "lucide-react";
 import type { CompletionNFT } from "@/types";
 import { CrownIcon, StarIcon } from "./AppIcons";
+import { VETEREX_PROXY_ADDRESS } from "@/services/contract";
 
 const rarityColors = {
   common: "from-gray-500 to-gray-600",
@@ -124,10 +125,10 @@ export function NFTCard({ nft, onClick }: NFTCardProps) {
               onClick={(e) => {
                 e.stopPropagation();
                 // Open transaction in explorer
-                window.open(
-                  `https://etherscan.io/tx/${nft.transactionHash}`,
-                  "_blank"
-                );
+                const url = nft.transactionHash
+                  ? `https://veryscan.io/tx/${nft.transactionHash}`
+                  : `https://veryscan.io/address/${VETEREX_PROXY_ADDRESS}`;
+                window.open(url, "_blank");
               }}
             >
               <span>View</span>

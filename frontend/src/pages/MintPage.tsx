@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   ArrowLeft,
@@ -48,7 +48,8 @@ const platformColors: Record<string, string> = {
 
 export function MintPage() {
   const navigate = useNavigate();
-  const { isConnected, addToast, pendingMints, removePendingMint, currentAccount, setCompletions } =
+  const location = useLocation();
+  const { isConnected, addToast, pendingMints, removePendingMint, currentAccount, setCompletions, toasts } =
     useAppStore();
   const [mediaToMint, setMediaToMint] = useState<TrackedMedia | null>(null);
   const [isMinting, setIsMinting] = useState(false);
@@ -105,6 +106,35 @@ export function MintPage() {
   };
 
   useEffect(() => {
+    // Check for data passed via URL (from extension)
+    // Support both HashRouter (useLocation) and standard URL params
+    const searchParams = new URLSearchParams(location.search);
+    const dataParam = searchParams.get('data');
+    
+    if (dataParam) {
+      try {
+        const parsedData = JSON.parse(decodeURIComponent(dataParam));
+        setMediaToMint({
+          id: `mint-${Date.now()}`,
+          platform: parsedData.platform || "unknown",
+          type: parsedData.type || "video",
+          title: parsedData.title || "Unknown Media",
+          url: parsedData.url || "",
+          progress: 100,
+          watchTime: parsedData.watchTime || 0,
+          thumbnail: parsedData.thumbnail || "",
+          completed: true,
+          startTime: Date.now(),
+          lastUpdate: Date.now(),
+        });
+        // Clear query param to prevent reload issues
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } catch (e) {
+        console.error("Failed to parse mint data from URL", e);
+      }
+      return;
+    }
+
     if (!isExtension) return;
 
     chrome.storage?.local?.get(["pendingMint"], (result) => {
@@ -126,7 +156,7 @@ export function MintPage() {
 
       chrome.storage.local.remove(["pendingMint"]);
     });
-  }, []);
+  }, [location.search]);
 
   useEffect(() => {
     if (pendingMints.length === 0) return;
@@ -147,18 +177,24 @@ export function MintPage() {
 
   const handleMint = async () => {
     if (!isConnected) {
-      addToast({
-        type: "error",
-        message: "Please connect your wallet first",
-      });
+      const hasToast = toasts.some((t) => t.message === "Please connect your wallet first");
+      if (!hasToast) {
+        addToast({
+          type: "error",
+          message: "Please connect your wallet first",
+        });
+      }
       return;
     }
 
     if (!currentAccount?.address) {
-      addToast({
-        type: "error",
-        message: "Minting requires a wallet address. VeryChat login is social-only. Please connect Wepin.",
-      });
+      const hasToast = toasts.some((t) => t.message.includes("Minting requires a wallet address"));
+      if (!hasToast) {
+        addToast({
+          type: "error",
+          message: "Minting requires a wallet address. VeryChat login is social-only. Please connect Wepin.",
+        });
+      }
       return;
     }
 
@@ -383,7 +419,12 @@ export function MintPage() {
                 {mediaToMint.watchTime > 0 && (
                   <div className="flex items-center gap-1.5 text-sm text-dark-400">
                     <Clock className="w-4 h-4" />
-                    <span>Watched: {formatTime(mediaToMint.watchTime)}</span>
+                    <span>
+                      {["manga", "book", "comic"].includes(mediaToMint.type) 
+                        ? "Reading time: " 
+                        : "Watched: "}
+                      {formatTime(mediaToMint.watchTime)}
+                    </span>
                   </div>
                 )}
               </div>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Bookmark, RefreshCw, Trash2, ExternalLink } from "lucide-react";
 
@@ -18,12 +18,31 @@ export function SeriesBookmarksPanel() {
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<SeriesBookmark | null>(null);
 
-  const load = () => {
+  const filterUnique = useCallback((items: SeriesBookmark[]) => {
+    const normalize = (url: string) => {
+      try {
+        const u = new URL(url);
+        return (u.hostname + u.pathname).replace(/\/$/, "").toLowerCase();
+      } catch {
+        return url.toLowerCase();
+      }
+    };
+    return items.filter(
+      (b, index, self) =>
+        index ===
+        self.findIndex(
+          (t) => normalize(t.url) === normalize(b.url) || t.title === b.title
+        )
+    );
+  }, []);
+
+  const load = useCallback(() => {
     if (typeof chrome === "undefined" || !chrome.storage) return;
     chrome.storage.local.get(["seriesBookmarks"], (r) => {
-      setBookmarks(r.seriesBookmarks || []);
+      const raw = r.seriesBookmarks || [];
+      setBookmarks(filterUnique(raw));
     });
-  };
+  }, [filterUnique]);
 
   useEffect(() => {
     load();
@@ -33,13 +52,14 @@ export function SeriesBookmarksPanel() {
         area: string
       ) => {
         if (area === "local" && changes.seriesBookmarks) {
-          setBookmarks(changes.seriesBookmarks.newValue || []);
+          const raw = changes.seriesBookmarks.newValue || [];
+          setBookmarks(filterUnique(raw));
         }
       };
       chrome.storage.onChanged.addListener(handler);
       return () => chrome.storage.onChanged.removeListener(handler);
     }
-  }, []);
+  }, [load, filterUnique]);
 
   const checkUpdates = async () => {
     if (!bookmarks.length) return;

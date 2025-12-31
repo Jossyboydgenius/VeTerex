@@ -163,7 +163,7 @@ export function TrackedMediaCard({
             <div className="flex items-center gap-1.5 text-xs text-dark-400">
               <Clock className="w-3 h-3" />
               <span>
-                {media.type === "manga" || media.type === "book"
+                {["manga", "book", "comic"].includes(media.type)
                   ? `Reading time: ${formatTime(media.watchTime)}`
                   : `Watched: ${formatTime(media.watchTime)}`}
               </span>

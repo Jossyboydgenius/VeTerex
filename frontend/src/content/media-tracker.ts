@@ -2120,7 +2120,7 @@ function notifyCompletion(session: TrackingSession) {
   });
 
   // Show notification badge
-  showCompletionBanner(session.mediaInfo);
+  showCompletionBanner(session.mediaInfo, session.watchTime);
 }
 
 function showTrackSeriesButton() {
@@ -2262,7 +2262,7 @@ function showTrackSeriesButton() {
 /**
  * Show a banner to the user offering to mint NFT
  */
-function showCompletionBanner(mediaInfo: MediaInfo) {
+function showCompletionBanner(mediaInfo: MediaInfo, watchTime?: number) {
   // Remove existing banner if any
   const existingBanner = document.getElementById("veterex-completion-banner");
   if (existingBanner) existingBanner.remove();
@@ -2469,11 +2469,16 @@ function showCompletionBanner(mediaInfo: MediaInfo) {
   const mintBtn = document.getElementById("veterex-mint-btn");
   if (mintBtn) {
     mintBtn.addEventListener("click", () => {
-      // Store completion data and open extension
-      chrome.runtime.sendMessage({
-        type: "OPEN_MINT_MODAL",
-        data: mediaInfo,
-      });
+      // Open web app with data
+      const data = encodeURIComponent(JSON.stringify({
+        ...mediaInfo,
+        watchTime: watchTime || currentSession?.watchTime || 0
+      }));
+      
+      // Use localhost for dev, in prod this would be the deployed URL
+      const webUrl = `http://localhost:5173/#/mint?data=${data}`;
+      window.open(webUrl, '_blank');
+      
       banner.remove();
     });
   }

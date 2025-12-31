@@ -372,8 +372,9 @@ export function CommunityPage() {
         <div className="space-y-6">
           {/* Matches Info */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", bounce: 0.6, duration: 0.8 }}
             className="card bg-gradient-to-br from-coral/10 to-violet/10 border-coral/30"
           >
             <div className="flex items-start gap-4">
