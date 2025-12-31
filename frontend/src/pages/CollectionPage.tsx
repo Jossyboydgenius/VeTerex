@@ -71,16 +71,17 @@ const typeFilters = [
 ];
 
 export function CollectionPage() {
-  const { isConnected, completions, setCompletions, currentAccount } = useAppStore();
+  const { isConnected, completions, setCompletions, currentAccount, addToast } = useAppStore();
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [selectedType, setSelectedType] = useState<MediaType | null>(null);
 
   useEffect(() => {
     async function load() {
-      if (!isConnected || !currentAccount?.address) return
-      const ids = await readUserNfts(currentAccount.address as `0x${string}`)
-      const metas = await getTokensMetadata(ids)
-      const items: CompletionNFT[] = metas.map((m) => {
+      try {
+        if (!isConnected || !currentAccount?.address) return
+        const ids = await readUserNfts(currentAccount.address as `0x${string}`)
+        const metas = await getTokensMetadata(ids)
+        const items: CompletionNFT[] = metas.map((m) => {
         // Try to parse metadata from data URI if present
         let externalId = m.uri || "";
         let title = m.uri ? formatTitle(m.uri) : "Achievement";
@@ -128,10 +129,17 @@ export function CollectionPage() {
           rarity: ["common", "rare", "epic", "legendary"][Number(m.tokenId) % 4] as any,
         };
       })
-      setCompletions(items)
+        setCompletions(items)
+      } catch (e: any) {
+        console.error("Failed to load collection:", e)
+        addToast({
+          type: "error",
+          message: e?.message ? `Failed to load collection: ${e.message}` : "Failed to load collection",
+        })
+      }
     }
     load()
-  }, [isConnected, currentAccount?.address, setCompletions, completions])
+  }, [isConnected, currentAccount?.address, setCompletions, completions, addToast])
 
   const displayNFTs = isConnected ? completions : [];
 

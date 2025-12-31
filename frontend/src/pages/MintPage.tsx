@@ -13,7 +13,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { useAppStore, type TrackedMedia } from "@/store/useAppStore";
-import { NFTMiningImageIcon, ConfettiImageIcon } from "@/components/AppIcons";import {
+import { NFTMiningImageIcon, OpenCookieImageIcon } from "@/components/AppIcons";import {
   mintCompletion,
   // mapMediaType, // Unused
   mapTrackedType, // Import correct mapping
@@ -373,9 +373,9 @@ export function MintPage() {
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ type: "spring", delay: 0.2 }}
-            className="w-24 h-24 mx-auto mb-6 flex items-center justify-center"
+            className="w-28 h-28 mx-auto mb-6 flex items-center justify-center"
           >
-            <ConfettiImageIcon size={80} />
+            <OpenCookieImageIcon size={96} />
           </motion.div>
           <h2 className="text-2xl font-bold text-white mb-2">NFT Minted!</h2>
           <p className="text-dark-400">

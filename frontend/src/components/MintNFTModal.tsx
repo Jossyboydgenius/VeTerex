@@ -6,7 +6,7 @@ import { useAppStore } from "@/store/useAppStore";
 import { mintCompletionNFT } from "@/services/api";
 import {
   NFTMiningImageIcon,
-  ConfettiImageIcon,
+  OpenCookieImageIcon,
   VeryCoinImageIcon,
 } from "./AppIcons";
 
@@ -134,9 +134,9 @@ export function MintNFTModal({
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
                       transition={{ type: "spring", bounce: 0.5 }}
-                      className="w-20 h-20 mx-auto mb-4 flex items-center justify-center"
+                      className="w-24 h-24 mx-auto mb-4 flex items-center justify-center"
                     >
-                      <ConfettiImageIcon size={72} />
+                      <OpenCookieImageIcon size={92} />
                     </motion.div>
                     <h3 className="text-xl font-semibold text-white mb-2">
                       NFT Minted!

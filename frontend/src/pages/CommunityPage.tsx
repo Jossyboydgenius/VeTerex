@@ -91,75 +91,93 @@ export function CommunityPage() {
 
   useEffect(() => {
     async function loadMatches() {
-      if (!isConnected || !currentAccount?.address) return
-      const ids = await readUserNfts(currentAccount.address as `0x${string}`)
-      setUserNftIds(ids)
-      const similars = await getSimilars(currentAccount.address as `0x${string}`, ids)
-      setMatchingAddrs(similars)
+      try {
+        if (!isConnected || !currentAccount?.address) return
+        const ids = await readUserNfts(currentAccount.address as `0x${string}`)
+        setUserNftIds(ids)
+        const similars = await getSimilars(currentAccount.address as `0x${string}`, ids)
+        setMatchingAddrs(similars)
+      } catch (e: any) {
+        console.error("Failed to load matches:", e)
+        addToast({
+          type: "error",
+          message: e?.message ? `Failed to load matches: ${e.message}` : "Failed to load matches",
+        })
+        setMatchingAddrs([])
+      }
     }
     if (activeTab === "matches") loadMatches()
-  }, [activeTab, isConnected, currentAccount?.address])
+  }, [activeTab, isConnected, currentAccount?.address, addToast])
   
   useEffect(() => {
     async function loadGroups() {
-      if (!isConnected || !currentAccount?.address) return
-      const ids = await readUserNfts(currentAccount.address as `0x${string}`)
-      const metas = await getTokensMetadata(ids)
-      const built: Group[] = []
-      for (const m of metas) {
-        const count = await getGroupMemberCount(m.mediaId as any)
-        
-        // Parse metadata
-        let title = m.uri || "Achievement"
-        let coverImage = m.tokenURI || ""
-        let externalId = m.uri || ""
-        let description = ""
-
-        if (m.uri && m.uri.startsWith("data:application/json")) {
-          try {
-            const base64 = m.uri.split(",")[1];
-            if (base64) {
-              const json = JSON.parse(atob(base64));
-              if (json.name) title = json.name;
-              if (json.image) coverImage = json.image;
-              if (json.external_url) externalId = json.external_url;
-              if (json.description) description = json.description;
+      try {
+        if (!isConnected || !currentAccount?.address) return
+        const ids = await readUserNfts(currentAccount.address as `0x${string}`)
+        const metas = await getTokensMetadata(ids)
+        const built: Group[] = []
+        for (const m of metas) {
+          const count = await getGroupMemberCount(m.mediaId as any)
+          
+          // Parse metadata
+          let title = m.uri || "Achievement"
+          let coverImage = m.tokenURI || ""
+          let externalId = m.uri || ""
+          let description = ""
+ 
+          if (m.uri && m.uri.startsWith("data:application/json")) {
+            try {
+              const base64 = m.uri.split(",")[1];
+              if (base64) {
+                const json = JSON.parse(atob(base64));
+                if (json.name) title = json.name;
+                if (json.image) coverImage = json.image;
+                if (json.external_url) externalId = json.external_url;
+                if (json.description) description = json.description;
+              }
+            } catch (e) {
+              console.warn("Failed to parse metadata URI", e);
             }
-          } catch (e) {
-            console.warn("Failed to parse metadata URI", e);
+          } else if (m.uri) {
+            // If not a data URI, try to format the title if it looks like a URL
+            if (m.uri.startsWith('http')) {
+               title = formatTitle(m.uri);
+            }
           }
-        } else if (m.uri) {
-          // If not a data URI, try to format the title if it looks like a URL
-          if (m.uri.startsWith('http')) {
-             title = formatTitle(m.uri);
-          }
-        }
-
-        built.push({
-          id: m.mediaId,
-          mediaId: m.mediaId,
-          media: {
+ 
+          built.push({
             id: m.mediaId,
-            externalId,
-            title,
-            type: m.kind === 1 ? "book" : m.kind === 2 ? "movie" : m.kind === 3 ? "anime" : m.kind === 4 ? "comic" : m.kind === 5 ? "manga" : "tvshow",
-            description,
-            coverImage,
-            releaseYear: new Date().getFullYear(),
-            creator: "",
-            genre: [],
-            totalCompletions: Number(count),
-          },
-          members: [],
-          memberCount: Number(count),
-          createdAt: new Date(),
-          recentActivity: [],
+            mediaId: m.mediaId,
+            media: {
+              id: m.mediaId,
+              externalId,
+              title,
+              type: m.kind === 1 ? "book" : m.kind === 2 ? "movie" : m.kind === 3 ? "anime" : m.kind === 4 ? "comic" : m.kind === 5 ? "manga" : "tvshow",
+              description,
+              coverImage,
+              releaseYear: new Date().getFullYear(),
+              creator: "",
+              genre: [],
+              totalCompletions: Number(count),
+            },
+            members: [],
+            memberCount: Number(count),
+            createdAt: new Date(),
+            recentActivity: [],
+          })
+        }
+        setGroups(built)
+      } catch (e: any) {
+        console.error("Failed to load groups:", e)
+        addToast({
+          type: "error",
+          message: e?.message ? `Failed to load groups: ${e.message}` : "Failed to load groups",
         })
+        setGroups([])
       }
-      setGroups(built)
     }
     if (activeTab === "groups") loadGroups()
-  }, [activeTab, isConnected, currentAccount?.address])
+  }, [activeTab, isConnected, currentAccount?.address, addToast])
 
       useEffect(() => {
     // Placeholder for channel data loading if needed in the future
