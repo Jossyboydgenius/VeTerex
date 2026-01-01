@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
@@ -17,6 +17,7 @@ import {
   Play,
   BookOpen,
   ChevronRight,
+  Loader2,
 } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import {
@@ -56,6 +57,11 @@ export function ProfilePage() {
 
   const [copied, setCopied] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [localProfileImage, setLocalProfileImage] = useState<string | null>(
+    null
+  );
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Get display name based on auth method
   const displayName =
@@ -125,6 +131,79 @@ export function ProfilePage() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
+  };
+
+  // Handle profile image upload
+  const handleImageUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    if (!allowedTypes.includes(file.type)) {
+      addToast({
+        type: "error",
+        message: "Please select an image file (JPEG, PNG, WebP, or GIF)",
+      });
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      addToast({
+        type: "error",
+        message: "Image size must be less than 5MB",
+      });
+      return;
+    }
+
+    setIsUploadingImage(true);
+
+    try {
+      // Create a local preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setLocalProfileImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+
+      // TODO: Upload to backend when API is ready
+      // For now, just show the local preview
+      // const formData = new FormData();
+      // formData.append("file", file);
+      // const response = await fetch(`${API_URL}/api/user/upload-image/${userId}`, {
+      //   method: "POST",
+      //   body: formData,
+      // });
+      // const data = await response.json();
+      // if (data.success) {
+      //   setLocalProfileImage(data.imageUrl);
+      // }
+
+      addToast({
+        type: "success",
+        message: "Profile image updated!",
+      });
+    } catch (error) {
+      console.error("Image upload error:", error);
+      addToast({
+        type: "error",
+        message: "Failed to upload image. Please try again.",
+      });
+    } finally {
+      setIsUploadingImage(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
+  // Trigger file input click
+  const handleEditImageClick = () => {
+    fileInputRef.current?.click();
   };
 
   const handleLogout = async () => {
@@ -235,7 +314,13 @@ export function ProfilePage() {
         <div className="relative inline-block mb-4">
           <div className="w-24 h-24 rounded-full bg-gradient-to-br from-coral to-violet p-[3px]">
             <div className="w-full h-full rounded-full bg-dark-900 flex items-center justify-center overflow-hidden">
-              {authMethod === "verychat" && verychatUser?.profileImage ? (
+              {localProfileImage ? (
+                <img
+                  src={localProfileImage}
+                  alt="Profile"
+                  className="w-full h-full object-cover"
+                />
+              ) : authMethod === "verychat" && verychatUser?.profileImage ? (
                 <img
                   src={verychatUser.profileImage}
                   alt={verychatUser.profileName}
@@ -246,8 +331,25 @@ export function ProfilePage() {
               )}
             </div>
           </div>
-          <button className="absolute bottom-0 right-0 p-2 rounded-full bg-coral text-white hover:bg-coral-light transition-colors">
-            <Edit3 className="w-4 h-4" />
+          {/* Hidden file input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            onChange={handleImageUpload}
+            className="hidden"
+          />
+          {/* Edit button */}
+          <button
+            onClick={handleEditImageClick}
+            disabled={isUploadingImage}
+            className="absolute bottom-0 right-0 p-2 rounded-full bg-coral text-white hover:bg-coral-light transition-colors disabled:opacity-50"
+          >
+            {isUploadingImage ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Edit3 className="w-4 h-4" />
+            )}
           </button>
         </div>
 
@@ -256,19 +358,42 @@ export function ProfilePage() {
 
         {/* Profile ID or Wallet Address */}
         {profileId && (
-          <div className="flex items-center justify-center gap-2 text-sm text-dark-400 mb-4">
-            <span className="font-mono">{profileId}</span>
-            {authMethod === "wepin" && currentAccount?.address && (
-              <button
-                onClick={handleCopyAddress}
-                className="p-1 rounded hover:bg-dark-700 transition-colors"
-              >
-                {copied ? (
-                  <Check className="w-4 h-4 text-brand-green" />
-                ) : (
-                  <Copy className="w-4 h-4" />
-                )}
-              </button>
+          <div className="flex flex-col items-center gap-1 text-sm text-dark-400 mb-4">
+            <div className="flex items-center gap-2">
+              <span className="font-mono">{profileId}</span>
+              {authMethod === "wepin" && currentAccount?.address && (
+                <button
+                  onClick={handleCopyAddress}
+                  className="p-1 rounded hover:bg-dark-700 transition-colors"
+                >
+                  {copied ? (
+                    <Check className="w-4 h-4 text-brand-green" />
+                  ) : (
+                    <Copy className="w-4 h-4" />
+                  )}
+                </button>
+              )}
+            </div>
+            {/* Show wallet address for VeryChat users */}
+            {authMethod === "verychat" && currentAccount?.address && (
+              <div className="flex items-center gap-2 text-xs text-dark-500">
+                <span className="font-mono">
+                  {`${currentAccount.address.slice(
+                    0,
+                    8
+                  )}...${currentAccount.address.slice(-6)}`}
+                </span>
+                <button
+                  onClick={handleCopyAddress}
+                  className="p-1 rounded hover:bg-dark-700 transition-colors"
+                >
+                  {copied ? (
+                    <Check className="w-3 h-3 text-brand-green" />
+                  ) : (
+                    <Copy className="w-3 h-3" />
+                  )}
+                </button>
+              </div>
             )}
           </div>
         )}

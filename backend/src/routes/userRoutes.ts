@@ -1,0 +1,398 @@
+import { Router, Request, Response } from "express";
+import type { Router as RouterType } from "express";
+import { verifyVeryChatToken, optionalAuth } from "../middleware/auth.js";
+import * as userService from "../services/userService.js";
+import * as walletService from "../services/walletService.js";
+import * as fileService from "../services/fileService.js";
+import * as transactionService from "../services/transactionService.js";
+
+const router: RouterType = Router();
+
+// ========== USER ROUTES ==========
+
+/**
+ * Create or update user profile
+ * POST /api/user/profile
+ */
+router.post("/profile", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const {
+      authId,
+      authMethod,
+      profileName,
+      profileImage,
+      email,
+      walletAddress,
+    } = req.body;
+
+    if (!authId || !authMethod || !profileName) {
+      res.status(400).json({
+        error: "Missing required fields: authId, authMethod, profileName",
+      });
+      return;
+    }
+
+    if (!["verychat", "wepin"].includes(authMethod)) {
+      res
+        .status(400)
+        .json({ error: "Invalid authMethod. Must be 'verychat' or 'wepin'" });
+      return;
+    }
+
+    // Create/update user
+    const user = await userService.createOrUpdateUser(
+      authId,
+      authMethod,
+      profileName,
+      profileImage,
+      email
+    );
+
+    // Create wallet record if walletAddress provided
+    if (walletAddress) {
+      await walletService.createWalletRecord(user.id, walletAddress);
+    }
+
+    res.json({
+      success: true,
+      user,
+    });
+  } catch (error: any) {
+    console.error("Profile creation error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Get user profile by auth ID
+ * GET /api/user/profile/:authMethod/:authId
+ */
+router.get(
+  "/profile/:authMethod/:authId",
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { authMethod, authId } = req.params;
+
+      if (!["verychat", "wepin"].includes(authMethod)) {
+        res.status(400).json({ error: "Invalid authMethod" });
+        return;
+      }
+
+      const user = await userService.getUserByAuthId(
+        authId,
+        authMethod as "verychat" | "wepin"
+      );
+
+      if (!user) {
+        res.status(404).json({ error: "User not found" });
+        return;
+      }
+
+      res.json(user);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+);
+
+/**
+ * Update user profile
+ * PUT /api/user/profile/:userId
+ */
+router.put(
+  "/profile/:userId",
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { userId } = req.params;
+      const { profileName, bio, email } = req.body;
+
+      const user = await userService.updateUserProfile(userId, {
+        profileName,
+        bio,
+        email,
+      });
+
+      res.json({
+        success: true,
+        user,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+);
+
+/**
+ * Delete user
+ * DELETE /api/user/profile/:userId
+ */
+router.delete(
+  "/profile/:userId",
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { userId } = req.params;
+
+      const user = await userService.deleteUser(userId);
+
+      res.json({
+        success: true,
+        message: "User deleted",
+        user,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+);
+
+// ========== IMAGE UPLOAD ROUTES ==========
+
+/**
+ * Upload profile image
+ * POST /api/user/upload-image/:userId
+ */
+router.post(
+  "/upload-image/:userId",
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { userId } = req.params;
+      const file = req.file;
+
+      if (!file) {
+        res.status(400).json({ error: "No file provided" });
+        return;
+      }
+
+      const result = await fileService.uploadProfileImage(
+        file.buffer,
+        file.originalname,
+        file.mimetype,
+        userId
+      );
+
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+);
+
+/**
+ * Delete profile image
+ * DELETE /api/user/profile-image/:userId
+ */
+router.delete(
+  "/profile-image/:userId",
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { userId } = req.params;
+
+      const user = await fileService.deleteProfileImage(userId);
+
+      res.json({
+        success: true,
+        user,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+);
+
+/**
+ * Get user's media files
+ * GET /api/user/media/:userId
+ */
+router.get(
+  "/media/:userId",
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { userId } = req.params;
+      const { purpose } = req.query;
+
+      const media = await fileService.getUserMedia(
+        userId,
+        purpose as string | undefined
+      );
+
+      res.json(media);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+);
+
+// ========== WALLET ROUTES ==========
+
+/**
+ * Create or update wallet
+ * POST /api/user/wallet
+ */
+router.post("/wallet", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { userId, walletAddress, network, chainId } = req.body;
+
+    if (!userId || !walletAddress) {
+      res
+        .status(400)
+        .json({ error: "Missing required fields: userId, walletAddress" });
+      return;
+    }
+
+    const wallet = await walletService.createWalletRecord(
+      userId,
+      walletAddress,
+      network,
+      chainId
+    );
+
+    res.json({
+      success: true,
+      wallet,
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Get user's wallets
+ * GET /api/user/wallets/:userId
+ */
+router.get(
+  "/wallets/:userId",
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { userId } = req.params;
+
+      const wallets = await walletService.getUserWallets(userId);
+
+      res.json(wallets);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+);
+
+/**
+ * Update wallet balance
+ * PUT /api/user/wallet/:walletAddress/balance
+ */
+router.put(
+  "/wallet/:walletAddress/balance",
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { walletAddress } = req.params;
+      const { balance } = req.body;
+
+      const wallet = await walletService.updateWalletBalance(
+        walletAddress,
+        balance
+      );
+
+      res.json({
+        success: true,
+        wallet,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+);
+
+// ========== TRANSACTION ROUTES ==========
+
+/**
+ * Record transaction
+ * POST /api/user/transaction
+ */
+router.post(
+  "/transaction",
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const {
+        userId,
+        fromAddress,
+        toAddress,
+        amount,
+        txHash,
+        status,
+        tokenId,
+        mediaType,
+      } = req.body;
+
+      if (!userId || !fromAddress || !toAddress || !txHash) {
+        res.status(400).json({ error: "Missing required fields" });
+        return;
+      }
+
+      const transaction = await transactionService.recordTransaction(
+        userId,
+        fromAddress,
+        toAddress,
+        amount || 0,
+        txHash,
+        status,
+        tokenId,
+        mediaType
+      );
+
+      res.json({
+        success: true,
+        transaction,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+);
+
+/**
+ * Get user's transactions
+ * GET /api/user/transactions/:userId
+ */
+router.get(
+  "/transactions/:userId",
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { userId } = req.params;
+      const { limit, offset } = req.query;
+
+      const result = await transactionService.getUserTransactions(
+        userId,
+        limit ? parseInt(limit as string) : 20,
+        offset ? parseInt(offset as string) : 0
+      );
+
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+);
+
+/**
+ * Get transaction by hash
+ * GET /api/user/transaction/:txHash
+ */
+router.get(
+  "/transaction/:txHash",
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { txHash } = req.params;
+
+      const transaction = await transactionService.getTransaction(txHash);
+
+      if (!transaction) {
+        res.status(404).json({ error: "Transaction not found" });
+        return;
+      }
+
+      res.json(transaction);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+);
+
+export default router;

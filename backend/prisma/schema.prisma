@@ -1,0 +1,117 @@
+// Prisma Schema for VeTerex Backend
+// https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ============ USER MODEL ============
+model User {
+  id String @id @default(cuid())
+
+  // VeryChat/Wepin IDs (one or the other will be present)
+  verychatId String? @unique @db.Text
+  wepinId    String? @unique @db.Text
+
+  // Profile Info
+  profileName  String  @db.Text
+  profileImage String? @db.Text // URL to image in Supabase Storage
+  bio          String? @db.Text
+  email        String? @unique @db.Text
+
+  // Relations
+  wallets      Wallet[]
+  transactions Transaction[]
+  media        Media[]
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([verychatId])
+  @@index([wepinId])
+}
+
+// ============ WALLET MODEL ============
+model Wallet {
+  id String @id @default(cuid())
+
+  // Relations
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Wallet Details
+  walletAddress String @unique @db.Text
+  network       String @default("verychain") @db.Text // "verychain", "ethereum", etc
+  chainId       Int    @default(4613)
+
+  // Balance & NFTs (cached from blockchain)
+  balance  Float @default(0)
+  nftCount Int   @default(0)
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([walletAddress])
+}
+
+// ============ TRANSACTION MODEL ============
+model Transaction {
+  id String @id @default(cuid())
+
+  // Relations
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Transaction Details
+  fromAddress String @db.Text
+  toAddress   String @db.Text
+  amount      Float
+  txHash      String @unique @db.Text
+  status      String @default("pending") @db.Text // pending, confirmed, failed
+
+  // NFT Mint specific fields (optional)
+  tokenId   String? @db.Text
+  mediaType String? @db.Text // book, movie, anime, manga, tvshow, video, comic
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([txHash])
+  @@index([status])
+}
+
+// ============ MEDIA/FILE MODEL ============
+model Media {
+  id String @id @default(cuid())
+
+  // Relations
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // File Details
+  fileName    String @db.Text
+  fileUrl     String @db.Text // Public URL in Supabase Storage
+  fileType    String @db.Text // image/jpeg, image/png, etc
+  fileSize    Int // Size in bytes
+  storagePath String @db.Text // Path in storage bucket
+
+  // Metadata
+  purpose String @default("upload") @db.Text // profile-image, nft-image, upload
+
+  // Timestamps
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([purpose])
+}

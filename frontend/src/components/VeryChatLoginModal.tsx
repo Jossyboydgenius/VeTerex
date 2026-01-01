@@ -30,6 +30,7 @@ export function VeryChatLoginModal({
   const [handleId, setHandleId] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isResending, setIsResending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resendCooldown, setResendCooldown] = useState(0);
 
@@ -64,9 +65,9 @@ export function VeryChatLoginModal({
   }, [handleId]);
 
   const handleResendCode = useCallback(async () => {
-    if (resendCooldown > 0) return;
+    if (resendCooldown > 0 || isResending) return;
 
-    setIsLoading(true);
+    setIsResending(true);
     setError(null);
 
     try {
@@ -76,9 +77,9 @@ export function VeryChatLoginModal({
     } catch (err: any) {
       setError(err.message || "Failed to resend verification code");
     } finally {
-      setIsLoading(false);
+      setIsResending(false);
     }
-  }, [handleId, resendCooldown]);
+  }, [handleId, resendCooldown, isResending]);
 
   const handleVerifyCode = async () => {
     if (!verificationCode || verificationCode.length !== 6) {
@@ -321,16 +322,23 @@ export function VeryChatLoginModal({
 
                   <button
                     onClick={handleResendCode}
-                    disabled={isLoading || resendCooldown > 0}
-                    className={`w-full text-sm transition-colors ${
-                      resendCooldown > 0
+                    disabled={isResending || resendCooldown > 0}
+                    className={`w-full text-sm transition-colors flex items-center justify-center gap-2 ${
+                      resendCooldown > 0 || isResending
                         ? "text-dark-500 cursor-not-allowed"
                         : "text-dark-400 hover:text-coral"
                     }`}
                   >
-                    {resendCooldown > 0
-                      ? `Resend code in ${resendCooldown}s`
-                      : "Didn't receive code? Send again"}
+                    {isResending ? (
+                      <>
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        <span>Resending...</span>
+                      </>
+                    ) : resendCooldown > 0 ? (
+                      `Resend code in ${resendCooldown}s`
+                    ) : (
+                      "Didn't receive code? Send again"
+                    )}
                   </button>
                 </motion.div>
               )}

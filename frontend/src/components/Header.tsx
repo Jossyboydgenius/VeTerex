@@ -50,7 +50,8 @@ export function Header() {
   } = useAppStore();
 
   const [showDropdown, setShowDropdown] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [copiedWallet, setCopiedWallet] = useState(false);
+  const [copiedHandle, setCopiedHandle] = useState(false);
   const [showVeryChatModal, setShowVeryChatModal] = useState(false);
   const [showAuthChoiceModal, setShowAuthChoiceModal] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -360,22 +361,6 @@ export function Header() {
     }
   };
 
-  const copyToClipboard = () => {
-    let textToCopy = "";
-
-    if (authMethod === "verychat" && verychatUser) {
-      textToCopy = `@${verychatUser.profileId}`;
-    } else if (currentAccount?.address) {
-      textToCopy = currentAccount.address;
-    }
-
-    if (textToCopy) {
-      navigator.clipboard.writeText(textToCopy);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
   const truncateAddress = (address: string) => {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
@@ -518,17 +503,67 @@ export function Header() {
                                 ? `@${verychatUser.profileId}`
                                 : currentAccount?.address}
                             </p>
+                            {/* Show wallet address for VeryChat users */}
+                            {authMethod === "verychat" &&
+                              currentAccount?.address && (
+                                <p className="text-xs text-dark-500 truncate font-mono mt-0.5">
+                                  {truncateAddress(currentAccount.address)}
+                                </p>
+                              )}
                           </div>
                         </div>
 
-                        {/* Copy button - works for both auth methods */}
+                        {/* Copy wallet address for VeryChat users */}
+                        {authMethod === "verychat" &&
+                          currentAccount?.address && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigator.clipboard.writeText(
+                                  currentAccount.address
+                                );
+                                setCopiedWallet(true);
+                                setTimeout(() => setCopiedWallet(false), 2000);
+                              }}
+                              className="w-full flex items-center justify-start gap-2 px-3 py-2 mb-2
+                                 bg-dark-800 rounded-lg text-sm text-dark-300 
+                                 hover:text-white hover:bg-dark-700 transition-colors"
+                            >
+                              {copiedWallet ? (
+                                <>
+                                  <Check className="w-4 h-4 text-green-400" />
+                                  <span>Copied Wallet Address!</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="w-4 h-4" />
+                                  <span>Copy Wallet Address</span>
+                                </>
+                              )}
+                            </button>
+                          )}
+
+                        {/* Copy button - handle for VeryChat, address for Wepin */}
                         <button
-                          onClick={copyToClipboard}
-                          className="w-full flex items-center justify-center gap-2 px-3 py-2 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            let textToCopy = "";
+                            if (authMethod === "verychat" && verychatUser) {
+                              textToCopy = `@${verychatUser.profileId}`;
+                            } else if (currentAccount?.address) {
+                              textToCopy = currentAccount.address;
+                            }
+                            if (textToCopy) {
+                              navigator.clipboard.writeText(textToCopy);
+                              setCopiedHandle(true);
+                              setTimeout(() => setCopiedHandle(false), 2000);
+                            }
+                          }}
+                          className="w-full flex items-center justify-start gap-2 px-3 py-2 
                                bg-dark-800 rounded-lg text-sm text-dark-300 
                                hover:text-white hover:bg-dark-700 transition-colors"
                         >
-                          {copied ? (
+                          {copiedHandle ? (
                             <>
                               <Check className="w-4 h-4 text-green-400" />
                               <span>Copied!</span>

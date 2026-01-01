@@ -64,58 +64,6 @@ export function MintPage() {
   const [isMinting, setIsMinting] = useState(false);
   const [mintSuccess, setMintSuccess] = useState(false);
 
-  const [showTestList, setShowTestList] = useState(false);
-
-  // Load test data for web version testing
-  const testDataList = [
-    {
-      id: `test-mint-comic-${Date.now()}`,
-      platform: "webtoon",
-      type: "comic",
-      title: "The Amazing Spider-Man (2022) - Episode 13",
-      url: "https://www.webtoons.com/en/graphic-novel/the-amazing-spider-man-2022/episode-13/viewer?title_no=8475&episode_no=13",
-      progress: 100,
-      watchTime: 35, // 0m 35s
-      thumbnail:
-        "https://swebtoon-phinf.pstatic.net/20250826_197/1756157211282A8V5q_JPEG/TheAmazingSpiderMan_EpisodeList_Mobile.jpg?type=crop540_540",
-      completed: true,
-      startTime: Date.now(),
-      lastUpdate: Date.now(),
-    },
-    {
-      id: `test-mint-video-${Date.now()}`,
-      platform: "youtube",
-      type: "video",
-      title: "$30 vs $630 Smartwatch (oraimo vs Apple)",
-      url: "https://www.youtube.com/watch?v=oUbGya-2vJI",
-      progress: 4,
-      watchTime: 500, // 8m 20s
-      thumbnail: "https://img.youtube.com/vi/oUbGya-2vJI/maxresdefault.jpg",
-      completed: true,
-      startTime: Date.now(),
-      lastUpdate: Date.now(),
-    },
-    {
-      id: `test-mint-manga-${Date.now()}`,
-      platform: "webtoon",
-      type: "manga",
-      title: "Love 4 a Walk (S2) Episode 78",
-      url: "https://www.webtoons.com/en/romance/love-4-a-walk/s2-episode-78/viewer?title_no=6278&episode_no=79",
-      progress: 100,
-      watchTime: 243, // 4m 3s
-      thumbnail:
-        "https://swebtoon-phinf.pstatic.net/20240403_279/1712082286574qY5hC_JPEG/6Love-4-A-Walk_EpisodeList_Mobile.jpg?type=crop540_540",
-      completed: true,
-      startTime: Date.now(),
-      lastUpdate: Date.now(),
-    },
-  ];
-
-  const loadTestData = (index: number) => {
-    setMediaToMint(testDataList[index] as any);
-    setShowTestList(false);
-  };
-
   useEffect(() => {
     // Check for data passed via URL (from extension)
     // Support both HashRouter (useLocation) and standard URL params
@@ -345,42 +293,13 @@ export function MintPage() {
         <p className="text-dark-400 text-sm text-center mb-6">
           Complete watching content to mint NFT badges
         </p>
-        <div className="flex gap-3">
-          <button
-            onClick={() => navigate("/")}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-dark-800 text-white hover:bg-dark-700 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Go Home
-          </button>
-          <div className="relative">
-            <button
-              onClick={() => setShowTestList(!showTestList)}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-dark-700 text-white hover:bg-dark-600 transition-colors"
-            >
-              <Play className="w-4 h-4" />
-              Load Test Data
-            </button>
-            {showTestList && (
-              <div className="absolute bottom-full mb-2 right-0 w-64 bg-dark-800 border border-dark-700 rounded-xl shadow-xl overflow-hidden z-10">
-                {testDataList.map((data, index) => (
-                  <button
-                    key={index}
-                    onClick={() => loadTestData(index)}
-                    className="w-full text-left px-4 py-3 hover:bg-dark-700 transition-colors border-b border-dark-700 last:border-0"
-                  >
-                    <p className="text-white text-sm font-medium truncate">
-                      {data.title}
-                    </p>
-                    <p className="text-dark-400 text-xs capitalize">
-                      {data.type} • {data.platform}
-                    </p>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+        <button
+          onClick={() => navigate("/")}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-dark-800 text-white hover:bg-dark-700 transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Go Home
+        </button>
       </div>
     );
   }
