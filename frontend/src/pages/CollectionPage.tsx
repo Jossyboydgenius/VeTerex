@@ -12,7 +12,8 @@ import {
   BookOpen,
 } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
-import { NFTCard } from "@/components/NFTCard";
+import { NFTCard, NFTCardSkeleton } from "@/components/NFTCard";
+import { StatsSkeleton } from "@/components/Skeleton";
 import type { MediaType, CompletionNFT } from "@/types";
 import { readUserNfts, getTokensMetadata } from "@/services/nft";
 
@@ -21,43 +22,43 @@ function getYoutubeId(url: string) {
   const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
   const match = url.match(regExp);
 
-  return (match && match[2].length === 11) ? match[2] : null;
+  return match && match[2].length === 11 ? match[2] : null;
 }
 
 // Helper to generate thumbnail URL
 function getThumbnail(url: string, _type: string) {
   if (!url) return "";
-  
+
   // YouTube
   if (url.includes("youtube.com") || url.includes("youtu.be")) {
     const id = getYoutubeId(url);
     if (id) return `https://img.youtube.com/vi/${id}/maxresdefault.jpg`;
   }
-  
+
   // Webtoons (try to find image in URL or return generic cover based on type)
   // Since we can't scrape, we might return a type-specific placeholder if real image not found
   // But for now, if it's the test data, we know the thumbnail is not in the URL
-  // The smart contract 'uri' is the content link, not image. 
+  // The smart contract 'uri' is the content link, not image.
   // We don't have the image stored on-chain.
-  
-  return ""; 
+
+  return "";
 }
 
 // Helper to format title from URL
 function formatTitle(url: string) {
   if (!url) return "Achievement";
-  
+
   try {
     const urlObj = new URL(url);
-    const hostname = urlObj.hostname.replace('www.', '');
-    
-    if (hostname.includes('youtube')) return 'YouTube Video';
-    if (hostname.includes('webtoons')) return 'Webtoon Chapter';
-    if (hostname.includes('netflix')) return 'Netflix Show';
-    
+    const hostname = urlObj.hostname.replace("www.", "");
+
+    if (hostname.includes("youtube")) return "YouTube Video";
+    if (hostname.includes("webtoons")) return "Webtoon Chapter";
+    if (hostname.includes("netflix")) return "Netflix Show";
+
     return `${hostname} Content`;
   } catch {
-    return url.length > 30 ? url.substring(0, 27) + '...' : url;
+    return url.length > 30 ? url.substring(0, 27) + "..." : url;
   }
 }
 
@@ -71,75 +72,102 @@ const typeFilters = [
 ];
 
 export function CollectionPage() {
-  const { isConnected, completions, setCompletions, currentAccount, addToast } = useAppStore();
+  const { isConnected, completions, setCompletions, currentAccount, addToast } =
+    useAppStore();
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [selectedType, setSelectedType] = useState<MediaType | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     async function load() {
+      setIsLoading(true);
       try {
-        if (!isConnected || !currentAccount?.address) return
-        const ids = await readUserNfts(currentAccount.address as `0x${string}`)
-        const metas = await getTokensMetadata(ids)
-        const items: CompletionNFT[] = metas.map((m) => {
-        // Try to parse metadata from data URI if present
-        let externalId = m.uri || "";
-        let title = m.uri ? formatTitle(m.uri) : "Achievement";
-        let coverImage = (m.uri ? getThumbnail(m.uri, "") : "") || m.tokenURI || "";
-        let description = m.uri || "";
-
-        if (m.uri && m.uri.startsWith("data:application/json")) {
-          try {
-            // Extract base64 part
-            const base64 = m.uri.split(",")[1];
-            if (base64) {
-              const json = JSON.parse(atob(base64));
-              if (json.name) title = json.name;
-              if (json.image) coverImage = json.image;
-              if (json.external_url) externalId = json.external_url;
-              if (json.description) description = json.description;
-            }
-          } catch (e) {
-            console.warn("Failed to parse metadata URI", e);
-          }
+        if (!isConnected || !currentAccount?.address) {
+          setIsLoading(false);
+          return;
         }
+        const ids = await readUserNfts(currentAccount.address as `0x${string}`);
+        const metas = await getTokensMetadata(ids);
+        const items: CompletionNFT[] = metas.map((m) => {
+          // Try to parse metadata from data URI if present
+          let externalId = m.uri || "";
+          let title = m.uri ? formatTitle(m.uri) : "Achievement";
+          let coverImage =
+            (m.uri ? getThumbnail(m.uri, "") : "") || m.tokenURI || "";
+          let description = m.uri || "";
 
-        // Preserve existing completion info (e.g., transaction hash) by tokenId
-        const existing = completions.find((c) => c.tokenId === String(m.tokenId));
+          if (m.uri && m.uri.startsWith("data:application/json")) {
+            try {
+              // Extract base64 part
+              const base64 = m.uri.split(",")[1];
+              if (base64) {
+                const json = JSON.parse(atob(base64));
+                if (json.name) title = json.name;
+                if (json.image) coverImage = json.image;
+                if (json.external_url) externalId = json.external_url;
+                if (json.description) description = json.description;
+              }
+            } catch (e) {
+              console.warn("Failed to parse metadata URI", e);
+            }
+          }
 
-        return {
-          id: String(m.tokenId),
-          tokenId: String(m.tokenId),
-          mediaId: m.mediaId,
-          media: {
-            id: m.mediaId,
-            externalId,
-            title,
-            type: m.kind === 1 ? "book" : m.kind === 2 ? "movie" : m.kind === 3 ? "anime" : m.kind === 4 ? "comic" : m.kind === 5 ? "manga" : "tvshow",
-            description,
-            coverImage,
-            releaseYear: new Date().getFullYear(),
-            creator: "",
-            genre: [],
-            totalCompletions: 0,
-          },
-          mintedAt: existing?.mintedAt || new Date(),
-          transactionHash: existing?.transactionHash || "",
-          completedAt: new Date(),
-          rarity: ["common", "rare", "epic", "legendary"][Number(m.tokenId) % 4] as any,
-        };
-      })
-        setCompletions(items)
+          // Preserve existing completion info (e.g., transaction hash) by tokenId
+          const existing = completions.find(
+            (c) => c.tokenId === String(m.tokenId)
+          );
+
+          return {
+            id: String(m.tokenId),
+            tokenId: String(m.tokenId),
+            mediaId: m.mediaId,
+            media: {
+              id: m.mediaId,
+              externalId,
+              title,
+              type:
+                m.kind === 1
+                  ? "book"
+                  : m.kind === 2
+                  ? "movie"
+                  : m.kind === 3
+                  ? "anime"
+                  : m.kind === 4
+                  ? "comic"
+                  : m.kind === 5
+                  ? "manga"
+                  : "tvshow",
+              description,
+              coverImage,
+              releaseYear: new Date().getFullYear(),
+              creator: "",
+              genre: [],
+              totalCompletions: 0,
+            },
+            mintedAt: existing?.mintedAt || new Date(),
+            transactionHash: existing?.transactionHash || "",
+            completedAt: new Date(),
+            rarity: ["common", "rare", "epic", "legendary"][
+              Number(m.tokenId) % 4
+            ] as any,
+          };
+        });
+        setCompletions(items);
       } catch (e: any) {
-        console.error("Failed to load collection:", e)
+        console.error("Failed to load collection:", e);
         addToast({
           type: "error",
-          message: e?.message ? `Failed to load collection: ${e.message}` : "Failed to load collection",
-        })
+          message: e?.message
+            ? `Failed to load collection: ${e.message}`
+            : "Failed to load collection",
+        });
+      } finally {
+        setIsLoading(false);
       }
     }
-    load()
-  }, [isConnected, currentAccount?.address, setCompletions, completions, addToast])
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isConnected, currentAccount?.address]);
 
   const displayNFTs = isConnected ? completions : [];
 
@@ -147,7 +175,7 @@ export function CollectionPage() {
     ? displayNFTs.filter((nft) => nft.media.type === selectedType)
     : displayNFTs;
 
-          // Stats
+  // Stats
   const totalNFTs = displayNFTs.length;
   const typeStats = displayNFTs.reduce((acc, nft) => {
     acc[nft.media.type] = (acc[nft.media.type] || 0) + 1;
@@ -248,29 +276,46 @@ export function CollectionPage() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-3 gap-3">
-        {Object.entries(typeStats)
-          .slice(0, 3)
-          .map(([type, count]) => {
-            const filterData = typeFilters.find((f) => f.type === type);
-            const Icon = filterData?.icon || Award;
+        {isLoading ? (
+          <StatsSkeleton count={3} />
+        ) : Object.entries(typeStats).length > 0 ? (
+          Object.entries(typeStats)
+            .slice(0, 3)
+            .map(([type, count]) => {
+              const filterData = typeFilters.find((f) => f.type === type);
+              const Icon = filterData?.icon || Award;
 
-            return (
-              <motion.div
-                key={type}
-                whileHover={{ scale: 1.02 }}
-                className="card text-center py-3 cursor-pointer"
-                onClick={() =>
-                  setSelectedType(
-                    selectedType === type ? null : (type as MediaType)
-                  )
-                }
-              >
-                <Icon className="w-5 h-5 mx-auto text-coral mb-1" />
-                <p className="text-lg font-bold text-white">{count}</p>
-                <p className="text-xs text-dark-400 capitalize">{type}s</p>
-              </motion.div>
-            );
-          })}
+              return (
+                <motion.div
+                  key={type}
+                  whileHover={{ scale: 1.02 }}
+                  className="card text-center py-3 cursor-pointer"
+                  onClick={() =>
+                    setSelectedType(
+                      selectedType === type ? null : (type as MediaType)
+                    )
+                  }
+                >
+                  <Icon className="w-5 h-5 mx-auto text-coral mb-1" />
+                  <p className="text-lg font-bold text-white">{count}</p>
+                  <p className="text-xs text-dark-400 capitalize">{type}s</p>
+                </motion.div>
+              );
+            })
+        ) : (
+          // Show placeholder stats when no NFTs
+          [
+            { type: "movie", label: "Movies", icon: Film },
+            { type: "book", label: "Books", icon: Book },
+            { type: "anime", label: "Anime", icon: Play },
+          ].map(({ type, label, icon: Icon }) => (
+            <div key={type} className="card text-center py-3 opacity-50">
+              <Icon className="w-5 h-5 mx-auto text-dark-500 mb-1" />
+              <p className="text-lg font-bold text-dark-500">0</p>
+              <p className="text-xs text-dark-500">{label}</p>
+            </div>
+          ))
+        )}
       </div>
 
       {/* Type Filters */}
@@ -298,7 +343,17 @@ export function CollectionPage() {
       </div>
 
       {/* NFT Grid */}
-      {filteredNFTs.length > 0 ? (
+      {isLoading ? (
+        <div
+          className={
+            viewMode === "grid"
+              ? "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 auto-rows-fr"
+              : "space-y-4"
+          }
+        >
+          <NFTCardSkeleton count={6} />
+        </div>
+      ) : filteredNFTs.length > 0 ? (
         <div
           className={
             viewMode === "grid"

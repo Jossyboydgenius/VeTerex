@@ -17,33 +17,42 @@ import {
 } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import type { Group } from "@/types";
-import { readUserNfts, getSimilars, getTokensMetadata, getGroupMemberCount } from "@/services/nft";
+import {
+  readUserNfts,
+  getSimilars,
+  getTokensMetadata,
+  getGroupMemberCount,
+} from "@/services/nft";
+import { GroupCardSkeleton, MatchCardSkeleton } from "@/components/Skeleton";
 // import { getChannels } from "@/services/verychat";
- 
 
 // Helper to format title from URL
 function formatTitle(url: string) {
   if (!url) return "Achievement";
-  
+
   try {
     const urlObj = new URL(url);
-    const hostname = urlObj.hostname.replace('www.', '');
-    
-    if (hostname.includes('youtube')) return 'YouTube Video';
-    if (hostname.includes('webtoons')) return 'Webtoon Chapter';
-    if (hostname.includes('netflix')) return 'Netflix Show';
-    
+    const hostname = urlObj.hostname.replace("www.", "");
+
+    if (hostname.includes("youtube")) return "YouTube Video";
+    if (hostname.includes("webtoons")) return "Webtoon Chapter";
+    if (hostname.includes("netflix")) return "Netflix Show";
+
     return `${hostname} Content`;
   } catch {
-    return url.length > 30 ? url.substring(0, 27) + '...' : url;
+    return url.length > 30 ? url.substring(0, 27) + "..." : url;
   }
 }
 
 export function CommunityPage() {
   const { isConnected, addToast, currentAccount } = useAppStore();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<"groups" | "matches" | "channels">("groups");
-  const [channelTab, setChannelTab] = useState<"new" | "popular" | "subscribed">("new");
+  const [activeTab, setActiveTab] = useState<"groups" | "matches" | "channels">(
+    "groups"
+  );
+  const [channelTab, setChannelTab] = useState<
+    "new" | "popular" | "subscribed"
+  >("new");
   const [addedFriends, setAddedFriends] = useState<Set<string>>(new Set());
   const [showShareModal, setShowShareModal] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
@@ -51,6 +60,9 @@ export function CommunityPage() {
   const [matchingAddrs, setMatchingAddrs] = useState<string[]>([]);
   const [userNftIds, setUserNftIds] = useState<bigint[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
+  // Loading states
+  const [isLoadingGroups, setIsLoadingGroups] = useState(false);
+  const [isLoadingMatches, setIsLoadingMatches] = useState(false);
   // const [veryChannels, setVeryChannels] = useState<any[]>([]); // Removed unused variable
 
   const toggleFriend = (userId: string) => {
@@ -91,40 +103,55 @@ export function CommunityPage() {
 
   useEffect(() => {
     async function loadMatches() {
+      setIsLoadingMatches(true);
       try {
-        if (!isConnected || !currentAccount?.address) return
-        const ids = await readUserNfts(currentAccount.address as `0x${string}`)
-        setUserNftIds(ids)
-        const similars = await getSimilars(currentAccount.address as `0x${string}`, ids)
-        setMatchingAddrs(similars)
+        if (!isConnected || !currentAccount?.address) {
+          setIsLoadingMatches(false);
+          return;
+        }
+        const ids = await readUserNfts(currentAccount.address as `0x${string}`);
+        setUserNftIds(ids);
+        const similars = await getSimilars(
+          currentAccount.address as `0x${string}`,
+          ids
+        );
+        setMatchingAddrs(similars);
       } catch (e: any) {
-        console.error("Failed to load matches:", e)
+        console.error("Failed to load matches:", e);
         addToast({
           type: "error",
-          message: e?.message ? `Failed to load matches: ${e.message}` : "Failed to load matches",
-        })
-        setMatchingAddrs([])
+          message: e?.message
+            ? `Failed to load matches: ${e.message}`
+            : "Failed to load matches",
+        });
+        setMatchingAddrs([]);
+      } finally {
+        setIsLoadingMatches(false);
       }
     }
-    if (activeTab === "matches") loadMatches()
-  }, [activeTab, isConnected, currentAccount?.address, addToast])
-  
+    if (activeTab === "matches") loadMatches();
+  }, [activeTab, isConnected, currentAccount?.address, addToast]);
+
   useEffect(() => {
     async function loadGroups() {
+      setIsLoadingGroups(true);
       try {
-        if (!isConnected || !currentAccount?.address) return
-        const ids = await readUserNfts(currentAccount.address as `0x${string}`)
-        const metas = await getTokensMetadata(ids)
-        const built: Group[] = []
+        if (!isConnected || !currentAccount?.address) {
+          setIsLoadingGroups(false);
+          return;
+        }
+        const ids = await readUserNfts(currentAccount.address as `0x${string}`);
+        const metas = await getTokensMetadata(ids);
+        const built: Group[] = [];
         for (const m of metas) {
-          const count = await getGroupMemberCount(m.mediaId as any)
-          
+          const count = await getGroupMemberCount(m.mediaId as any);
+
           // Parse metadata
-          let title = m.uri || "Achievement"
-          let coverImage = m.tokenURI || ""
-          let externalId = m.uri || ""
-          let description = ""
- 
+          let title = m.uri || "Achievement";
+          let coverImage = m.tokenURI || "";
+          let externalId = m.uri || "";
+          let description = "";
+
           if (m.uri && m.uri.startsWith("data:application/json")) {
             try {
               const base64 = m.uri.split(",")[1];
@@ -140,11 +167,11 @@ export function CommunityPage() {
             }
           } else if (m.uri) {
             // If not a data URI, try to format the title if it looks like a URL
-            if (m.uri.startsWith('http')) {
-               title = formatTitle(m.uri);
+            if (m.uri.startsWith("http")) {
+              title = formatTitle(m.uri);
             }
           }
- 
+
           built.push({
             id: m.mediaId,
             mediaId: m.mediaId,
@@ -152,7 +179,18 @@ export function CommunityPage() {
               id: m.mediaId,
               externalId,
               title,
-              type: m.kind === 1 ? "book" : m.kind === 2 ? "movie" : m.kind === 3 ? "anime" : m.kind === 4 ? "comic" : m.kind === 5 ? "manga" : "tvshow",
+              type:
+                m.kind === 1
+                  ? "book"
+                  : m.kind === 2
+                  ? "movie"
+                  : m.kind === 3
+                  ? "anime"
+                  : m.kind === 4
+                  ? "comic"
+                  : m.kind === 5
+                  ? "manga"
+                  : "tvshow",
               description,
               coverImage,
               releaseYear: new Date().getFullYear(),
@@ -164,24 +202,28 @@ export function CommunityPage() {
             memberCount: Number(count),
             createdAt: new Date(),
             recentActivity: [],
-          })
+          });
         }
-        setGroups(built)
+        setGroups(built);
       } catch (e: any) {
-        console.error("Failed to load groups:", e)
+        console.error("Failed to load groups:", e);
         addToast({
           type: "error",
-          message: e?.message ? `Failed to load groups: ${e.message}` : "Failed to load groups",
-        })
-        setGroups([])
+          message: e?.message
+            ? `Failed to load groups: ${e.message}`
+            : "Failed to load groups",
+        });
+        setGroups([]);
+      } finally {
+        setIsLoadingGroups(false);
       }
     }
-    if (activeTab === "groups") loadGroups()
-  }, [activeTab, isConnected, currentAccount?.address, addToast])
+    if (activeTab === "groups") loadGroups();
+  }, [activeTab, isConnected, currentAccount?.address, addToast]);
 
-      useEffect(() => {
+  useEffect(() => {
     // Placeholder for channel data loading if needed in the future
-  }, [activeTab])
+  }, [activeTab]);
 
   if (!isConnected) {
     return (
@@ -309,16 +351,24 @@ export function CommunityPage() {
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-white">Media Groups</h2>
             <span className="text-sm text-dark-400">
-              {groups.length} groups available
+              {isLoadingGroups
+                ? "Loading..."
+                : `${groups.length} groups available`}
             </span>
           </div>
 
-          {groups.length === 0 ? (
+          {isLoadingGroups ? (
+            <div className="space-y-4">
+              <GroupCardSkeleton count={4} />
+            </div>
+          ) : groups.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <div className="w-16 h-16 rounded-2xl bg-dark-800 flex items-center justify-center mb-4">
                 <Users className="w-8 h-8 text-dark-400" />
               </div>
-              <h3 className="text-lg font-medium text-white mb-2">No Groups Yet</h3>
+              <h3 className="text-lg font-medium text-white mb-2">
+                No Groups Yet
+              </h3>
               <p className="text-dark-400 max-w-xs">
                 Mint NFTs to join groups related to your completed media.
               </p>
@@ -361,7 +411,9 @@ export function CommunityPage() {
                     <div className="flex items-center gap-3 mt-2 text-xs text-dark-500">
                       <div className="flex items-center gap-1">
                         <Users className="w-3 h-3" />
-                        <span>{group.memberCount.toLocaleString()} members</span>
+                        <span>
+                          {group.memberCount.toLocaleString()} members
+                        </span>
                       </div>
                       <div className="flex items-center gap-1">
                         <MessageCircle className="w-3 h-3" />
@@ -390,9 +442,8 @@ export function CommunityPage() {
         <div className="space-y-6">
           {/* Matches Info */}
           <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: "spring", bounce: 0.6, duration: 0.8 }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
             className="card bg-gradient-to-br from-coral/10 to-violet/10 border-coral/30"
           >
             <div className="flex items-start gap-4">
@@ -416,12 +467,18 @@ export function CommunityPage() {
               People Like You
             </h2>
 
-            {matchingAddrs.length === 0 ? (
+            {isLoadingMatches ? (
+              <div className="space-y-3">
+                <MatchCardSkeleton count={4} />
+              </div>
+            ) : matchingAddrs.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <div className="w-16 h-16 rounded-2xl bg-dark-800 flex items-center justify-center mb-4">
                   <UserPlus className="w-8 h-8 text-dark-400" />
                 </div>
-                <h3 className="text-lg font-medium text-white mb-2">No Matches Yet</h3>
+                <h3 className="text-lg font-medium text-white mb-2">
+                  No Matches Yet
+                </h3>
                 <p className="text-dark-400 max-w-xs">
                   Mint more NFTs to find people with similar taste!
                 </p>
@@ -441,9 +498,7 @@ export function CommunityPage() {
                       {addr.slice(2, 4).toUpperCase()}
                     </div>
                     <div className="flex-1">
-                      <h3 className="font-semibold text-white">
-                        {addr}
-                      </h3>
+                      <h3 className="font-semibold text-white">{addr}</h3>
                       <div className="flex items-center gap-1 text-sm text-coral">
                         <Award className="w-3 h-3" />
                         <span>{userNftIds.length} matching NFTs</span>
@@ -478,31 +533,70 @@ export function CommunityPage() {
             <div className="flex gap-4">
               <button className="text-white hover:text-coral transition-colors">
                 <span className="sr-only">Search</span>
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
               </button>
               <button className="text-white hover:text-coral transition-colors">
                 <span className="sr-only">Create</span>
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="12" y1="8" x2="12" y2="16"></line>
+                  <line x1="8" y1="12" x2="16" y2="12"></line>
+                </svg>
               </button>
             </div>
           </div>
-          
+
           <div className="flex border-b border-dark-700 mb-4">
-            <button 
+            <button
               onClick={() => setChannelTab("new")}
-              className={`flex-1 pb-3 font-medium text-center transition-colors ${channelTab === "new" ? "text-coral border-b-2 border-coral" : "text-dark-400 hover:text-white"}`}
+              className={`flex-1 pb-3 font-medium text-center transition-colors ${
+                channelTab === "new"
+                  ? "text-coral border-b-2 border-coral"
+                  : "text-dark-400 hover:text-white"
+              }`}
             >
               New
             </button>
-            <button 
+            <button
               onClick={() => setChannelTab("popular")}
-              className={`flex-1 pb-3 font-medium text-center transition-colors ${channelTab === "popular" ? "text-coral border-b-2 border-coral" : "text-dark-400 hover:text-white"}`}
+              className={`flex-1 pb-3 font-medium text-center transition-colors ${
+                channelTab === "popular"
+                  ? "text-coral border-b-2 border-coral"
+                  : "text-dark-400 hover:text-white"
+              }`}
             >
               Popular
             </button>
-            <button 
+            <button
               onClick={() => setChannelTab("subscribed")}
-              className={`flex-1 pb-3 font-medium text-center transition-colors ${channelTab === "subscribed" ? "text-coral border-b-2 border-coral" : "text-dark-400 hover:text-white"}`}
+              className={`flex-1 pb-3 font-medium text-center transition-colors ${
+                channelTab === "subscribed"
+                  ? "text-coral border-b-2 border-coral"
+                  : "text-dark-400 hover:text-white"
+              }`}
             >
               Subscribed
             </button>
@@ -514,13 +608,20 @@ export function CommunityPage() {
               <div className="relative rounded-2xl overflow-hidden bg-gradient-to-r from-gray-900 to-gray-800 border border-dark-700">
                 <div className="absolute top-0 right-0 p-4">
                   <div className="w-16 h-16 relative">
-                     {/* Gift Box Icon */}
-                     <div className="absolute inset-0 bg-gradient-to-br from-orange-400 to-red-600 rounded-full blur-xl opacity-20"></div>
-                     <img src="/icons/gift-box.png" alt="Gift" className="w-full h-full object-contain transform rotate-12 drop-shadow-lg" />
+                    {/* Gift Box Icon */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-orange-400 to-red-600 rounded-full blur-xl opacity-20"></div>
+                    <img
+                      src="/icons/gift-box.png"
+                      alt="Gift"
+                      className="w-full h-full object-contain transform rotate-12 drop-shadow-lg"
+                    />
                   </div>
                 </div>
                 <div className="p-6 pr-24">
-                  <h3 className="text-white font-bold text-lg mb-1">Festive <span className="text-coral">Double Mining Event!</span></h3>
+                  <h3 className="text-white font-bold text-lg mb-1">
+                    Festive{" "}
+                    <span className="text-coral">Double Mining Event!</span>
+                  </h3>
                   <p className="text-dark-300 text-sm">Find out more</p>
                 </div>
               </div>
@@ -528,17 +629,27 @@ export function CommunityPage() {
               {/* No Subscribed Channels State */}
               <div className="flex flex-col items-center justify-center py-8 text-center">
                 <div className="w-16 h-16 mb-4 relative">
-                   <div className="absolute inset-0 bg-gradient-to-br from-pink-500 to-purple-600 rounded-full blur-md opacity-20"></div>
-                   <img src="/icons/fruit.png" alt="Fruit" className="w-full h-full object-contain drop-shadow-lg" />
+                  <div className="absolute inset-0 bg-gradient-to-br from-pink-500 to-purple-600 rounded-full blur-md opacity-20"></div>
+                  <img
+                    src="/icons/fruit.png"
+                    alt="Fruit"
+                    className="w-full h-full object-contain drop-shadow-lg"
+                  />
                 </div>
-                <h3 className="text-white font-medium text-lg mb-1">No Subscribed Channels</h3>
-                <p className="text-dark-400 text-sm">Subscribe to channels to earn ad rewards</p>
+                <h3 className="text-white font-medium text-lg mb-1">
+                  No Subscribed Channels
+                </h3>
+                <p className="text-dark-400 text-sm">
+                  Subscribe to channels to earn ad rewards
+                </p>
               </div>
 
               {/* Recommended Channels */}
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-white font-semibold">Recommended Channels</h3>
+                  <h3 className="text-white font-semibold">
+                    Recommended Channels
+                  </h3>
                   <div className="flex gap-1">
                     <div className="w-2 h-2 rounded-full bg-dark-600"></div>
                     <div className="w-2 h-2 rounded-full bg-coral"></div>
@@ -548,25 +659,53 @@ export function CommunityPage() {
 
                 <div className="space-y-3">
                   {[
-                    { name: "Dunia Blockchain Indonesia", desc: "Your source for blockchain & crypto insights", members: "1,144", icon: "🌐", color: "from-blue-500 to-cyan-500" },
-                    { name: "영차차 (이벤트 폭탄)", desc: "2,577명 참여 중", members: "2,577", icon: "🐻", color: "from-pink-400 to-rose-400" },
-                    { name: "리에이스 소통&정보방", desc: "유튜버 리에이스의 소통 및 정보공유 채널입니다.", members: "5,330", icon: "🃏", color: "from-purple-500 to-indigo-500" }
+                    {
+                      name: "Dunia Blockchain Indonesia",
+                      desc: "Your source for blockchain & crypto insights",
+                      members: "1,144",
+                      icon: "🌐",
+                      color: "from-blue-500 to-cyan-500",
+                    },
+                    {
+                      name: "영차차 (이벤트 폭탄)",
+                      desc: "2,577명 참여 중",
+                      members: "2,577",
+                      icon: "🐻",
+                      color: "from-pink-400 to-rose-400",
+                    },
+                    {
+                      name: "리에이스 소통&정보방",
+                      desc: "유튜버 리에이스의 소통 및 정보공유 채널입니다.",
+                      members: "5,330",
+                      icon: "🃏",
+                      color: "from-purple-500 to-indigo-500",
+                    },
                   ].map((channel, i) => (
-                    <motion.div 
+                    <motion.div
                       key={i}
                       whileHover={{ scale: 1.01 }}
                       className="bg-dark-800 rounded-xl p-3 flex items-center gap-4 cursor-pointer border border-dark-700"
                     >
-                      <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${channel.color} flex items-center justify-center text-2xl shadow-lg`}>
+                      <div
+                        className={`w-12 h-12 rounded-xl bg-gradient-to-br ${channel.color} flex items-center justify-center text-2xl shadow-lg`}
+                      >
                         {channel.icon}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="text-pink-500 text-xs">👑</span>
-                          <h4 className="text-white font-medium truncate">{channel.name}</h4>
+                          <h4 className="text-white font-medium truncate">
+                            {channel.name}
+                          </h4>
                         </div>
-                        <p className="text-dark-400 text-xs truncate">{channel.desc}</p>
-                        {channel.name.includes("Dunia") && <p className="text-coral text-xs mt-0.5">{channel.members}명 참여 중</p>}
+                        <p className="text-dark-400 text-xs truncate">
+                          {channel.desc}
+                        </p>
+                        {channel.name.includes("Dunia") && (
+                          <p className="text-coral text-xs mt-0.5">
+                            {channel.members}명 참여 중
+                          </p>
+                        )}
                       </div>
                     </motion.div>
                   ))}
@@ -575,150 +714,276 @@ export function CommunityPage() {
             </div>
           ) : (
             <div className="space-y-4">
-            {/* Feed Item 1 */}
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-dark-800 rounded-xl p-4 border border-dark-700"
-            >
-              <div className="flex gap-3 mb-3">
-                <div className="w-10 h-10 rounded-full bg-[#f4d35e] flex items-center justify-center text-dark-900 font-bold border-2 border-dark-700 shadow-sm">
-                  B
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-white font-medium">Mining app</span>
+              {/* Feed Item 1 */}
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-dark-800 rounded-xl p-4 border border-dark-700"
+              >
+                <div className="flex gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-full bg-[#f4d35e] flex items-center justify-center text-dark-900 font-bold border-2 border-dark-700 shadow-sm">
+                    B
                   </div>
-                </div>
-              </div>
-              
-              <div className="bg-dark-900/50 rounded-xl p-3 mb-2">
-                <p className="text-dark-200 text-sm mb-3">
-                  Tenaz is a revolutionary blockchain network designed to link digital currency and everyday spending. To claim 1 free Tenaz and start mining for more, follow this link
-                </p>
-                <a href="#" className="text-blue-400 text-sm block mb-3 break-all hover:underline">https://tenaz.minetenaz.com/esbone</a>
-                <p className="text-dark-200 text-sm mb-3">and use my username (esbone) as your invitation code.</p>
-                
-                <div className="bg-black rounded-xl overflow-hidden border border-dark-700">
-                  <div className="p-3 flex items-center justify-between border-b border-dark-700 bg-dark-800">
+                  <div>
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-red-600 flex items-center justify-center text-white">
-                        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg>
-                      </div>
-                      <div>
-                        <div className="text-white font-bold text-sm flex items-center gap-1">
-                          Tenaz
-                          <svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" className="text-blue-400"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                        </div>
-                        <div className="text-dark-400 text-xs">@minetenaz</div>
-                      </div>
-                    </div>
-                    <button className="px-3 py-1 bg-dark-700 rounded-full text-xs font-medium text-white hover:bg-dark-600 transition-colors">Following</button>
-                  </div>
-                  <div className="p-3">
-                    <p className="text-dark-300 text-xs leading-relaxed">⚡ With a vision of bridging the gap between DeFi and daily spending, we aim to leverage...</p>
-                    <div className="mt-2 text-right">
-                      <button className="text-coral text-xs hover:text-white transition-colors">Show More</button>
+                      <span className="text-white font-medium">Mining app</span>
                     </div>
                   </div>
                 </div>
-              </div>
-              
-              <div className="flex items-center justify-between mt-2 text-dark-500 text-xs">
-                <span>25/12/30 03:59 PM</span>
-                <div className="flex gap-4">
-                  <button className="flex items-center gap-1 hover:text-coral transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
-                    <span>1</span>
-                  </button>
-                  <button className="flex items-center gap-1 hover:text-coral transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
-                  </button>
-                </div>
-              </div>
-            </motion.div>
 
-            {/* Feed Item 2 */}
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="bg-dark-800 rounded-xl p-4 border border-dark-700"
-            >
-              <div className="flex gap-3 mb-3">
-                <div className="w-10 h-10 rounded-full bg-[#f4d35e] flex items-center justify-center text-dark-900 font-bold border-2 border-dark-700 shadow-sm">
-                  B
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-white font-medium">Mining app</span>
+                <div className="bg-dark-900/50 rounded-xl p-3 mb-2">
+                  <p className="text-dark-200 text-sm mb-3">
+                    Tenaz is a revolutionary blockchain network designed to link
+                    digital currency and everyday spending. To claim 1 free
+                    Tenaz and start mining for more, follow this link
+                  </p>
+                  <a
+                    href="#"
+                    className="text-blue-400 text-sm block mb-3 break-all hover:underline"
+                  >
+                    https://tenaz.minetenaz.com/esbone
+                  </a>
+                  <p className="text-dark-200 text-sm mb-3">
+                    and use my username (esbone) as your invitation code.
+                  </p>
+
+                  <div className="bg-black rounded-xl overflow-hidden border border-dark-700">
+                    <div className="p-3 flex items-center justify-between border-b border-dark-700 bg-dark-800">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-red-600 flex items-center justify-center text-white">
+                          <svg
+                            viewBox="0 0 24 24"
+                            width="16"
+                            height="16"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            fill="none"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+                          </svg>
+                        </div>
+                        <div>
+                          <div className="text-white font-bold text-sm flex items-center gap-1">
+                            Tenaz
+                            <svg
+                              viewBox="0 0 24 24"
+                              width="12"
+                              height="12"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              fill="none"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              className="text-blue-400"
+                            >
+                              <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                          </div>
+                          <div className="text-dark-400 text-xs">
+                            @minetenaz
+                          </div>
+                        </div>
+                      </div>
+                      <button className="px-3 py-1 bg-dark-700 rounded-full text-xs font-medium text-white hover:bg-dark-600 transition-colors">
+                        Following
+                      </button>
+                    </div>
+                    <div className="p-3">
+                      <p className="text-dark-300 text-xs leading-relaxed">
+                        ⚡ With a vision of bridging the gap between DeFi and
+                        daily spending, we aim to leverage...
+                      </p>
+                      <div className="mt-2 text-right">
+                        <button className="text-coral text-xs hover:text-white transition-colors">
+                          Show More
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-              
-              <div className="bg-dark-900/50 rounded-xl p-3 mb-2">
-                <p className="text-dark-200 text-sm mb-2">Crypto with Amal :</p>
-                <p className="text-white font-medium text-sm mb-2">🌱 *GREEN EARTH ACTION(GEA)Airdrop* 🚀</p>
-                <p className="text-dark-200 text-sm mb-2">Followed By Meta Earth wallet *📊 Token Value:* 1 $GEA = (3$ Exp) *🎁 Reward:* 1GEA token after KYC👥 *Referral Bonus:* Get 0.1GEA per invite!</p>
-                <p className="text-dark-200 text-sm">How to Get Started:⤵️ * 1️⃣ Register: <a href="#" className="text-blue-400 hover:underline">https://i.gea-</a></p>
-                
-                {/* Second Item Link Preview - as seen in screenshot 2 */}
-                <div className="mt-3 bg-dark-900 rounded-lg p-3 border border-dark-700">
-                   <p className="text-white text-sm font-medium">Register</p>
-                   <p className="text-dark-400 text-xs mt-1">i.gea-sign.space</p>
-                   <div className="mt-2 flex items-center gap-2 text-xs text-dark-300">
-                     <span>Referral Code: j5c83lh3</span>
-                     <button className="text-coral hover:underline">Copy</button>
-                   </div>
-                </div>
-                
-                <div className="mt-3 space-y-1 text-sm text-dark-300">
-                   <p>2️⃣ Download and open the GEA app</p>
-                   <p>3️⃣ Tap *"MY"* and complete your *KYC immediately* 🛡️ Verification is faster than MePASS!</p>
-                   <p>💰 Once verified, receive 1 GEA instantly ☑️ Do your daily check-in Quiz ♻️ Share your referral link</p>
-                </div>
-                
-                <div className="mt-2 text-right">
-                  <button className="text-coral text-xs hover:text-white transition-colors">Show More</button>
-                </div>
-              </div>
-              
-               <div className="flex items-center justify-between mt-2 text-dark-500 text-xs">
-                <span>25/12/30 08:00 PM</span>
-                <div className="flex gap-4">
-                  <button className="flex items-center gap-1 hover:text-coral transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
-                    <span>4</span>
-                  </button>
-                  <button className="flex items-center gap-1 hover:text-coral transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-            
-            {/* Feed Item 3 - Milifit */}
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="bg-dark-800 rounded-xl p-4 border border-dark-700"
-            >
-               <div className="flex gap-3 mb-3">
-                <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-dark-700 shadow-sm">
-                  <img src="https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=100&h=100&fit=crop" alt="Milifit" className="w-full h-full object-cover" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-white font-medium">Milifit</span>
+
+                <div className="flex items-center justify-between mt-2 text-dark-500 text-xs">
+                  <span>25/12/30 03:59 PM</span>
+                  <div className="flex gap-4">
+                    <button className="flex items-center gap-1 hover:text-coral transition-colors">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                      </svg>
+                      <span>1</span>
+                    </button>
+                    <button className="flex items-center gap-1 hover:text-coral transition-colors">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <circle cx="12" cy="12" r="1"></circle>
+                        <circle cx="19" cy="12" r="1"></circle>
+                        <circle cx="5" cy="12" r="1"></circle>
+                      </svg>
+                    </button>
                   </div>
                 </div>
-              </div>
-              
-              <div className="rounded-xl overflow-hidden border border-dark-700">
-                 <img src="https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=600&h=400&fit=crop" alt="Workout" className="w-full h-auto" />
-              </div>
-            </motion.div>
+              </motion.div>
+
+              {/* Feed Item 2 */}
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                className="bg-dark-800 rounded-xl p-4 border border-dark-700"
+              >
+                <div className="flex gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-full bg-[#f4d35e] flex items-center justify-center text-dark-900 font-bold border-2 border-dark-700 shadow-sm">
+                    B
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-white font-medium">Mining app</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-dark-900/50 rounded-xl p-3 mb-2">
+                  <p className="text-dark-200 text-sm mb-2">
+                    Crypto with Amal :
+                  </p>
+                  <p className="text-white font-medium text-sm mb-2">
+                    🌱 *GREEN EARTH ACTION(GEA)Airdrop* 🚀
+                  </p>
+                  <p className="text-dark-200 text-sm mb-2">
+                    Followed By Meta Earth wallet *📊 Token Value:* 1 $GEA = (3$
+                    Exp) *🎁 Reward:* 1GEA token after KYC👥 *Referral Bonus:*
+                    Get 0.1GEA per invite!
+                  </p>
+                  <p className="text-dark-200 text-sm">
+                    How to Get Started:⤵️ * 1️⃣ Register:{" "}
+                    <a href="#" className="text-blue-400 hover:underline">
+                      https://i.gea-
+                    </a>
+                  </p>
+
+                  {/* Second Item Link Preview - as seen in screenshot 2 */}
+                  <div className="mt-3 bg-dark-900 rounded-lg p-3 border border-dark-700">
+                    <p className="text-white text-sm font-medium">Register</p>
+                    <p className="text-dark-400 text-xs mt-1">
+                      i.gea-sign.space
+                    </p>
+                    <div className="mt-2 flex items-center gap-2 text-xs text-dark-300">
+                      <span>Referral Code: j5c83lh3</span>
+                      <button className="text-coral hover:underline">
+                        Copy
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 space-y-1 text-sm text-dark-300">
+                    <p>2️⃣ Download and open the GEA app</p>
+                    <p>
+                      3️⃣ Tap *"MY"* and complete your *KYC immediately* 🛡️
+                      Verification is faster than MePASS!
+                    </p>
+                    <p>
+                      💰 Once verified, receive 1 GEA instantly ☑️ Do your daily
+                      check-in Quiz ♻️ Share your referral link
+                    </p>
+                  </div>
+
+                  <div className="mt-2 text-right">
+                    <button className="text-coral text-xs hover:text-white transition-colors">
+                      Show More
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between mt-2 text-dark-500 text-xs">
+                  <span>25/12/30 08:00 PM</span>
+                  <div className="flex gap-4">
+                    <button className="flex items-center gap-1 hover:text-coral transition-colors">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                      </svg>
+                      <span>4</span>
+                    </button>
+                    <button className="flex items-center gap-1 hover:text-coral transition-colors">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <circle cx="12" cy="12" r="1"></circle>
+                        <circle cx="19" cy="12" r="1"></circle>
+                        <circle cx="5" cy="12" r="1"></circle>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+
+              {/* Feed Item 3 - Milifit */}
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="bg-dark-800 rounded-xl p-4 border border-dark-700"
+              >
+                <div className="flex gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-dark-700 shadow-sm">
+                    <img
+                      src="https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=100&h=100&fit=crop"
+                      alt="Milifit"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-white font-medium">Milifit</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-xl overflow-hidden border border-dark-700">
+                  <img
+                    src="https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=600&h=400&fit=crop"
+                    alt="Workout"
+                    className="w-full h-auto"
+                  />
+                </div>
+              </motion.div>
             </div>
           )}
         </div>

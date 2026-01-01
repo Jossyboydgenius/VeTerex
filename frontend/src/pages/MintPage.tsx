@@ -13,13 +13,15 @@ import {
   Loader2,
 } from "lucide-react";
 import { useAppStore, type TrackedMedia } from "@/store/useAppStore";
-import { NFTMiningImageIcon, OpenCookieImageIcon } from "@/components/AppIcons";import {
+import { NFTMiningImageIcon, OpenCookieImageIcon } from "@/components/AppIcons";
+import {
   mintCompletion,
   // mapMediaType, // Unused
   mapTrackedType, // Import correct mapping
   readUserNfts,
   getTokensMetadata,
-} from "@/services/nft";import type { CompletionNFT } from "@/types";
+} from "@/services/nft";
+import type { CompletionNFT } from "@/types";
 
 // Check if running as Chrome extension
 const isExtension =
@@ -49,8 +51,15 @@ const platformColors: Record<string, string> = {
 export function MintPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isConnected, addToast, pendingMints, removePendingMint, currentAccount, setCompletions, toasts } =
-    useAppStore();
+  const {
+    isConnected,
+    addToast,
+    pendingMints,
+    removePendingMint,
+    currentAccount,
+    setCompletions,
+    toasts,
+  } = useAppStore();
   const [mediaToMint, setMediaToMint] = useState<TrackedMedia | null>(null);
   const [isMinting, setIsMinting] = useState(false);
   const [mintSuccess, setMintSuccess] = useState(false);
@@ -67,7 +76,8 @@ export function MintPage() {
       url: "https://www.webtoons.com/en/graphic-novel/the-amazing-spider-man-2022/episode-13/viewer?title_no=8475&episode_no=13",
       progress: 100,
       watchTime: 35, // 0m 35s
-      thumbnail: "https://swebtoon-phinf.pstatic.net/20250826_197/1756157211282A8V5q_JPEG/TheAmazingSpiderMan_EpisodeList_Mobile.jpg?type=crop540_540",
+      thumbnail:
+        "https://swebtoon-phinf.pstatic.net/20250826_197/1756157211282A8V5q_JPEG/TheAmazingSpiderMan_EpisodeList_Mobile.jpg?type=crop540_540",
       completed: true,
       startTime: Date.now(),
       lastUpdate: Date.now(),
@@ -78,7 +88,7 @@ export function MintPage() {
       type: "video",
       title: "$30 vs $630 Smartwatch (oraimo vs Apple)",
       url: "https://www.youtube.com/watch?v=oUbGya-2vJI",
-      progress: 4, 
+      progress: 4,
       watchTime: 500, // 8m 20s
       thumbnail: "https://img.youtube.com/vi/oUbGya-2vJI/maxresdefault.jpg",
       completed: true,
@@ -93,11 +103,12 @@ export function MintPage() {
       url: "https://www.webtoons.com/en/romance/love-4-a-walk/s2-episode-78/viewer?title_no=6278&episode_no=79",
       progress: 100,
       watchTime: 243, // 4m 3s
-      thumbnail: "https://swebtoon-phinf.pstatic.net/20240403_279/1712082286574qY5hC_JPEG/6Love-4-A-Walk_EpisodeList_Mobile.jpg?type=crop540_540",
+      thumbnail:
+        "https://swebtoon-phinf.pstatic.net/20240403_279/1712082286574qY5hC_JPEG/6Love-4-A-Walk_EpisodeList_Mobile.jpg?type=crop540_540",
       completed: true,
       startTime: Date.now(),
       lastUpdate: Date.now(),
-    }
+    },
   ];
 
   const loadTestData = (index: number) => {
@@ -109,8 +120,8 @@ export function MintPage() {
     // Check for data passed via URL (from extension)
     // Support both HashRouter (useLocation) and standard URL params
     const searchParams = new URLSearchParams(location.search);
-    const dataParam = searchParams.get('data');
-    
+    const dataParam = searchParams.get("data");
+
     if (dataParam) {
       try {
         const parsedData = JSON.parse(decodeURIComponent(dataParam));
@@ -128,7 +139,11 @@ export function MintPage() {
           lastUpdate: Date.now(),
         });
         // Clear query param to prevent reload issues
-        window.history.replaceState({}, document.title, window.location.pathname);
+        window.history.replaceState(
+          {},
+          document.title,
+          window.location.pathname
+        );
       } catch (e) {
         console.error("Failed to parse mint data from URL", e);
       }
@@ -177,7 +192,9 @@ export function MintPage() {
 
   const handleMint = async () => {
     if (!isConnected) {
-      const hasToast = toasts.some((t) => t.message === "Please connect your wallet first");
+      const hasToast = toasts.some(
+        (t) => t.message === "Please connect your wallet first"
+      );
       if (!hasToast) {
         addToast({
           type: "error",
@@ -188,11 +205,14 @@ export function MintPage() {
     }
 
     if (!currentAccount?.address) {
-      const hasToast = toasts.some((t) => t.message.includes("Minting requires a wallet address"));
+      const hasToast = toasts.some((t) =>
+        t.message.includes("Minting requires a wallet address")
+      );
       if (!hasToast) {
         addToast({
           type: "error",
-          message: "Minting requires a wallet address. VeryChat login is social-only. Please connect Wepin.",
+          message:
+            "Minting requires a wallet address. VeryChat login is social-only. Please connect Wepin.",
         });
       }
       return;
@@ -202,7 +222,7 @@ export function MintPage() {
 
     try {
       if (!mediaToMint) {
-        throw new Error("Missing media to mint")
+        throw new Error("Missing media to mint");
       }
       // const kind = mapTrackedType(mediaToMint.type)
 
@@ -216,13 +236,15 @@ export function MintPage() {
           { trait_type: "Platform", value: mediaToMint.platform },
           { trait_type: "Type", value: mediaToMint.type },
           { trait_type: "Watch Time", value: mediaToMint.watchTime },
-          { trait_type: "Completed At", value: new Date().toISOString() }
-        ]
+          { trait_type: "Completed At", value: new Date().toISOString() },
+        ],
       };
 
       // Create data URI
-      const dataUri = `data:application/json;base64,${btoa(JSON.stringify(metadata))}`;
-      
+      const dataUri = `data:application/json;base64,${btoa(
+        JSON.stringify(metadata)
+      )}`;
+
       // Call smart contract with data URI as the 'uri' parameter
       const { hash } = await mintCompletion(
         currentAccount.address as `0x${string}`,
@@ -230,11 +252,11 @@ export function MintPage() {
         dataUri, // Pass full metadata URI
         mediaToMint.title
       );
-      addToast({ type: "info", message: "Transaction sent" })
-      setMintSuccess(true)
-      removePendingMint(mediaToMint.id)
-      const ids = await readUserNfts(currentAccount.address as `0x${string}`)
-      const metas = await getTokensMetadata(ids)
+      addToast({ type: "info", message: "Transaction sent" });
+      setMintSuccess(true);
+      removePendingMint(mediaToMint.id);
+      const ids = await readUserNfts(currentAccount.address as `0x${string}`);
+      const metas = await getTokensMetadata(ids);
       const items: CompletionNFT[] = metas.map((m) => ({
         id: String(m.tokenId),
         tokenId: String(m.tokenId),
@@ -243,7 +265,18 @@ export function MintPage() {
           id: m.mediaId,
           externalId: m.uri || "",
           title: m.uri || "Achievement",
-          type: m.kind === 1 ? "book" : m.kind === 2 ? "movie" : m.kind === 3 ? "anime" : m.kind === 4 ? "comic" : m.kind === 5 ? "manga" : "tvshow",
+          type:
+            m.kind === 1
+              ? "book"
+              : m.kind === 2
+              ? "movie"
+              : m.kind === 3
+              ? "anime"
+              : m.kind === 4
+              ? "comic"
+              : m.kind === 5
+              ? "manga"
+              : "tvshow",
           description: "",
           coverImage: m.tokenURI || "",
           releaseYear: new Date().getFullYear(),
@@ -255,16 +288,16 @@ export function MintPage() {
         transactionHash: hash,
         completedAt: new Date(),
         rarity: "common",
-      }))
-      setCompletions(items)
+      }));
+      setCompletions(items);
       addToast({
         type: "success",
         message: "NFT minted successfully! 🎉",
-      })
+      });
     } catch (error: any) {
       // Log error details for debugging
       console.error("Minting failed:", error);
-      
+
       // Handle revert errors specifically
       let errorMessage = error.message || "Mint failed";
       if (error.data) {
@@ -272,9 +305,10 @@ export function MintPage() {
         console.error("Error data:", error.data);
       }
       if (errorMessage.includes("execution reverted")) {
-        errorMessage = "Transaction reverted. You may have already minted this media.";
+        errorMessage =
+          "Transaction reverted. You may have already minted this media.";
       }
-      
+
       addToast({ type: "error", message: errorMessage });
     }
 
@@ -303,11 +337,11 @@ export function MintPage() {
   // Show empty state if no media to mint
   if (!mediaToMint) {
     return (
-      <div className="px-4 py-8 flex flex-col items-center justify-center min-h-[60vh]">
-        <div className="w-20 h-20 rounded-2xl bg-dark-800 flex items-center justify-center mb-4">
-          <NFTMiningImageIcon size={48} inverted={true} />
-        </div>
-        <h2 className="text-xl font-bold text-white mb-2">Nothing to Mint</h2>
+      <div className="px-4 py-8 flex flex-col items-center justify-center min-h-[60vh] max-w-2xl mx-auto">
+        <NFTMiningImageIcon size={96} />
+        <h2 className="text-xl font-bold text-white mb-2 mt-4">
+          Nothing to Mint
+        </h2>
         <p className="text-dark-400 text-sm text-center mb-6">
           Complete watching content to mint NFT badges
         </p>
@@ -319,40 +353,42 @@ export function MintPage() {
             <ArrowLeft className="w-4 h-4" />
             Go Home
           </button>
-          {!isExtension && (
-            <div className="relative">
-              <button
-                onClick={() => setShowTestList(!showTestList)}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-dark-700 text-white hover:bg-dark-600 transition-colors"
-              >
-                <Play className="w-4 h-4" />
-                Load Test Data
-              </button>
-              {showTestList && (
-                <div className="absolute bottom-full mb-2 right-0 w-64 bg-dark-800 border border-dark-700 rounded-xl shadow-xl overflow-hidden z-10">
-                  {testDataList.map((data, index) => (
-                    <button
-                      key={index}
-                      onClick={() => loadTestData(index)}
-                      className="w-full text-left px-4 py-3 hover:bg-dark-700 transition-colors border-b border-dark-700 last:border-0"
-                    >
-                      <p className="text-white text-sm font-medium truncate">{data.title}</p>
-                      <p className="text-dark-400 text-xs capitalize">{data.type} • {data.platform}</p>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+          <div className="relative">
+            <button
+              onClick={() => setShowTestList(!showTestList)}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-dark-700 text-white hover:bg-dark-600 transition-colors"
+            >
+              <Play className="w-4 h-4" />
+              Load Test Data
+            </button>
+            {showTestList && (
+              <div className="absolute bottom-full mb-2 right-0 w-64 bg-dark-800 border border-dark-700 rounded-xl shadow-xl overflow-hidden z-10">
+                {testDataList.map((data, index) => (
+                  <button
+                    key={index}
+                    onClick={() => loadTestData(index)}
+                    className="w-full text-left px-4 py-3 hover:bg-dark-700 transition-colors border-b border-dark-700 last:border-0"
+                  >
+                    <p className="text-white text-sm font-medium truncate">
+                      {data.title}
+                    </p>
+                    <p className="text-dark-400 text-xs capitalize">
+                      {data.type} • {data.platform}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="px-4 py-6 space-y-6">
+    <div className="px-3 py-4 space-y-4 max-w-md mx-auto overflow-x-hidden">
       {/* Header */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
         <button
           onClick={() => navigate(-1)}
           className="p-2 rounded-lg hover:bg-dark-800 text-dark-400 hover:text-white transition-colors"
@@ -390,10 +426,10 @@ export function MintPage() {
             animate={{ opacity: 1, y: 0 }}
             className="card"
           >
-            <div className="flex gap-4">
+            <div className="flex gap-3">
               {/* Thumbnail */}
               <div
-                className={`w-20 h-20 rounded-xl bg-gradient-to-br ${colorClass} flex items-center justify-center flex-shrink-0`}
+                className={`w-14 h-14 rounded-xl bg-gradient-to-br ${colorClass} flex items-center justify-center flex-shrink-0`}
               >
                 {mediaToMint.thumbnail ? (
                   <img
@@ -402,13 +438,13 @@ export function MintPage() {
                     className="w-full h-full object-cover rounded-xl"
                   />
                 ) : (
-                  <Icon className="w-10 h-10 text-white" />
+                  <Icon className="w-7 h-7 text-white" />
                 )}
               </div>
 
               {/* Details */}
-              <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-white text-lg mb-1 truncate">
+              <div className="flex-1 min-w-0 overflow-hidden">
+                <h3 className="font-semibold text-white text-sm mb-1 line-clamp-2 leading-tight">
                   {mediaToMint.title}
                 </h3>
                 <div className="flex items-center gap-2 text-sm text-dark-400 mb-2">
@@ -420,8 +456,8 @@ export function MintPage() {
                   <div className="flex items-center gap-1.5 text-sm text-dark-400">
                     <Clock className="w-4 h-4" />
                     <span>
-                      {["manga", "book", "comic"].includes(mediaToMint.type) 
-                        ? "Reading time: " 
+                      {["manga", "book", "comic"].includes(mediaToMint.type)
+                        ? "Reading time: "
                         : "Watched: "}
                       {formatTime(mediaToMint.watchTime)}
                     </span>
@@ -451,23 +487,19 @@ export function MintPage() {
             transition={{ delay: 0.1 }}
             className="card"
           >
-            <h3 className="text-sm font-medium text-dark-400 mb-4">
+            <h3 className="text-xs font-medium text-dark-400 mb-2">
               NFT Preview
             </h3>
-            <div className="relative aspect-square rounded-xl bg-gradient-to-br from-dark-800 to-dark-900 border border-dark-700 overflow-hidden">
-              <div className="absolute inset-0 flex flex-col items-center justify-center p-6">
-                <div
-                  className={`w-24 h-24 rounded-2xl bg-gradient-to-br ${colorClass} flex items-center justify-center mb-4`}
-                >
-                  <NFTMiningImageIcon size={56} />
-                </div>
-                <p className="text-white font-semibold text-center mb-1 truncate max-w-full px-4">
+            <div className="relative aspect-[4/3] rounded-xl bg-gradient-to-br from-dark-800 to-dark-900 border border-dark-700 overflow-hidden">
+              <div className="absolute inset-0 flex flex-col items-center justify-center p-3">
+                <NFTMiningImageIcon size={48} className="mb-2" />
+                <p className="text-white font-semibold text-center mb-1 line-clamp-2 px-2 text-xs leading-tight">
                   {mediaToMint.title}
                 </p>
-                <p className="text-dark-400 text-sm capitalize">
+                <p className="text-dark-400 text-xs capitalize">
                   {mediaToMint.type} • {mediaToMint.platform}
                 </p>
-                <div className="mt-4 px-3 py-1 rounded-full bg-brand-green/20 text-brand-green text-xs">
+                <div className="mt-2 px-2 py-0.5 rounded-full bg-brand-green/20 text-brand-green text-xs">
                   ✓ Completed
                 </div>
               </div>
@@ -503,7 +535,11 @@ export function MintPage() {
                 </>
               ) : (
                 <>
-                  <img src="/icons/very-coin.png" alt="Very Coin" className="w-5 h-5" />
+                  <img
+                    src="/icons/very-coin.png"
+                    alt="Very Coin"
+                    className="w-5 h-5"
+                  />
                   Mint NFT
                 </>
               )}

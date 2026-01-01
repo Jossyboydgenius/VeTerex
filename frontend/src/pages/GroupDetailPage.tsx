@@ -20,9 +20,13 @@ import {
 } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import type { Group, User } from "@/types";
-import { mediaInfo as readMediaInfo, getGroupMemberCount, getGroupMemberAt } from "@/services/nft";
+import {
+  mediaInfo as readMediaInfo,
+  getGroupMemberCount,
+  getGroupMemberAt,
+} from "@/services/nft";
+import { GroupDetailHeaderSkeleton, PostSkeleton } from "@/components/Skeleton";
 
- 
 // Mock discussion posts
 const mockPosts = [
   {
@@ -70,7 +74,7 @@ const mockPosts = [
 function getYoutubeId(url: string) {
   const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
   const match = url.match(regExp);
-  return (match && match[2].length === 11) ? match[2] : null;
+  return match && match[2].length === 11 ? match[2] : null;
 }
 
 // Helper to generate thumbnail URL
@@ -80,7 +84,7 @@ function getThumbnail(url: string) {
     const id = getYoutubeId(url);
     if (id) return `https://img.youtube.com/vi/${id}/maxresdefault.jpg`;
   }
-  return ""; 
+  return "";
 }
 
 // Helper to format title from URL
@@ -88,13 +92,13 @@ function formatTitle(url: string) {
   if (!url) return "Achievement";
   try {
     const urlObj = new URL(url);
-    const hostname = urlObj.hostname.replace('www.', '');
-    if (hostname.includes('youtube')) return 'YouTube Video';
-    if (hostname.includes('webtoons')) return 'Webtoon Chapter';
-    if (hostname.includes('netflix')) return 'Netflix Show';
+    const hostname = urlObj.hostname.replace("www.", "");
+    if (hostname.includes("youtube")) return "YouTube Video";
+    if (hostname.includes("webtoons")) return "Webtoon Chapter";
+    if (hostname.includes("netflix")) return "Netflix Show";
     return `${hostname} Content`;
   } catch {
-    return url.length > 30 ? url.substring(0, 27) + '...' : url;
+    return url.length > 30 ? url.substring(0, 27) + "..." : url;
   }
 }
 
@@ -108,6 +112,7 @@ export function GroupDetailPage() {
   const [newPost, setNewPost] = useState("");
   const [isJoined, setIsJoined] = useState(false);
   const [group, setGroup] = useState<Group | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -141,72 +146,128 @@ export function GroupDetailPage() {
 
   useEffect(() => {
     async function loadGroup() {
-      if (!id) return
-      const mediaIdHex = id as `0x${string}`
-      const info = await readMediaInfo(mediaIdHex)
-      const count = await getGroupMemberCount(mediaIdHex)
-      
-      // Parse metadata
-      let title = info[2] || "Achievement"
-      let coverImage = ""
-      const uri = info[2]
-      
-      if (uri && uri.startsWith("data:application/json")) {
-        try {
-          const base64 = uri.split(",")[1];
-          if (base64) {
-            const json = JSON.parse(atob(base64));
-            if (json.name) title = json.name;
-            if (json.image) coverImage = json.image;
-          }
-        } catch {
-    console.warn("Failed to parse group metadata");
-  }
-      } else if (uri) {
-        title = formatTitle(uri);
-        coverImage = getThumbnail(uri);
-      }
+      setIsLoading(true);
+      try {
+        if (!id) {
+          setIsLoading(false);
+          return;
+        }
+        const mediaIdHex = id as `0x${string}`;
+        const info = await readMediaInfo(mediaIdHex);
+        const count = await getGroupMemberCount(mediaIdHex);
 
-      const type = info[1] === 1 ? "book" : info[1] === 2 ? "movie" : info[1] === 3 ? "anime" : info[1] === 4 ? "comic" : info[1] === 5 ? "manga" : "tvshow"
-      const members: User[] = []
-      const max = Number(count)
-      const limit = Math.min(max, 20)
-      for (let i = 0; i < limit; i++) {
-        const addr = await getGroupMemberAt(mediaIdHex, BigInt(i))
-        members.push({
-          id: addr,
-          address: addr,
-          joinedAt: new Date(),
-          completions: [],
-          favorites: [],
-          following: [],
-          followers: [],
-        } as User)
-      }
-      const g: Group = {
-        id: mediaIdHex,
-        mediaId: mediaIdHex,
-        media: {
+        // Parse metadata
+        let title = info[2] || "Achievement";
+        let coverImage = "";
+        const uri = info[2];
+
+        if (uri && uri.startsWith("data:application/json")) {
+          try {
+            const base64 = uri.split(",")[1];
+            if (base64) {
+              const json = JSON.parse(atob(base64));
+              if (json.name) title = json.name;
+              if (json.image) coverImage = json.image;
+            }
+          } catch {
+            console.warn("Failed to parse group metadata");
+          }
+        } else if (uri) {
+          title = formatTitle(uri);
+          coverImage = getThumbnail(uri);
+        }
+
+        const type =
+          info[1] === 1
+            ? "book"
+            : info[1] === 2
+            ? "movie"
+            : info[1] === 3
+            ? "anime"
+            : info[1] === 4
+            ? "comic"
+            : info[1] === 5
+            ? "manga"
+            : "tvshow";
+        const members: User[] = [];
+        const max = Number(count);
+        const limit = Math.min(max, 20);
+        for (let i = 0; i < limit; i++) {
+          const addr = await getGroupMemberAt(mediaIdHex, BigInt(i));
+          members.push({
+            id: addr,
+            address: addr,
+            joinedAt: new Date(),
+            completions: [],
+            favorites: [],
+            following: [],
+            followers: [],
+          } as User);
+        }
+        const g: Group = {
           id: mediaIdHex,
-          externalId: info[2] || "",
-          title,
-          type,
-          description: "",
-          coverImage,
-          releaseYear: new Date().getFullYear(),
-          creator: "",
-          genre: [],
-          totalCompletions: Number(count),
-        },
-        members,
-        memberCount: Number(count),
-        createdAt: new Date(),
-        recentActivity: [],
+          mediaId: mediaIdHex,
+          media: {
+            id: mediaIdHex,
+            externalId: info[2] || "",
+            title,
+            type,
+            description: "",
+            coverImage,
+            releaseYear: new Date().getFullYear(),
+            creator: "",
+            genre: [],
+            totalCompletions: Number(count),
+          },
+          members,
+          memberCount: Number(count),
+          createdAt: new Date(),
+          recentActivity: [],
+        };
+        setGroup(g);
+      } catch (error) {
+        console.error("Failed to load group:", error);
+        addToast({
+          type: "error",
+          message: "Failed to load group details",
+        });
+      } finally {
+        setIsLoading(false);
       }
-      setGroup(g)
     }
-    loadGroup()
-  }, [id])
+    loadGroup();
+  }, [id, addToast]);
+
+  // Show loading skeleton while fetching
+  if (isLoading) {
+    return (
+      <div className="flex flex-col h-full">
+        {/* Header skeleton */}
+        <div className="sticky top-0 z-40 glass-dark border-b border-dark-700/50">
+          <div className="flex items-center gap-3 px-4 py-3">
+            <button
+              onClick={() => navigate("/community")}
+              className="p-2 rounded-lg hover:bg-dark-700 transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5 text-dark-300" />
+            </button>
+            <div className="flex-1 space-y-1 animate-pulse">
+              <div className="h-5 bg-dark-700 rounded w-32" />
+              <div className="h-3 bg-dark-700 rounded w-20" />
+            </div>
+          </div>
+        </div>
+
+        {/* Content skeleton */}
+        <div className="flex-1 overflow-auto">
+          <GroupDetailHeaderSkeleton />
+          <div className="px-4 py-4 space-y-4">
+            <PostSkeleton count={3} />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!group) {
     return (
@@ -519,10 +580,12 @@ export function GroupDetailPage() {
                   className="card flex items-center gap-4"
                 >
                   <div className="w-12 h-12 rounded-full bg-dark-800 border border-dark-700 flex items-center justify-center text-white">
-                    {member.address.slice(2,4).toUpperCase()}
+                    {member.address.slice(2, 4).toUpperCase()}
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-semibold text-white">{member.address}</h3>
+                    <h3 className="font-semibold text-white">
+                      {member.address}
+                    </h3>
                     <div className="flex items-center gap-3 text-xs text-dark-400">
                       <div className="flex items-center gap-1">
                         <Award className="w-3 h-3" />
@@ -530,9 +593,7 @@ export function GroupDetailPage() {
                       </div>
                       <div className="flex items-center gap-1">
                         <Calendar className="w-3 h-3" />
-                        <span>
-                          Joined {new Date().toLocaleDateString()}
-                        </span>
+                        <span>Joined {new Date().toLocaleDateString()}</span>
                       </div>
                     </div>
                   </div>

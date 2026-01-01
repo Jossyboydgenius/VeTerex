@@ -2470,15 +2470,17 @@ function showCompletionBanner(mediaInfo: MediaInfo, watchTime?: number) {
   if (mintBtn) {
     mintBtn.addEventListener("click", () => {
       // Open web app with data
-      const data = encodeURIComponent(JSON.stringify({
-        ...mediaInfo,
-        watchTime: watchTime || currentSession?.watchTime || 0
-      }));
-      
+      const data = encodeURIComponent(
+        JSON.stringify({
+          ...mediaInfo,
+          watchTime: watchTime || currentSession?.watchTime || 0,
+        })
+      );
+
       // Use localhost for dev, in prod this would be the deployed URL
       const webUrl = `http://localhost:5173/#/mint?data=${data}`;
-      window.open(webUrl, '_blank');
-      
+      window.open(webUrl, "_blank");
+
       banner.remove();
     });
   }
@@ -2495,9 +2497,15 @@ function showCompletionBanner(mediaInfo: MediaInfo, watchTime?: number) {
  * Initialize content script
  */
 function init() {
+  // ALWAYS setup extension bridge first for session sync on any page
+  // This is critical for localhost auth redirect flow
+  setupExtensionBridge();
+
   const platform = detectPlatform();
   if (!platform) {
-    console.log("[VeTerex] Not a supported platform");
+    console.log(
+      "[VeTerex] Not a supported media platform, but bridge is active for session sync"
+    );
     return;
   }
 
@@ -2578,6 +2586,135 @@ function init() {
       }
     }
   });
+}
+
+/**
+ * Setup bridge for communication between web app and extension
+ * This allows the web app to share session data with the extension
+ */
+function setupExtensionBridge() {
+  // Message types
+  const MESSAGE_TYPES = {
+    SESSION_DATA: "VETEREX_SESSION_DATA",
+    REQUEST_SESSION: "VETEREX_REQUEST_SESSION",
+    SESSION_RECEIVED: "VETEREX_SESSION_RECEIVED",
+    EXTENSION_READY: "VETEREX_EXTENSION_READY",
+  };
+
+  // Storage key
+  const STORAGE_KEY = "veterex_session";
+
+  // Connect to extension background
+  let port: chrome.runtime.Port | null = null;
+  try {
+    port = chrome.runtime.connect({ name: "veterex-bridge" });
+    console.log("[VeTerex Bridge] Connected to extension background");
+
+    // Listen for messages from background
+    port.onMessage.addListener((message) => {
+      if (message.type === MESSAGE_TYPES.SESSION_DATA) {
+        // Forward to web page
+        window.postMessage(
+          {
+            type: MESSAGE_TYPES.SESSION_RECEIVED,
+            source: "veterex-extension",
+            data: message.data,
+          },
+          "*"
+        );
+      }
+    });
+  } catch {
+    console.log("[VeTerex Bridge] Could not connect to background");
+  }
+
+  // Listen for messages from web page
+  window.addEventListener("message", (event) => {
+    // Only accept messages from the same window
+    if (event.source !== window) return;
+
+    const message = event.data;
+
+    // Only handle messages from our web app
+    if (message && message.source === "veterex-web") {
+      console.log(
+        "[VeTerex Bridge] Received from web app:",
+        message.type,
+        message
+      );
+
+      // Handle SESSION_DATA or SESSION_SYNC (both are used for session sync)
+      if (
+        message.type === MESSAGE_TYPES.SESSION_DATA ||
+        message.type === "SESSION_SYNC"
+      ) {
+        console.log(
+          "[VeTerex Bridge] Saving session to chrome.storage:",
+          message.data
+        );
+
+        // Save to chrome.storage
+        chrome.storage.local.set({
+          [STORAGE_KEY]: message.data,
+        });
+
+        // Forward to background if connected
+        if (port) {
+          port.postMessage({
+            type: MESSAGE_TYPES.SESSION_DATA,
+            data: message.data,
+          });
+        }
+
+        // Also send directly to background via runtime.sendMessage
+        chrome.runtime
+          .sendMessage({
+            type: "SESSION_UPDATED",
+            data: message.data,
+          })
+          .catch(() => {
+            // Extension popup might not be open
+          });
+
+        // Acknowledge receipt to web app
+        window.postMessage(
+          {
+            type: "SESSION_SYNC_ACK",
+            source: "veterex-extension",
+            success: true,
+          },
+          "*"
+        );
+      }
+
+      if (message.type === MESSAGE_TYPES.REQUEST_SESSION) {
+        // Get session from chrome.storage and send back
+        chrome.storage.local.get([STORAGE_KEY], (result) => {
+          if (result[STORAGE_KEY]) {
+            window.postMessage(
+              {
+                type: MESSAGE_TYPES.SESSION_RECEIVED,
+                source: "veterex-extension",
+                data: result[STORAGE_KEY],
+              },
+              "*"
+            );
+          }
+        });
+      }
+    }
+  });
+
+  // Notify web app that extension is ready
+  window.postMessage(
+    {
+      type: MESSAGE_TYPES.EXTENSION_READY,
+      source: "veterex-extension",
+    },
+    "*"
+  );
+
+  console.log("[VeTerex Bridge] Extension bridge initialized");
 }
 
 // Start initialization

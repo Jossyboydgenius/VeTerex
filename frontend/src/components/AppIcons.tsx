@@ -1079,14 +1079,14 @@ export const WalletImageIcon: React.FC<
 
 /**
  * NFT Mining Icon (PNG) - for minting
- * Use inverted=true for white icon on dark backgrounds
+ * Shows the original colored icon by default
  */
 export const NFTMiningImageIcon: React.FC<
   ImageIconProps & { inverted?: boolean }
 > = ({
   className = "",
   size = 48,
-  inverted = true, // Default to white for dark backgrounds
+  inverted = false, // Default to original colors
 }) => (
   <img
     src="/icons/nft-mining.png"
@@ -1096,6 +1096,25 @@ export const NFTMiningImageIcon: React.FC<
       width: size,
       height: size,
       filter: inverted ? "brightness(0) invert(1)" : undefined,
+    }}
+  />
+);
+
+/**
+ * Mint Icon (PNG) - for minting NFTs
+ * Uses the mint.png icon
+ */
+export const MintImageIcon: React.FC<ImageIconProps> = ({
+  className = "",
+  size = 48,
+}) => (
+  <img
+    src="/icons/mint.png"
+    alt="Mint"
+    className={className}
+    style={{
+      width: size,
+      height: size,
     }}
   />
 );
@@ -1304,6 +1323,21 @@ export const VeryLogoImageIcon: React.FC<ImageIconProps> = ({
   <img
     src="/icons/very_logo.png"
     alt="VeryLogo"
+    className={className}
+    style={{ width: size, height: size }}
+  />
+);
+
+/**
+ * Wepin Logo Icon (PNG) - for wallet authentication
+ */
+export const WepinLogoImageIcon: React.FC<ImageIconProps> = ({
+  className = "",
+  size = 48,
+}) => (
+  <img
+    src="/icons/wepin_logo.png"
+    alt="Wepin"
     className={className}
     style={{ width: size, height: size }}
   />

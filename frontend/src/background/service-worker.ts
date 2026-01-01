@@ -296,12 +296,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return true;
 
     // Active sessions
-    case "GET_ACTIVE_SESSIONS":
-      {
-        const sessions = Array.from(activeSessions.values());
-        sendResponse({ success: true, data: sessions });
-        return true;
-      }
+    case "GET_ACTIVE_SESSIONS": {
+      const sessions = Array.from(activeSessions.values());
+      sendResponse({ success: true, data: sessions });
+      return true;
+    }
 
     // Series bookmarks
     case "ADD_SERIES_BOOKMARK":
@@ -331,29 +330,57 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             if (res.ok) {
               const text = await res.text();
               const host = (() => {
-                try { return new URL(b.url).hostname; } catch { return ""; }
+                try {
+                  return new URL(b.url).hostname;
+                } catch {
+                  return "";
+                }
               })();
 
-              const nums = Array.from(text.matchAll(/(?:Episode|Ep\.|Chapter|Ch\.)\s*(\d+(?:\.\d+)?)/gi)).map(m => m[1]);
-              if (nums.length) latestEpisode = nums.sort((a,b)=>parseFloat(b)-parseFloat(a))[0];
+              const nums = Array.from(
+                text.matchAll(
+                  /(?:Episode|Ep\.|Chapter|Ch\.)\s*(\d+(?:\.\d+)?)/gi
+                )
+              ).map((m) => m[1]);
+              if (nums.length)
+                latestEpisode = nums.sort(
+                  (a, b) => parseFloat(b) - parseFloat(a)
+                )[0];
 
               if (/webtoons\.com/i.test(host)) {
                 // webtoons: presence of episode links indicates potential updates
-                hasUpdate = !!latestEpisode && (!b.currentChapter || parseFloat(latestEpisode) > parseFloat(b.currentChapter));
+                hasUpdate =
+                  !!latestEpisode &&
+                  (!b.currentChapter ||
+                    parseFloat(latestEpisode) > parseFloat(b.currentChapter));
               } else if (/mangadex\.org/i.test(host)) {
-                hasUpdate = !!latestEpisode && (!b.currentChapter || parseFloat(latestEpisode) > parseFloat(b.currentChapter));
+                hasUpdate =
+                  !!latestEpisode &&
+                  (!b.currentChapter ||
+                    parseFloat(latestEpisode) > parseFloat(b.currentChapter));
               } else if (/manganato|mangakakalot|manganelo/i.test(host)) {
-                hasUpdate = !!latestEpisode && (!b.currentChapter || parseFloat(latestEpisode) > parseFloat(b.currentChapter));
+                hasUpdate =
+                  !!latestEpisode &&
+                  (!b.currentChapter ||
+                    parseFloat(latestEpisode) > parseFloat(b.currentChapter));
               } else {
                 // generic
-                hasUpdate = !!latestEpisode && (!b.currentChapter || parseFloat(latestEpisode) > parseFloat(b.currentChapter));
+                hasUpdate =
+                  !!latestEpisode &&
+                  (!b.currentChapter ||
+                    parseFloat(latestEpisode) > parseFloat(b.currentChapter));
               }
             }
           } catch (e) {
             console.warn("[VeTerex] series check failed", e);
           }
           if (hasUpdate) updates++;
-          updated.push({ ...b, hasUpdate, latestEpisode, lastChecked: new Date().toISOString() });
+          updated.push({
+            ...b,
+            hasUpdate,
+            latestEpisode,
+            lastChecked: new Date().toISOString(),
+          });
         }
         chrome.storage.local.set({ seriesBookmarks: updated }, () => {
           if (updates > 0) {
@@ -387,8 +414,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       });
       return true;
 
-  default:
-    sendResponse({ success: false, error: "Unknown message type" });
+    default:
+      sendResponse({ success: false, error: "Unknown message type" });
   }
 });
 
@@ -477,8 +504,9 @@ export {};
 chrome.permissions.getAll().then((p) => {
   const origins = p.origins || [];
   const manifest = chrome.runtime.getManifest();
-  const scriptPaths = ((manifest.content_scripts || []).flatMap((cs) => cs.js || [])
-    .filter((s): s is string => typeof s === "string")) as string[];
+  const scriptPaths = (manifest.content_scripts || [])
+    .flatMap((cs) => cs.js || [])
+    .filter((s): s is string => typeof s === "string") as string[];
   if (origins.length && scriptPaths.length) {
     chrome.scripting.registerContentScripts([
       {
@@ -494,8 +522,9 @@ chrome.permissions.getAll().then((p) => {
 chrome.permissions.onAdded.addListener(async (p) => {
   const origins = p.origins || [];
   const manifest = chrome.runtime.getManifest();
-  const scriptPaths = ((manifest.content_scripts || []).flatMap((cs) => cs.js || [])
-    .filter((s): s is string => typeof s === "string")) as string[];
+  const scriptPaths = (manifest.content_scripts || [])
+    .flatMap((cs) => cs.js || [])
+    .filter((s): s is string => typeof s === "string") as string[];
   if (origins.length && scriptPaths.length) {
     chrome.scripting.registerContentScripts([
       {
@@ -511,7 +540,10 @@ chrome.permissions.onAdded.addListener(async (p) => {
     const tab = tabs[0];
     if (tab?.id) {
       try {
-        await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: scriptPaths });
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          files: scriptPaths,
+        });
       } catch (e) {
         console.warn("[VeTerex] executeScript failed", e);
       }
@@ -522,3 +554,95 @@ chrome.permissions.onAdded.addListener(async (p) => {
 chrome.permissions.onRemoved.addListener(() => {
   chrome.scripting.unregisterContentScripts({ ids: ["veterex-dynamic"] });
 });
+
+// ==========================================
+// Extension Bridge - Session Sync
+// ==========================================
+
+// Session storage key
+const SESSION_STORAGE_KEY = "veterex_session";
+
+// Message types for bridge communication
+const BRIDGE_MESSAGE_TYPES = {
+  SESSION_DATA: "VETEREX_SESSION_DATA",
+  REQUEST_SESSION: "VETEREX_REQUEST_SESSION",
+  SESSION_RECEIVED: "VETEREX_SESSION_RECEIVED",
+};
+
+// Handle connections from content scripts
+chrome.runtime.onConnect.addListener((port) => {
+  if (port.name !== "veterex-bridge") return;
+
+  console.log("[VeTerex Bridge] Content script connected");
+
+  // Listen for messages from content script
+  port.onMessage.addListener((message) => {
+    if (message.type === BRIDGE_MESSAGE_TYPES.SESSION_DATA) {
+      // Save session to chrome.storage
+      chrome.storage.local.set({
+        [SESSION_STORAGE_KEY]: message.data,
+      });
+      console.log("[VeTerex Bridge] Session saved from content script");
+    }
+  });
+
+  // Send current session to newly connected content script
+  chrome.storage.local.get([SESSION_STORAGE_KEY], (result) => {
+    if (result[SESSION_STORAGE_KEY]) {
+      port.postMessage({
+        type: BRIDGE_MESSAGE_TYPES.SESSION_DATA,
+        data: result[SESSION_STORAGE_KEY],
+      });
+    }
+  });
+});
+
+// Handle external messages from web app (requires externally_connectable in manifest)
+chrome.runtime.onMessageExternal.addListener(
+  (request, sender, sendResponse) => {
+    console.log("[VeTerex Bridge] External message from:", sender.url);
+
+    // Handle SESSION_SYNC from web app (Wepin auth redirect flow)
+    if (request.type === "SESSION_SYNC" && request.source === "veterex-web") {
+      console.log("[VeTerex Bridge] Received session sync from web app");
+      chrome.storage.local.set({
+        [SESSION_STORAGE_KEY]: request.data,
+      });
+
+      // Notify any open extension popup to refresh
+      chrome.runtime
+        .sendMessage({
+          type: "SESSION_UPDATED",
+          data: request.data,
+        })
+        .catch(() => {
+          // Ignore error if popup is not open
+        });
+
+      sendResponse({ success: true });
+      return;
+    }
+
+    if (request.type === BRIDGE_MESSAGE_TYPES.SESSION_DATA) {
+      // Save session to chrome.storage
+      chrome.storage.local.set({
+        [SESSION_STORAGE_KEY]: request.data,
+      });
+      sendResponse({ success: true });
+      return;
+    }
+
+    if (request.type === BRIDGE_MESSAGE_TYPES.REQUEST_SESSION) {
+      // Return session data
+      chrome.storage.local.get([SESSION_STORAGE_KEY], (result) => {
+        sendResponse({
+          success: true,
+          data: result[SESSION_STORAGE_KEY] || null,
+        });
+      });
+      return true; // Keep message channel open for async response
+    }
+  }
+);
+
+console.log("[VeTerex Bridge] Background bridge initialized");

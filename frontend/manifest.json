@@ -69,7 +69,10 @@
         "https://*.goodreads.com/book/*",
         "https://*.mangadex.org/chapter/*",
         "https://*.myanimelist.net/anime/*",
-        "https://*.anilist.co/anime/*"
+        "https://*.anilist.co/anime/*",
+        "http://localhost/*",
+        "https://*.veterex.io/*",
+        "https://*.vercel.app/*"
       ],
       "js": ["src/content/media-tracker.ts"],
       "run_at": "document_idle"
@@ -77,6 +80,14 @@
   ],
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'"
+  },
+  "externally_connectable": {
+    "matches": [
+      "http://localhost:*/*",
+      "https://localhost:*/*",
+      "https://*.veterex.io/*",
+      "https://*.vercel.app/*"
+    ]
   },
   "web_accessible_resources": [
     {

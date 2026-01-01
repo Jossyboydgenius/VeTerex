@@ -307,3 +307,109 @@ export async function getLoginSession(): Promise<any> {
     throw error;
   }
 }
+
+/**
+ * Login with ID Token (for external authentication)
+ * Used when receiving auth tokens from web app redirect (e.g., for Chrome extension)
+ *
+ * @param idToken - The ID token from the OAuth provider
+ * @param sign - Optional signature for the token
+ * @returns Wepin Firebase login information
+ */
+export async function loginWithIdToken(
+  idToken: string,
+  sign?: string
+): Promise<WepinUser | null> {
+  try {
+    if (!wepinSDK) {
+      await initWepin();
+    }
+
+    // Use the Wepin Login SDK method for ID token auth
+    const params: { idToken: string; sign?: string } = { idToken };
+    if (sign) {
+      params.sign = sign;
+    }
+
+    const result = await wepinSDK.loginWithIdToken(params);
+    console.log("[VeTerex] ID Token login result:", result);
+
+    // After successful Firebase login, we need to complete the login process
+    // The result contains provider and token (idToken, refreshToken)
+    if (result?.token) {
+      // Get user info after token login
+      const userInfo = await wepinSDK.getLoginSession();
+      console.log("[VeTerex] User session after ID token login:", userInfo);
+      return userInfo as WepinUser;
+    }
+
+    return result as WepinUser;
+  } catch (error) {
+    console.error("[VeTerex] ID Token login failed:", error);
+    throw error;
+  }
+}
+
+/**
+ * Login with Access Token (for external OAuth providers)
+ * Supports providers: 'naver', 'discord'
+ *
+ * @param provider - The OAuth provider name
+ * @param accessToken - The access token from the OAuth provider
+ * @param sign - Optional signature for the token
+ * @returns Wepin Firebase login information
+ */
+export async function loginWithAccessToken(
+  provider: "naver" | "discord",
+  accessToken: string,
+  sign?: string
+): Promise<WepinUser | null> {
+  try {
+    if (!wepinSDK) {
+      await initWepin();
+    }
+
+    const params: { provider: string; accessToken: string; sign?: string } = {
+      provider,
+      accessToken,
+    };
+    if (sign) {
+      params.sign = sign;
+    }
+
+    const result = await wepinSDK.loginWithAccessToken(params);
+    console.log("[VeTerex] Access Token login result:", result);
+
+    // After successful Firebase login, get full user session
+    if (result?.token) {
+      const userInfo = await wepinSDK.getLoginSession();
+      console.log("[VeTerex] User session after access token login:", userInfo);
+      return userInfo as WepinUser;
+    }
+
+    return result as WepinUser;
+  } catch (error) {
+    console.error("[VeTerex] Access Token login failed:", error);
+    throw error;
+  }
+}
+
+/**
+ * Refresh Firebase token
+ * Use this to get a new access token without re-login
+ * Access tokens expire after 12 hours, refresh tokens valid for 7 days
+ */
+export async function refreshFirebaseToken(): Promise<any> {
+  try {
+    if (!wepinSDK) {
+      throw new Error("Wepin SDK not initialized");
+    }
+
+    const newToken = await wepinSDK.getRefreshFirebaseToken();
+    console.log("[VeTerex] Token refreshed");
+    return newToken;
+  } catch (error) {
+    console.error("[VeTerex] Token refresh failed:", error);
+    throw error;
+  }
+}

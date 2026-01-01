@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Star, Calendar, Loader2, Sparkles } from "lucide-react";
 import type { MediaItem } from "@/types";
 import { useAppStore } from "@/store/useAppStore";
-import { mintCompletionNFT } from "@/services/api";
+import { mintCompletion, mapTrackedType } from "@/services/nft";
 import {
   NFTMiningImageIcon,
   OpenCookieImageIcon,
@@ -38,28 +38,57 @@ export function MintNFTModal({
       return;
     }
 
+    if (!currentAccount.address) {
+      addToast({
+        type: "error",
+        message: "Minting requires a wallet address. Please connect Wepin.",
+      });
+      return;
+    }
+
     setIsMinting(true);
     try {
-      const result = await mintCompletionNFT({
-        mediaId: media.id,
-        userAddress: currentAccount.address,
-        completedAt: new Date(completedDate),
-        rating: rating > 0 ? rating : undefined,
-        review: review.trim() || undefined,
-      });
+      // Create metadata object to store in URI
+      const metadata = {
+        name: media.title,
+        description: `Completed on ${new Date(completedDate).toISOString()}`,
+        image: media.coverImage || "",
+        external_url: "",
+        attributes: [
+          { trait_type: "Type", value: media.type },
+          { trait_type: "Rating", value: rating > 0 ? rating : "Not rated" },
+          {
+            trait_type: "Completed At",
+            value: new Date(completedDate).toISOString(),
+          },
+        ],
+      };
+
+      // Create data URI
+      const dataUri = `data:application/json;base64,${btoa(
+        JSON.stringify(metadata)
+      )}`;
+
+      // Call smart contract directly
+      const { hash } = await mintCompletion(
+        currentAccount.address as `0x${string}`,
+        mapTrackedType(media.type),
+        dataUri,
+        media.title
+      );
 
       // Add to local state
       addCompletion({
-        id: result.tokenId,
-        tokenId: result.tokenId,
+        id: `nft-${Date.now()}`,
+        tokenId: `nft-${Date.now()}`,
         mediaId: media.id,
         media: media,
         mintedAt: new Date(),
-        transactionHash: result.transactionHash,
+        transactionHash: hash,
         completedAt: new Date(completedDate),
         rating: rating > 0 ? rating : undefined,
         review: review.trim() || undefined,
-        rarity: "common", // Would be determined by contract
+        rarity: "common",
       });
 
       setIsSuccess(true);
@@ -113,9 +142,7 @@ export function MintNFTModal({
                   </button>
 
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-xl bg-main-gradient flex items-center justify-center">
-                      <NFTMiningImageIcon size={28} />
-                    </div>
+                    <NFTMiningImageIcon size={48} />
                     <div>
                       <h2 className="text-lg font-semibold text-white">
                         Mint Completion NFT
