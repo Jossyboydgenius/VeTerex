@@ -666,28 +666,24 @@ export function SettingsPage() {
 
                       {/* QR Code for easy mobile scanning */}
                       {qrCodeUrl && (
-                        <div className="p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg">
-                          <div className="flex items-start gap-3">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-2">
-                                <Smartphone className="w-4 h-4 text-purple-400" />
-                                <p className="text-xs font-medium text-purple-400">
-                                  Scan with Mobile Wallet
-                                </p>
-                              </div>
-                              <p className="text-xs text-dark-300 mb-3">
-                                Scan this QR code with your mobile wallet app
-                                (Trust Wallet, MetaMask Mobile, etc.) to import
-                                your private key.
+                        <div className="p-4 bg-purple-500/10 border border-purple-500/30 rounded-lg">
+                          <div className="flex flex-col items-center gap-3">
+                            <div className="flex items-center gap-2 mb-1">
+                              <Smartphone className="w-4 h-4 text-purple-400" />
+                              <p className="text-sm font-medium text-purple-400">
+                                Scan with Mobile Wallet
                               </p>
                             </div>
-                            <div className="shrink-0">
-                              <img
-                                src={qrCodeUrl}
-                                alt="Private Key QR Code"
-                                className="w-32 h-32 rounded-lg bg-white p-2"
-                              />
-                            </div>
+                            <img
+                              src={qrCodeUrl}
+                              alt="Private Key QR Code"
+                              className="w-40 h-40 rounded-lg bg-white p-2 shadow-lg"
+                            />
+                            <p className="text-xs text-center text-dark-300 max-w-xs">
+                              Scan this QR code with Trust Wallet, MetaMask
+                              Mobile, or any wallet app to import your private
+                              key.
+                            </p>
                           </div>
                         </div>
                       )}

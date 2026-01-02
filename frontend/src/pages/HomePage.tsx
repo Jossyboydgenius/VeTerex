@@ -20,6 +20,7 @@ import {
   Power,
 } from "lucide-react";
 import { useAppStore, type TrackedMedia } from "@/store/useAppStore";
+import { getUserNFTCount } from "@/services/nft";
 import {
   TrackingPermissionModal,
   TrackedMediaCard,
@@ -255,6 +256,7 @@ export function HomePage() {
     trackingPermissionAsked,
     activeTracking,
     pendingMints,
+    currentAccount,
     setTrackingEnabled,
     setTrackingPermissionAsked,
     removePendingMint,
@@ -265,6 +267,7 @@ export function HomePage() {
   const [showMintModal, setShowMintModal] = useState(false);
   const [selectedMedia, setSelectedMedia] = useState<TrackedMedia | null>(null);
   const [currentSite, setCurrentSite] = useState<CurrentSiteInfo | null>(null);
+  const [nftCount, setNftCount] = useState<number>(0);
 
   // Detect current active tab site
   useEffect(() => {
@@ -359,6 +362,28 @@ export function HomePage() {
 
     detectCurrentSite();
   }, [activeTracking]);
+
+  // Fetch NFT count from smart contract when wallet is connected
+  useEffect(() => {
+    const fetchNFTCount = async () => {
+      const walletAddress = currentAccount?.address;
+      if (walletAddress) {
+        try {
+          const count = await getUserNFTCount(walletAddress as `0x${string}`);
+          setNftCount(count);
+        } catch (error) {
+          console.error("[HomePage] Error fetching NFT count:", error);
+          // Fallback to local completions count
+          setNftCount(completions.length);
+        }
+      } else {
+        // Use local count if no wallet connected
+        setNftCount(completions.length);
+      }
+    };
+
+    fetchNFTCount();
+  }, [currentAccount?.address, completions.length]);
 
   // Show permission modal on first load if not asked yet
   useEffect(() => {
@@ -765,7 +790,7 @@ export function HomePage() {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-white">Explore by Type</h2>
           <Link
-            to="/explore"
+            to="/collection"
             className="flex items-center gap-1 text-sm text-coral hover:text-coral-light"
           >
             <span>See all</span>
@@ -781,7 +806,7 @@ export function HomePage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 + index * 0.1 }}
             >
-              <Link to={`/explore?type=${type}`} className="block">
+              <Link to={`/collection?filter=${type}`} className="block">
                 <motion.div
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
@@ -831,12 +856,10 @@ export function HomePage() {
                 <Award className="w-7 h-7 text-coral" />
               </div>
               <div className="flex-1">
-                <p className="text-2xl font-bold text-white">
-                  {completions.length}
-                </p>
+                <p className="text-2xl font-bold text-white">{nftCount}</p>
                 <p className="text-xs text-dark-400">NFTs in your collection</p>
               </div>
-              <Link to="/explore" className="btn-primary text-sm py-2 px-4">
+              <Link to="/community" className="btn-primary text-sm py-2 px-4">
                 Add More
               </Link>
             </div>

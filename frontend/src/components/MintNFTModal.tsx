@@ -51,7 +51,9 @@ export function MintNFTModal({
       // Create metadata object to store in URI
       const metadata = {
         name: media.title,
-        description: `Completed on ${new Date(completedDate).toISOString()}`,
+        description:
+          review.trim() ||
+          `Completed on ${new Date(completedDate).toISOString()}`,
         image: media.coverImage || "",
         external_url: "",
         attributes: [
@@ -61,6 +63,9 @@ export function MintNFTModal({
             trait_type: "Completed At",
             value: new Date(completedDate).toISOString(),
           },
+          ...(review.trim()
+            ? [{ trait_type: "Review", value: review.trim() }]
+            : []),
         ],
       };
 
@@ -98,12 +103,33 @@ export function MintNFTModal({
         onSuccess?.();
         onClose();
       }, 2000);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Mint error:", error);
-      addToast({
-        type: "error",
-        message: "Failed to mint NFT. Please try again.",
-      });
+
+      // Check if it's an execution reverted error (already minted)
+      // The error can be nested in different ways depending on the provider
+      const errorMessage = error?.message || error?.toString() || "";
+      const errorData = error?.data || error?.error?.data || "";
+      const nestedMessage = error?.error?.message || "";
+
+      // Check all possible locations for "execution reverted"
+      const isExecutionReverted =
+        errorMessage.toLowerCase().includes("execution reverted") ||
+        errorData.toLowerCase().includes("execution reverted") ||
+        nestedMessage.toLowerCase().includes("execution reverted") ||
+        JSON.stringify(error).toLowerCase().includes("execution reverted");
+
+      if (isExecutionReverted) {
+        addToast({
+          type: "warning",
+          message: "You've already minted an NFT for this media!",
+        });
+      } else {
+        addToast({
+          type: "error",
+          message: "Failed to mint NFT. Please try again.",
+        });
+      }
     } finally {
       setIsMinting(false);
     }
@@ -285,7 +311,7 @@ export function MintNFTModal({
                       )}
                     </motion.button>
 
-                    <p className="text-xs text-dark-500 text-center">
+                    <p className="text-xs text-dark-500 text-center mb-20">
                       This will create a soulbound (non-transferable) NFT on the
                       blockchain.
                     </p>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { useSearchParams } from "react-router-dom";
 import {
   Library,
   Grid3X3,
@@ -74,9 +75,18 @@ const typeFilters = [
 export function CollectionPage() {
   const { isConnected, completions, setCompletions, currentAccount, addToast } =
     useAppStore();
+  const [searchParams] = useSearchParams();
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [selectedType, setSelectedType] = useState<MediaType | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Check for filter parameter from URL
+  useEffect(() => {
+    const filterParam = searchParams.get("filter");
+    if (filterParam) {
+      setSelectedType(filterParam as MediaType);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     async function load() {
