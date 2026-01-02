@@ -109,6 +109,10 @@ export const clearSessionStorage = (): void => {
     localStorage.removeItem(STORAGE_KEYS.SESSION);
     localStorage.removeItem(STORAGE_KEYS.AUTH_STATE);
     localStorage.removeItem(STORAGE_KEYS.LAST_SYNC);
+    localStorage.removeItem("veterex_verychat_wallet");
+    localStorage.removeItem("verychat_tokens");
+    localStorage.removeItem("verychat_user");
+    console.log("[ExtensionBridge] Session cleared, all auth data removed");
   } catch (error) {
     console.error("[ExtensionBridge] Failed to clear session storage:", error);
   }

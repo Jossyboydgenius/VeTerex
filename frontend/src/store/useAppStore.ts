@@ -6,6 +6,7 @@ import type {
   WepinAccount,
   CompletionNFT,
   Toast,
+  BackendUser,
 } from "@/types";
 
 // VeryChat user type
@@ -47,6 +48,7 @@ interface AppState {
 
   // User Data
   user: User | null;
+  backendUser: BackendUser | null; // User data from our backend (Prisma)
   completions: CompletionNFT[];
 
   // Tracking State
@@ -67,6 +69,8 @@ interface AppState {
   setAccounts: (accounts: WepinAccount[]) => void;
   setCurrentAccount: (account: WepinAccount | null) => void;
   setJoinedAt: (date: string) => void;
+  setBackendUser: (user: BackendUser | null) => void;
+  updateBackendUserImage: (imageUrl: string) => void;
   setUser: (user: User | null) => void;
   setCompletions: (completions: CompletionNFT[]) => void;
   addCompletion: (completion: CompletionNFT) => void;
@@ -101,6 +105,7 @@ export const useAppStore = create<AppState>()(
       currentAccount: null,
       joinedAt: null,
       user: null,
+      backendUser: null,
       completions: [],
       trackingEnabled: true,
       trackingPermissionAsked: false,
@@ -112,6 +117,13 @@ export const useAppStore = create<AppState>()(
       setConnected: (connected) => set({ isConnected: connected }),
       setLoading: (loading) => set({ isLoading: loading }),
       setAuthMethod: (method) => set({ authMethod: method }),
+      setBackendUser: (user) => set({ backendUser: user }),
+      updateBackendUserImage: (imageUrl) =>
+        set((state) => ({
+          backendUser: state.backendUser
+            ? { ...state.backendUser, profileImage: imageUrl }
+            : null,
+        })),
       setWepinUser: (user) =>
         set((state) => ({
           wepinUser: user,
@@ -212,6 +224,7 @@ export const useAppStore = create<AppState>()(
           currentAccount: null,
           joinedAt: null,
           user: null,
+          backendUser: null,
           completions: [],
           activeTracking: [],
           pendingMints: [],
@@ -227,6 +240,7 @@ export const useAppStore = create<AppState>()(
         accounts: state.accounts,
         currentAccount: state.currentAccount,
         joinedAt: state.joinedAt,
+        backendUser: state.backendUser,
         completions: state.completions,
         trackingEnabled: state.trackingEnabled,
         trackingPermissionAsked: state.trackingPermissionAsked,

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
 import { ChevronDown, LogOut, Copy, Check, BookOpen } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
@@ -13,6 +13,7 @@ import {
 } from "@/services/wepin";
 import { logout as logoutVeryChat } from "@/services/verychat";
 import { getOrCreateWalletForUser } from "@/services/wallet";
+import { createOrUpdateUser } from "@/services/backend";
 import { VeryChatLoginModal } from "./VeryChatLoginModal";
 import { AuthChoiceModal } from "./AuthChoiceModal";
 import { LogoIcon, WalletImageIcon } from "./AppIcons";
@@ -38,11 +39,13 @@ export function Header() {
     authMethod,
     currentAccount,
     verychatUser,
+    backendUser,
     setConnected,
     setLoading,
     setAuthMethod,
     setWepinUser,
     setVeryChatUser,
+    setBackendUser,
     setAccounts,
     setCurrentAccount,
     addToast,
@@ -56,6 +59,36 @@ export function Header() {
   const [showAuthChoiceModal, setShowAuthChoiceModal] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+
+  // Ref for dropdown click outside detection
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const dropdownButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Handle click outside to close dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      // Check if click is outside both the dropdown and the button that toggles it
+      const isOutsideDropdown =
+        dropdownRef.current && !dropdownRef.current.contains(target);
+      const isOutsideButton =
+        dropdownButtonRef.current &&
+        !dropdownButtonRef.current.contains(target);
+
+      if (isOutsideDropdown && isOutsideButton) {
+        setShowDropdown(false);
+      }
+    };
+
+    if (showDropdown) {
+      // Add listener immediately on capture phase for better detection
+      document.addEventListener("mousedown", handleClickOutside, true);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside, true);
+    };
+  }, [showDropdown]);
 
   // Wepin auth flow initiated from extension
   const handleWepinAuthForExtension = useCallback(
@@ -295,6 +328,28 @@ export function Header() {
           setCurrentAccount(accounts[0]);
         }
 
+        // Create or update user in backend database
+        if (user.userInfo?.userId) {
+          try {
+            const backendUserData = await createOrUpdateUser({
+              authId: user.userInfo.userId,
+              authMethod: "wepin",
+              profileName: user.userInfo.email?.split("@")[0] || "Wepin User",
+              email: user.userInfo.email,
+              walletAddress:
+                accounts.length > 0 ? accounts[0].address : undefined,
+            });
+            setBackendUser(backendUserData.user);
+            console.log(
+              "[Wepin] Backend user created:",
+              backendUserData.user.id
+            );
+          } catch (error) {
+            console.error("[Wepin] Failed to create backend user:", error);
+            // Continue even if backend fails
+          }
+        }
+
         setConnected(true);
         addToast({
           type: "success",
@@ -312,7 +367,7 @@ export function Header() {
     }
   };
 
-  const handleVeryChatSuccess = (user: {
+  const handleVeryChatSuccess = async (user: {
     profileId: string;
     profileName: string;
     profileImage?: string;
@@ -321,8 +376,10 @@ export function Header() {
     setAuthMethod("verychat");
 
     // Create or get existing wallet for VeryChat user
+    let walletAddress = "";
     try {
       const wallet = getOrCreateWalletForUser(user.profileId);
+      walletAddress = wallet.address;
       // Set the wallet as the current account so minting works
       setCurrentAccount({
         address: wallet.address,
@@ -334,6 +391,22 @@ export function Header() {
       console.log("[VeryChat] Created/loaded wallet:", wallet.address);
     } catch (error) {
       console.error("[VeryChat] Failed to create wallet:", error);
+    }
+
+    // Create or update user in backend database
+    try {
+      const backendUserData = await createOrUpdateUser({
+        authId: user.profileId,
+        authMethod: "verychat",
+        profileName: user.profileName,
+        profileImage: user.profileImage,
+        walletAddress: walletAddress || undefined,
+      });
+      setBackendUser(backendUserData.user);
+      console.log("[VeryChat] Backend user created:", backendUserData.user.id);
+    } catch (error) {
+      console.error("[VeryChat] Failed to create backend user:", error);
+      // Continue even if backend fails
     }
 
     setConnected(true);
@@ -436,13 +509,22 @@ export function Header() {
             ) : (
               <div className="relative">
                 <motion.button
+                  ref={dropdownButtonRef}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => setShowDropdown(!showDropdown)}
                   className="flex items-center gap-2 px-3 py-2 bg-dark-800 border border-dark-700 
                        rounded-xl text-sm hover:border-coral/50 transition-all duration-200"
                 >
-                  {authMethod === "verychat" && verychatUser?.profileImage ? (
+                  {/* Show backend profile image if available, fallback to auth provider image */}
+                  {backendUser?.profileImage ? (
+                    <img
+                      src={backendUser.profileImage}
+                      alt={backendUser.profileName}
+                      className="w-6 h-6 rounded-lg object-cover"
+                    />
+                  ) : authMethod === "verychat" &&
+                    verychatUser?.profileImage ? (
                     <img
                       src={verychatUser.profileImage}
                       alt={verychatUser.profileName}
@@ -467,162 +549,161 @@ export function Header() {
 
                 {/* Dropdown */}
                 {showDropdown && (
-                  <>
-                    <div
-                      className="fixed inset-0 z-40"
-                      onClick={() => setShowDropdown(false)}
-                    />
-                    <motion.div
-                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                      className="absolute right-0 top-full mt-2 w-64 glass-dark rounded-xl border border-dark-700 
+                  <motion.div
+                    ref={dropdownRef}
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    className="absolute right-0 top-full mt-2 w-64 glass-dark rounded-xl border border-dark-700 
                            shadow-xl shadow-black/20 z-50 overflow-hidden"
-                    >
-                      {/* Account Info */}
-                      <div className="p-4 border-b border-dark-700">
-                        <div className="flex items-center gap-3 mb-3">
-                          {authMethod === "verychat" &&
+                  >
+                    {/* Account Info */}
+                    <div className="p-4 border-b border-dark-700">
+                      <div className="flex items-center gap-3 mb-3">
+                        {/* Show backend profile image if available, fallback to auth provider image */}
+                        {backendUser?.profileImage ? (
+                          <img
+                            src={backendUser.profileImage}
+                            alt={backendUser.profileName}
+                            className="w-10 h-10 rounded-xl object-cover"
+                          />
+                        ) : authMethod === "verychat" &&
                           verychatUser?.profileImage ? (
-                            <img
-                              src={verychatUser.profileImage}
-                              alt={verychatUser.profileName}
-                              className="w-10 h-10 rounded-xl object-cover"
-                            />
-                          ) : (
-                            <div className="w-10 h-10 rounded-xl bg-main-gradient" />
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-white truncate">
-                              {authMethod === "verychat" && verychatUser
-                                ? verychatUser.profileName
-                                : currentAccount?.network || "Ethereum"}
-                            </p>
-                            <p className="text-xs text-dark-400 truncate">
-                              {authMethod === "verychat" && verychatUser
-                                ? `@${verychatUser.profileId}`
-                                : currentAccount?.address}
-                            </p>
-                            {/* Show wallet address for VeryChat users */}
-                            {authMethod === "verychat" &&
-                              currentAccount?.address && (
-                                <p className="text-xs text-dark-500 truncate font-mono mt-0.5">
-                                  {truncateAddress(currentAccount.address)}
-                                </p>
-                              )}
-                          </div>
+                          <img
+                            src={verychatUser.profileImage}
+                            alt={verychatUser.profileName}
+                            className="w-10 h-10 rounded-xl object-cover"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-xl bg-main-gradient" />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-white truncate">
+                            {authMethod === "verychat" && verychatUser
+                              ? verychatUser.profileName
+                              : currentAccount?.network || "Ethereum"}
+                          </p>
+                          <p className="text-xs text-dark-400 truncate">
+                            {authMethod === "verychat" && verychatUser
+                              ? `@${verychatUser.profileId}`
+                              : currentAccount?.address}
+                          </p>
+                          {/* Show wallet address for VeryChat users */}
+                          {authMethod === "verychat" &&
+                            currentAccount?.address && (
+                              <p className="text-xs text-dark-500 truncate font-mono mt-0.5">
+                                {truncateAddress(currentAccount.address)}
+                              </p>
+                            )}
                         </div>
+                      </div>
 
-                        {/* Copy wallet address for VeryChat users */}
-                        {authMethod === "verychat" &&
-                          currentAccount?.address && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigator.clipboard.writeText(
-                                  currentAccount.address
-                                );
-                                setCopiedWallet(true);
-                                setTimeout(() => setCopiedWallet(false), 2000);
-                              }}
-                              className="w-full flex items-center justify-start gap-2 px-3 py-2 mb-2
-                                 bg-dark-800 rounded-lg text-sm text-dark-300 
-                                 hover:text-white hover:bg-dark-700 transition-colors"
-                            >
-                              {copiedWallet ? (
-                                <>
-                                  <Check className="w-4 h-4 text-green-400" />
-                                  <span>Copied Wallet Address!</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Copy className="w-4 h-4" />
-                                  <span>Copy Wallet Address</span>
-                                </>
-                              )}
-                            </button>
-                          )}
-
-                        {/* Copy button - handle for VeryChat, address for Wepin */}
+                      {/* Copy wallet address for VeryChat users */}
+                      {authMethod === "verychat" && currentAccount?.address && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            let textToCopy = "";
-                            if (authMethod === "verychat" && verychatUser) {
-                              textToCopy = `@${verychatUser.profileId}`;
-                            } else if (currentAccount?.address) {
-                              textToCopy = currentAccount.address;
-                            }
-                            if (textToCopy) {
-                              navigator.clipboard.writeText(textToCopy);
-                              setCopiedHandle(true);
-                              setTimeout(() => setCopiedHandle(false), 2000);
-                            }
+                            navigator.clipboard.writeText(
+                              currentAccount.address
+                            );
+                            setCopiedWallet(true);
+                            setTimeout(() => setCopiedWallet(false), 2000);
                           }}
-                          className="w-full flex items-center justify-start gap-2 px-3 py-2 
-                               bg-dark-800 rounded-lg text-sm text-dark-300 
-                               hover:text-white hover:bg-dark-700 transition-colors"
+                          className="w-full flex items-center justify-start gap-2 px-3 py-2 mb-2
+                                 bg-dark-800 rounded-lg text-sm text-dark-300 
+                                 hover:text-white hover:bg-dark-700 transition-colors"
                         >
-                          {copiedHandle ? (
+                          {copiedWallet ? (
                             <>
                               <Check className="w-4 h-4 text-green-400" />
-                              <span>Copied!</span>
+                              <span>Copied Wallet Address!</span>
                             </>
                           ) : (
                             <>
                               <Copy className="w-4 h-4" />
-                              <span>
-                                {authMethod === "verychat"
-                                  ? "Copy Handle"
-                                  : "Copy Address"}
-                              </span>
+                              <span>Copy Wallet Address</span>
                             </>
                           )}
                         </button>
+                      )}
 
-                        {/* Auth method badge */}
-                        <div className="flex items-center justify-center gap-2 mt-3 px-3 py-1.5 bg-dark-800 rounded-lg">
-                          {authMethod === "verychat" ? (
-                            <>
-                              <img
-                                src="/icons/very_logo.png"
-                                alt="VeryChat"
-                                className="w-4 h-4 object-contain"
-                              />
-                              <span className="text-xs text-dark-400">
-                                Connected via VeryChat
-                              </span>
-                            </>
-                          ) : (
-                            <>
-                              <img
-                                src="/icons/wepin_logo.png"
-                                alt="Wepin"
-                                className="w-4 h-4 object-contain"
-                              />
-                              <span className="text-xs text-dark-400">
-                                Connected via Wepin
-                              </span>
-                            </>
-                          )}
-                        </div>
+                      {/* Copy button - handle for VeryChat, address for Wepin */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          let textToCopy = "";
+                          if (authMethod === "verychat" && verychatUser) {
+                            textToCopy = `@${verychatUser.profileId}`;
+                          } else if (currentAccount?.address) {
+                            textToCopy = currentAccount.address;
+                          }
+                          if (textToCopy) {
+                            navigator.clipboard.writeText(textToCopy);
+                            setCopiedHandle(true);
+                            setTimeout(() => setCopiedHandle(false), 2000);
+                          }
+                        }}
+                        className="w-full flex items-center justify-start gap-2 px-3 py-2 
+                               bg-dark-800 rounded-lg text-sm text-dark-300 
+                               hover:text-white hover:bg-dark-700 transition-colors"
+                      >
+                        {copiedHandle ? (
+                          <>
+                            <Check className="w-4 h-4 text-green-400" />
+                            <span>Copied!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-4 h-4" />
+                            <span>
+                              {authMethod === "verychat"
+                                ? "Copy Handle"
+                                : "Copy Address"}
+                            </span>
+                          </>
+                        )}
+                      </button>
+
+                      {/* Auth method badge */}
+                      <div className="flex items-center justify-start gap-2 mt-3 px-3 py-1.5 bg-dark-800 rounded-lg">
+                        {authMethod === "verychat" ? (
+                          <>
+                            <img
+                              src="/icons/very_logo.png"
+                              alt="VeryChat"
+                              className="w-4 h-4 object-contain"
+                            />
+                            <span className="text-xs text-dark-400">
+                              Connected via VeryChat
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <img
+                              src="/icons/wepin_logo.png"
+                              alt="Wepin"
+                              className="w-4 h-4 object-contain"
+                            />
+                            <span className="text-xs text-dark-400">
+                              Connected via Wepin
+                            </span>
+                          </>
+                        )}
                       </div>
+                    </div>
 
-                      {/* Actions */}
-                      <div className="p-2">
-                        <button
-                          onClick={handleDisconnect}
-                          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg 
+                    {/* Actions */}
+                    <div className="p-2">
+                      <button
+                        onClick={handleDisconnect}
+                        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg 
                                text-red-400 hover:bg-red-500/10 transition-colors"
-                        >
-                          <LogOut className="w-4 h-4" />
-                          <span className="text-sm font-medium">
-                            Disconnect
-                          </span>
-                        </button>
-                      </div>
-                    </motion.div>
-                  </>
+                      >
+                        <LogOut className="w-4 h-4" />
+                        <span className="text-sm font-medium">Disconnect</span>
+                      </button>
+                    </div>
+                  </motion.div>
                 )}
               </div>
             )}

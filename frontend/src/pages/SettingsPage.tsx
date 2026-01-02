@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import QRCode from "qrcode";
 import {
   ArrowLeft,
   Bell,
@@ -14,10 +15,17 @@ import {
   Activity,
   ExternalLink,
   Search,
+  Key,
+  Copy,
+  Eye,
+  EyeOff,
+  Smartphone,
+  Download,
 } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import { isExtension } from "@/services/tracking";
 import { CustomDropdown } from "@/components/CustomDropdown";
+import { exportPrivateKey, isWalletEncrypted } from "@/services/wallet";
 
 interface CustomSite {
   id: string;
@@ -164,6 +172,8 @@ export function SettingsPage() {
     addToast,
     trackingEnabled: globalTrackingEnabled,
     setTrackingEnabled: setGlobalTrackingEnabled,
+    verychatUser,
+    authMethod,
   } = useAppStore();
   const [trackingEnabled, setTrackingEnabled] = useState(globalTrackingEnabled);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
@@ -179,6 +189,9 @@ export function SettingsPage() {
     Record<string, boolean>
   >({});
   const [searchQuery, setSearchQuery] = useState("");
+  const [showPrivateKey, setShowPrivateKey] = useState(false);
+  const [exportedKey, setExportedKey] = useState<string | null>(null);
+  const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
 
   // Filter platforms based on search query
   const filteredPlatforms = useMemo(() => {
@@ -417,6 +430,76 @@ export function SettingsPage() {
     saveSettings("customSites", updated);
   };
 
+  // Export VeryChat wallet private key
+  const handleExportWallet = async () => {
+    if (!verychatUser) {
+      addToast({
+        type: "error",
+        message: "Only VeryChat users can export wallet",
+      });
+      return;
+    }
+
+    const privateKey = exportPrivateKey(verychatUser.profileId);
+    if (privateKey) {
+      setExportedKey(privateKey);
+      setShowPrivateKey(true);
+
+      // Generate QR code
+      try {
+        const qrUrl = await QRCode.toDataURL(privateKey, {
+          width: 256,
+          margin: 2,
+          color: {
+            dark: "#000000",
+            light: "#FFFFFF",
+          },
+        });
+        setQrCodeUrl(qrUrl);
+      } catch (error) {
+        console.error("QR code generation error:", error);
+      }
+
+      addToast({
+        type: "success",
+        message: "Private key exported successfully",
+      });
+    } else {
+      addToast({
+        type: "error",
+        message: "No wallet found for your account",
+      });
+    }
+  };
+
+  // Copy private key to clipboard
+  const copyPrivateKey = () => {
+    if (exportedKey) {
+      navigator.clipboard.writeText(exportedKey);
+      addToast({
+        type: "success",
+        message: "Private key copied to clipboard",
+      });
+    }
+  };
+
+  // Download private key as file
+  const downloadPrivateKey = () => {
+    if (exportedKey) {
+      const blob = new Blob([exportedKey], { type: "text/plain" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `veterex-wallet-${verychatUser?.profileId}.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+      addToast({
+        type: "success",
+        message: "Private key downloaded",
+      });
+    }
+  };
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -434,6 +517,18 @@ export function SettingsPage() {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6 pb-24">
+        {/* Preferences Summary */}
+        <section className="card p-4 bg-gradient-to-br from-violet/10 to-coral/10 border-violet/20">
+          <h3 className="text-sm font-semibold text-white mb-2">Preferences</h3>
+          <p className="text-xs text-dark-300">
+            {authMethod === "verychat" && verychatUser ? (
+              <>Tracking, notifications, wallet security, custom sites</>
+            ) : (
+              <>Tracking, notifications, custom sites</>
+            )}
+          </p>
+        </section>
+
         {/* Tracking Settings */}
         <section>
           <h2 className="text-sm font-semibold text-dark-400 uppercase tracking-wider mb-3">
@@ -496,6 +591,202 @@ export function SettingsPage() {
             </div>
           </div>
         </section>
+
+        {/* Wallet Security - Only for VeryChat users */}
+        {authMethod === "verychat" && verychatUser && (
+          <section>
+            <h2 className="text-sm font-semibold text-dark-400 uppercase tracking-wider mb-3">
+              Wallet Security
+            </h2>
+            <div className="card space-y-4">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center shrink-0">
+                  <Key className="w-5 h-5 text-amber-500" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium text-white mb-1">
+                    Export Wallet Private Key
+                  </p>
+                  <p className="text-xs text-dark-400 mb-3">
+                    Export your wallet private key to import into MetaMask,
+                    Trust Wallet, or any EVM-compatible wallet.
+                    {isWalletEncrypted(verychatUser.profileId) && (
+                      <span className="block mt-1 text-green-400">
+                        ✓ Your private key is encrypted with AES-256
+                      </span>
+                    )}
+                  </p>
+
+                  {!exportedKey ? (
+                    <button
+                      onClick={handleExportWallet}
+                      className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-medium transition-colors text-sm flex items-center gap-2"
+                    >
+                      <Key className="w-4 h-4" />
+                      Export Private Key
+                    </button>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+                        <div className="flex items-start gap-2 mb-2">
+                          <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                          <p className="text-xs text-red-400">
+                            <strong>Warning:</strong> Never share your private
+                            key with anyone! Anyone with your private key has
+                            full access to your wallet.
+                          </p>
+                        </div>
+                        <div className="mt-2">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs font-medium text-dark-300">
+                              Private Key
+                            </span>
+                            <button
+                              onClick={() => setShowPrivateKey(!showPrivateKey)}
+                              className="text-xs text-dark-400 hover:text-white transition-colors flex items-center gap-1"
+                            >
+                              {showPrivateKey ? (
+                                <>
+                                  <EyeOff className="w-3 h-3" />
+                                  Hide
+                                </>
+                              ) : (
+                                <>
+                                  <Eye className="w-3 h-3" />
+                                  Show
+                                </>
+                              )}
+                            </button>
+                          </div>
+                          <div className="font-mono text-xs text-white bg-dark-800 p-2 rounded break-all">
+                            {showPrivateKey ? exportedKey : "•".repeat(66)}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* QR Code for easy mobile scanning */}
+                      {qrCodeUrl && (
+                        <div className="p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg">
+                          <div className="flex items-start gap-3">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Smartphone className="w-4 h-4 text-purple-400" />
+                                <p className="text-xs font-medium text-purple-400">
+                                  Scan with Mobile Wallet
+                                </p>
+                              </div>
+                              <p className="text-xs text-dark-300 mb-3">
+                                Scan this QR code with your mobile wallet app
+                                (Trust Wallet, MetaMask Mobile, etc.) to import
+                                your private key.
+                              </p>
+                            </div>
+                            <div className="shrink-0">
+                              <img
+                                src={qrCodeUrl}
+                                alt="Private Key QR Code"
+                                className="w-32 h-32 rounded-lg bg-white p-2"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex gap-2">
+                        <button
+                          onClick={copyPrivateKey}
+                          className="flex-1 px-3 py-2 bg-dark-700 hover:bg-dark-600 text-white rounded-lg font-medium transition-colors text-sm flex items-center justify-center gap-2"
+                        >
+                          <Copy className="w-4 h-4" />
+                          Copy
+                        </button>
+                        <button
+                          onClick={downloadPrivateKey}
+                          className="flex-1 px-3 py-2 bg-dark-700 hover:bg-dark-600 text-white rounded-lg font-medium transition-colors text-sm flex items-center justify-center gap-2"
+                        >
+                          <Download className="w-4 h-4" />
+                          Download
+                        </button>
+                        <button
+                          onClick={() => {
+                            setExportedKey(null);
+                            setShowPrivateKey(false);
+                            setQrCodeUrl(null);
+                          }}
+                          className="px-3 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg font-medium transition-colors text-sm"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg space-y-3">
+                        <div>
+                          <p className="text-xs text-blue-400 mb-2 flex items-center gap-2">
+                            <Smartphone className="w-3 h-3" />
+                            <strong>Mobile App (Easiest):</strong>
+                          </p>
+                          <ol className="text-xs text-dark-300 space-y-1 ml-4 list-decimal">
+                            <li>Open MetaMask Mobile or Trust Wallet app</li>
+                            <li>Tap Menu → "Import Wallet" or "Add Account"</li>
+                            <li>Select "Import with private key"</li>
+                            <li>Paste private key or scan QR code above</li>
+                            <li>
+                              Wallet imported! Now add Verychain network below
+                            </li>
+                          </ol>
+                        </div>
+
+                        <div className="border-t border-blue-500/20 pt-2">
+                          <p className="text-xs text-blue-400 mb-2">
+                            <strong>Desktop/Browser Extension:</strong>
+                          </p>
+                          <ol className="text-xs text-dark-300 space-y-1 ml-4 list-decimal">
+                            <li>
+                              Open MetaMask → Click account icon → Import
+                              Account
+                            </li>
+                            <li>Select "Private Key" as import type</li>
+                            <li>Paste your private key and click "Import"</li>
+                          </ol>
+                        </div>
+
+                        <div className="border-t border-blue-500/20 pt-2">
+                          <p className="text-xs text-blue-400 mb-2">
+                            <strong>Add Verychain Network:</strong>
+                          </p>
+                          <ul className="text-xs text-dark-300 space-y-1 ml-4 list-disc">
+                            <li>
+                              Network Name:{" "}
+                              <span className="text-white">Verychain</span>
+                            </li>
+                            <li>
+                              RPC URL:{" "}
+                              <span className="text-white font-mono">
+                                https://rpc.verylabs.io
+                              </span>
+                            </li>
+                            <li>
+                              Chain ID: <span className="text-white">4613</span>
+                            </li>
+                            <li>
+                              Currency: <span className="text-white">VERY</span>
+                            </li>
+                            <li>
+                              Explorer:{" "}
+                              <span className="text-white font-mono">
+                                https://veryscan.io
+                              </span>
+                            </li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* Custom Websites - Show first */}
         <section>

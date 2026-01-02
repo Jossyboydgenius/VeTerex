@@ -53,9 +53,15 @@ router.post("/profile", async (req: Request, res: Response): Promise<void> => {
       await walletService.createWalletRecord(user.id, walletAddress);
     }
 
+    // Refetch user with wallets to include in response
+    const userWithWallets = await userService.getUserByAuthId(
+      authId,
+      authMethod
+    );
+
     res.json({
       success: true,
-      user,
+      user: userWithWallets,
     });
   } catch (error: any) {
     console.error("Profile creation error:", error);
@@ -158,7 +164,14 @@ router.post(
       const { userId } = req.params;
       const file = req.file;
 
+      console.log("📸 [Upload Image] Request received for userId:", userId);
+      console.log(
+        "📸 [Upload Image] File:",
+        file ? file.originalname : "NO FILE"
+      );
+
       if (!file) {
+        console.error("❌ [Upload Image] No file provided");
         res.status(400).json({ error: "No file provided" });
         return;
       }
@@ -170,8 +183,10 @@ router.post(
         userId
       );
 
+      console.log("✅ [Upload Image] Success:", result.imageUrl);
       res.json(result);
     } catch (error: any) {
+      console.error("❌ [Upload Image] Error:", error);
       res.status(500).json({ error: error.message });
     }
   }

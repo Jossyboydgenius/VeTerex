@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
@@ -27,7 +27,7 @@ import {
   getWepinAccounts,
 } from "@/services/wepin";
 import { logout as logoutVeryChat } from "@/services/verychat";
-
+import { uploadProfileImage, getUserProfile } from "@/services/backend";
 const statIcons = {
   book: Book,
   movie: Film,
@@ -44,6 +44,7 @@ export function ProfilePage() {
     currentAccount,
     wepinUser,
     verychatUser,
+    backendUser,
     joinedAt,
     completions,
     setConnected,
@@ -51,6 +52,8 @@ export function ProfilePage() {
     setWepinUser,
     setAccounts,
     setCurrentAccount,
+    setBackendUser,
+    updateBackendUserImage,
     addToast,
     logout,
   } = useAppStore();
@@ -62,6 +65,76 @@ export function ProfilePage() {
     null
   );
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Fetch backend user if not already loaded
+  // Refetch user profile on mount to get latest data (including profile image)
+  // Use ref to prevent multiple fetches
+  const hasFetchedRef = useRef(false);
+
+  useEffect(() => {
+    const fetchBackendUser = async () => {
+      if (!isConnected || hasFetchedRef.current) return;
+
+      try {
+        let authId: string | null = null;
+        if (authMethod === "verychat" && verychatUser) {
+          authId = verychatUser.profileId;
+        } else if (authMethod === "wepin" && wepinUser?.userInfo?.userId) {
+          authId = wepinUser.userInfo.userId;
+        }
+
+        if (authId && authMethod) {
+          hasFetchedRef.current = true;
+          console.log(
+            `[ProfilePage] Fetching backend user for ${authMethod}:`,
+            authId
+          );
+          const user = await getUserProfile(authMethod, authId);
+          if (user) {
+            console.log("[ProfilePage] Backend user fetched:", user.id);
+            setBackendUser(user);
+          } else {
+            console.warn("[ProfilePage] Backend user not found for:", authId);
+          }
+        }
+      } catch (error) {
+        console.error("[ProfilePage] Error fetching backend user:", error);
+        hasFetchedRef.current = false; // Reset on error
+      }
+    };
+
+    // Always refetch on mount to get latest profile data
+    fetchBackendUser();
+  }, [isConnected, authMethod, verychatUser, wepinUser, setBackendUser]);
+
+  // Load saved profile image from localStorage on mount (fallback if no backend image)
+  useEffect(() => {
+    // First check if we have a backend user with profile image
+    if (backendUser?.profileImage) {
+      setLocalProfileImage(backendUser.profileImage);
+      return;
+    }
+
+    // Fallback to localStorage
+    const storageKey =
+      authMethod === "verychat" && verychatUser
+        ? `profileImage_${verychatUser.profileId}`
+        : currentAccount?.address
+        ? `profileImage_${currentAccount.address}`
+        : null;
+
+    if (storageKey) {
+      const savedImage = localStorage.getItem(storageKey);
+      if (savedImage) {
+        setLocalProfileImage(savedImage);
+      }
+    }
+  }, [
+    authMethod,
+    verychatUser,
+    currentAccount?.address,
+    backendUser?.profileImage,
+  ]);
 
   // Get display name based on auth method
   const displayName =
@@ -140,6 +213,8 @@ export function ProfilePage() {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    console.log("[ProfilePage] Upload started, backendUser:", backendUser);
+
     // Validate file type
     const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
     if (!allowedTypes.includes(file.type)) {
@@ -162,30 +237,84 @@ export function ProfilePage() {
     setIsUploadingImage(true);
 
     try {
-      // Create a local preview
+      // First show local preview immediately for better UX
       const reader = new FileReader();
       reader.onloadend = () => {
-        setLocalProfileImage(reader.result as string);
+        const base64Image = reader.result as string;
+        setLocalProfileImage(base64Image);
       };
       reader.readAsDataURL(file);
 
-      // TODO: Upload to backend when API is ready
-      // For now, just show the local preview
-      // const formData = new FormData();
-      // formData.append("file", file);
-      // const response = await fetch(`${API_URL}/api/user/upload-image/${userId}`, {
-      //   method: "POST",
-      //   body: formData,
-      // });
-      // const data = await response.json();
-      // if (data.success) {
-      //   setLocalProfileImage(data.imageUrl);
-      // }
+      // Upload to backend if we have a backend user ID
+      if (backendUser?.id) {
+        console.log(
+          "[ProfilePage] Uploading to backend for user:",
+          backendUser.id
+        );
+        try {
+          const result = await uploadProfileImage(backendUser.id, file);
+          console.log("[ProfilePage] Upload result:", result);
+          if (result.imageUrl) {
+            // Update the backend user image in store
+            updateBackendUserImage(result.imageUrl);
+            setLocalProfileImage(result.imageUrl);
+            addToast({
+              type: "success",
+              message: "Profile image uploaded successfully!",
+            });
+          }
+        } catch (backendError) {
+          console.error("[ProfilePage] Backend upload error:", backendError);
+          // Fallback to localStorage if backend fails
+          const storageKey =
+            authMethod === "verychat" && verychatUser
+              ? `profileImage_${verychatUser.profileId}`
+              : currentAccount?.address
+              ? `profileImage_${currentAccount.address}`
+              : null;
 
-      addToast({
-        type: "success",
-        message: "Profile image updated!",
-      });
+          if (storageKey) {
+            const base64 = await new Promise<string>((resolve) => {
+              const r = new FileReader();
+              r.onloadend = () => resolve(r.result as string);
+              r.readAsDataURL(file);
+            });
+            localStorage.setItem(storageKey, base64);
+          }
+          addToast({
+            type: "warning",
+            message: "Image saved locally (backend unavailable)",
+          });
+        }
+      } else {
+        // No backend user, save to localStorage only
+        console.warn(
+          "[ProfilePage] No backend user found! Saving to localStorage only."
+        );
+        console.log("[ProfilePage] Auth method:", authMethod);
+        console.log("[ProfilePage] VeryChat user:", verychatUser);
+        console.log("[ProfilePage] Current account:", currentAccount);
+
+        const storageKey =
+          authMethod === "verychat" && verychatUser
+            ? `profileImage_${verychatUser.profileId}`
+            : currentAccount?.address
+            ? `profileImage_${currentAccount.address}`
+            : null;
+
+        if (storageKey) {
+          const base64 = await new Promise<string>((resolve) => {
+            const r = new FileReader();
+            r.onloadend = () => resolve(r.result as string);
+            r.readAsDataURL(file);
+          });
+          localStorage.setItem(storageKey, base64);
+        }
+        addToast({
+          type: "warning",
+          message: "Profile image saved locally (please reconnect to upload)",
+        });
+      }
     } catch (error) {
       console.error("Image upload error:", error);
       addToast({
