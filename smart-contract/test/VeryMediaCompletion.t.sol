@@ -198,6 +198,82 @@ contract VeryMediaCompletionTest is Test {
         assertTrue((similars[0] == bob && similars[1] == charlie) || (similars[0] == charlie && similars[1] == bob));
     }
 
+    function testGetSimilarsEmptyArrayReturnsEmpty() public {
+        uint256[] memory empty = new uint256[](0);
+        address[] memory similars = nft.getsimilars(alice, empty);
+        assertEq(similars.length, 0);
+    }
+
+    function testGetSimilarsDedupesDuplicateInputTokens() public {
+        VeTerex.MediaKind kindA = VeTerex.MediaKind.Book;
+        VeTerex.MediaKind kindB = VeTerex.MediaKind.Movie;
+        string memory uriA = "ipfs://media/dup-a.json";
+        string memory uriB = "ipfs://media/dup-b.json";
+        string memory nameA = "Dup A";
+        string memory nameB = "Dup B";
+
+        vm.prank(backend);
+        uint256 aliceA = nft.completeAndRegisterByExternalId(alice, kindA, uriA, nameA);
+        vm.prank(backend);
+        uint256 aliceB = nft.completeAndRegisterByExternalId(alice, kindB, uriB, nameB);
+
+        vm.prank(backend);
+        nft.completeAndRegisterByExternalId(bob, kindA, uriA, nameA);
+        vm.prank(backend);
+        nft.completeAndRegisterByExternalId(bob, kindB, uriB, nameB);
+
+        uint256[] memory aliceNfts = new uint256[](3);
+        aliceNfts[0] = aliceA;
+        aliceNfts[1] = aliceA;
+        aliceNfts[2] = aliceB;
+
+        address[] memory similars = nft.getsimilars(alice, aliceNfts);
+        assertEq(similars.length, 1);
+        assertEq(similars[0], bob);
+    }
+
+    function testGetSimilarsManyCompletersReturnsAll() public {
+        VeTerex.MediaKind kind = VeTerex.MediaKind.Show;
+        string memory uri = "ipfs://media/lots.json";
+        string memory name = "Lots";
+
+        vm.prank(backend);
+        uint256 aliceTokenId = nft.completeAndRegisterByExternalId(alice, kind, uri, name);
+
+        uint256 n = 25;
+        for (uint256 i = 0; i < n; i++) {
+            address user = address(uint160(0x1001 + i));
+            vm.prank(backend);
+            nft.completeAndRegisterByExternalId(user, kind, uri, name);
+        }
+
+        uint256[] memory aliceNfts = new uint256[](1);
+        aliceNfts[0] = aliceTokenId;
+        address[] memory similars = nft.getsimilars(alice, aliceNfts);
+
+        assertEq(similars.length, n);
+        assertEq(similars[0], address(uint160(0x1001)));
+        assertEq(similars[n - 1], address(uint160(0x1000 + n)));
+    }
+
+    function testGetSimilarsFromTokensInfersOwner() public {
+        VeTerex.MediaKind kind = VeTerex.MediaKind.Show;
+        string memory uri = "ipfs://media/infer.json";
+        string memory name = "Infer";
+
+        vm.prank(backend);
+        uint256 aliceTokenId = nft.completeAndRegisterByExternalId(alice, kind, uri, name);
+
+        vm.prank(backend);
+        nft.completeAndRegisterByExternalId(bob, kind, uri, name);
+
+        uint256[] memory tokenIds = new uint256[](1);
+        tokenIds[0] = aliceTokenId;
+        address[] memory similars = nft.getsimilarsFromTokens(tokenIds);
+        assertEq(similars.length, 1);
+        assertEq(similars[0], bob);
+    }
+
     function testNonTransferableRevertsOnTransferAndApproval() public {
         VeTerex.MediaKind kind = VeTerex.MediaKind.Movie;
         string memory uri = "ipfs://media/fight-club.json";

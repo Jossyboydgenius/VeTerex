@@ -319,7 +319,7 @@ contract VeTerex is Initializable, ERC721Upgradeable, OwnableUpgradeable, UUPSUp
         if (max == 0) return new address[](0);
 
         address[] memory tmp = new address[](max);
-        uint256 out = 0;
+        uint256 filled = 0;
 
         for (uint256 i = 0; i < _nft.length; i++) {
             bytes32 mediaId = tokenMediaId[_nft[i]];
@@ -328,26 +328,114 @@ contract VeTerex is Initializable, ERC721Upgradeable, OwnableUpgradeable, UUPSUp
             for (uint256 j = 0; j < completers.length; j++) {
                 address candidate = completers[j];
                 if (candidate == user) continue;
-
-                bool seen = false;
-                for (uint256 k = 0; k < out; k++) {
-                    if (tmp[k] == candidate) {
-                        seen = true;
-                        break;
-                    }
-                }
-
-                if (!seen) {
-                    tmp[out] = candidate;
-                    out++;
-                }
+                tmp[filled] = candidate;
+                filled++;
             }
         }
 
-        commonusers = new address[](out);
-        for (uint256 i = 0; i < out; i++) {
-            commonusers[i] = tmp[i];
+        if (filled == 0) return new address[](0);
+
+        _sortAddresses(tmp, filled);
+
+        uint256 uniqueCount = 1;
+        for (uint256 i = 1; i < filled; i++) {
+            if (tmp[i] != tmp[i - 1]) uniqueCount++;
         }
+
+        commonusers = new address[](uniqueCount);
+        commonusers[0] = tmp[0];
+        uint256 out = 1;
+        for (uint256 i = 1; i < filled; i++) {
+            if (tmp[i] == tmp[i - 1]) continue;
+            commonusers[out] = tmp[i];
+            out++;
+        }
+    }
+
+    function getsimilarsFromTokens(uint256[] calldata tokenIds) external view returns (address[] memory) {
+        if (tokenIds.length == 0) return new address[](0);
+        address user = ownerOf(tokenIds[0]);
+        return getsimilars(user, tokenIds);
+    }
+
+    function getsimilarsForToken(uint256 tokenId) external view returns (address[] memory) {
+        address user = ownerOf(tokenId);
+        bytes32 mediaId = tokenMediaId[tokenId];
+        address[] storage completers = _mediaCompleters[mediaId];
+
+        uint256 out = 0;
+        for (uint256 i = 0; i < completers.length; i++) {
+            if (completers[i] != user) out++;
+        }
+
+        address[] memory similars = new address[](out);
+        uint256 idx = 0;
+        for (uint256 i = 0; i < completers.length; i++) {
+            address candidate = completers[i];
+            if (candidate == user) continue;
+            similars[idx] = candidate;
+            idx++;
+        }
+
+        return similars;
+    }
+
+    function _sortAddresses(address[] memory arr, uint256 length) internal pure {
+        if (length < 2) return;
+
+        uint256[] memory stack = new uint256[](length * 2);
+        uint256 top = 0;
+        stack[top] = 0;
+        top++;
+        stack[top] = length - 1;
+        top++;
+
+        while (top > 0) {
+            top--;
+            uint256 hi = stack[top];
+            top--;
+            uint256 lo = stack[top];
+
+            if (lo >= hi) continue;
+
+            uint256 p = _partitionAddresses(arr, lo, hi);
+
+            if (p > 0 && lo < p - 1) {
+                stack[top] = lo;
+                top++;
+                stack[top] = p - 1;
+                top++;
+            }
+
+            if (p + 1 < hi) {
+                stack[top] = p + 1;
+                top++;
+                stack[top] = hi;
+                top++;
+            }
+        }
+    }
+
+    function _partitionAddresses(address[] memory arr, uint256 lo, uint256 hi) private pure returns (uint256) {
+        uint256 pivot = uint256(uint160(arr[hi]));
+        uint256 i = lo;
+
+        for (uint256 j = lo; j < hi; j++) {
+            if (uint256(uint160(arr[j])) <= pivot) {
+                _swapAddresses(arr, i, j);
+                i++;
+            }
+        }
+
+        _swapAddresses(arr, i, hi);
+        return i;
+    }
+
+    function _swapAddresses(address[] memory arr, uint256 i, uint256 j) private pure {
+        if (i == j) return;
+        address tmp = arr[i];
+        arr[i] = arr[j];
+        arr[j] = tmp;
     }
 
     function _addMediaCompleter(address user, bytes32 mediaId) internal {
