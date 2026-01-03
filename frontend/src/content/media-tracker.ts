@@ -1652,41 +1652,93 @@ function extractMediaInfo(): MediaInfo | null {
       }
 
       // Platform-specific title extraction for manga sites
-      const mangaTitleSelectors = [
-        // Webtoons specific
-        ".subj_episode", // Episode title
-        ".subj", // Series title
-        "h1.subj_episode",
-        ".episode__title",
-        ".detail_lst .subj",
-        // General manga selectors
-        ".manga-title",
-        ".series-title",
-        ".chapter-title",
-        ".reader-header-title",
-        "[data-title]",
-        "h1",
-        "h2.title",
-        ".title",
-        // Fallback to meta
-        'meta[property="og:title"]',
-      ];
+      // Special handling for Webtoons to get both series title and episode
+      if (
+        name === "webtoon" ||
+        window.location.hostname.includes("webtoons.com")
+      ) {
+        // Get the series title from og:title or subj element
+        let seriesTitle = "";
+        let episodeTitle = "";
 
-      for (const selector of mangaTitleSelectors) {
-        if (selector.startsWith("meta")) {
-          const meta = document.querySelector(selector);
-          if (meta) {
-            const content = meta.getAttribute("content");
-            if (content && content.trim() && content !== title) {
-              title = content.trim();
+        // Try to get series title from og:title meta tag (format: "Episode 13 | The Amazing Spider-Man (2022) | WEBTOON")
+        const ogTitle = document.querySelector('meta[property="og:title"]');
+        if (ogTitle) {
+          const ogContent = ogTitle.getAttribute("content") || "";
+          // Parse the og:title format
+          const parts = ogContent.split(" | ");
+          if (parts.length >= 2) {
+            episodeTitle = parts[0].trim(); // "Episode 13"
+            seriesTitle = parts[1].trim(); // "The Amazing Spider-Man (2022)"
+          }
+        }
+
+        // Fallback: Try to get series title from page elements
+        if (!seriesTitle) {
+          const subjectEl = document.querySelector(
+            ".subj, .info a[href*='/title/'], h1.subj"
+          );
+          if (subjectEl?.textContent?.trim()) {
+            seriesTitle = subjectEl.textContent.trim();
+          }
+        }
+
+        // Fallback: Try to get episode title from page
+        if (!episodeTitle) {
+          const episodeEl = document.querySelector(
+            ".subj_episode, .episode__title"
+          );
+          if (episodeEl?.textContent?.trim()) {
+            episodeTitle = episodeEl.textContent.trim();
+          }
+        }
+
+        // Combine series and episode title
+        if (seriesTitle && episodeTitle) {
+          title = `${seriesTitle} - ${episodeTitle}`;
+        } else if (seriesTitle) {
+          title = seriesTitle;
+        } else if (episodeTitle) {
+          title = episodeTitle;
+        }
+
+        console.log("[VeTerex] Webtoon title extracted:", {
+          seriesTitle,
+          episodeTitle,
+          combinedTitle: title,
+        });
+      } else {
+        // General manga sites title extraction
+        const mangaTitleSelectors = [
+          // General manga selectors
+          ".manga-title",
+          ".series-title",
+          ".chapter-title",
+          ".reader-header-title",
+          "[data-title]",
+          "h1",
+          "h2.title",
+          ".title",
+          // Fallback to meta
+          'meta[property="og:title"]',
+        ];
+
+        for (const selector of mangaTitleSelectors) {
+          if (selector.startsWith("meta")) {
+            const meta = document.querySelector(selector);
+            if (meta) {
+              const content = meta.getAttribute("content");
+              if (content && content.trim() && content !== title) {
+                title = content.trim();
+                break;
+              }
+            }
+          } else {
+            const el = document.querySelector(selector);
+            if (el?.textContent?.trim() && el.textContent.trim().length > 2) {
+              title = el.textContent.trim();
               break;
             }
-          }
-        } else {
-          const el = document.querySelector(selector);
-          if (el?.textContent?.trim() && el.textContent.trim().length > 2) {
-            title = el.textContent.trim();
-            break;
           }
         }
       }
@@ -1724,19 +1776,31 @@ function extractMediaInfo(): MediaInfo | null {
       // Try to find a video element first
       const video = document.querySelector("video");
 
-      if (
-        video &&
-        video.duration &&
-        !isNaN(video.duration) &&
-        video.duration > 0
-      ) {
-        duration = video.duration;
-        progress = (video.currentTime / video.duration) * 100;
-        console.log("[VeTerex] Video element found:", {
-          duration,
-          currentTime: video.currentTime,
-          progress,
-        });
+      if (video) {
+        // Video element exists - check if it has duration
+        if (video.duration && !isNaN(video.duration) && video.duration > 0) {
+          duration = video.duration;
+          progress = (video.currentTime / video.duration) * 100;
+          console.log("[VeTerex] Video element found:", {
+            duration,
+            currentTime: video.currentTime,
+            progress,
+          });
+        } else {
+          // Video exists but not ready yet - for YouTube we can still start tracking
+          // and update duration later when video loads
+          console.log(
+            "[VeTerex] Video element found but duration not ready yet"
+          );
+        }
+      } else if (name === "youtube") {
+        // On YouTube, if no video element yet, check if it's loading
+        const ytPlayer = document.querySelector(".html5-video-player");
+        if (ytPlayer) {
+          console.log(
+            "[VeTerex] YouTube player container found, video may be loading"
+          );
+        }
       }
 
       // Special handling for YouTube
@@ -1745,18 +1809,39 @@ function extractMediaInfo(): MediaInfo | null {
           "h1.ytd-watch-metadata yt-formatted-string",
           "h1.ytd-video-primary-info-renderer yt-formatted-string",
           "#title h1 yt-formatted-string",
+          "#above-the-fold #title yt-formatted-string",
+          "ytd-watch-metadata #title yt-formatted-string",
           ".ytp-title-link",
           "ytd-watch-metadata h1",
           "#container h1.title",
           "ytd-reel-video-renderer h2.title",
           ".reel-video-in-sequence ytd-reel-player-header-renderer h2",
+          // Additional YouTube selectors
+          "#info h1.title yt-formatted-string",
+          "#meta h1 yt-formatted-string",
+          "ytd-video-primary-info-renderer #title yt-formatted-string",
         ];
 
         for (const selector of titleSelectors) {
           const el = document.querySelector(selector);
           if (el?.textContent?.trim()) {
             title = el.textContent.trim();
+            console.log(
+              "[VeTerex] YouTube title found with selector:",
+              selector,
+              title
+            );
             break;
+          }
+        }
+
+        // If still no title, try document.title as fallback for YouTube
+        if (title === "Unknown Title" && document.title) {
+          // YouTube title format: "Video Title - YouTube"
+          const docTitle = document.title.replace(" - YouTube", "").trim();
+          if (docTitle && docTitle.length > 2 && docTitle !== "YouTube") {
+            title = docTitle;
+            console.log("[VeTerex] YouTube title from document.title:", title);
           }
         }
       } else {
@@ -1844,12 +1929,22 @@ function extractMediaInfo(): MediaInfo | null {
     // since we have scroll progress and page tracking
     const isMangaOrBook = contentType === "manga" || contentType === "book";
 
-    // Only skip if no title AND it's not a manga/book site
-    if (title === "Unknown Title" && !isMangaOrBook) {
+    // For YouTube, we can track even if video is not ready yet - title is enough
+    const isYouTube = name === "youtube";
+
+    // Only skip if no title AND it's not a manga/book site AND not YouTube with a title
+    if (title === "Unknown Title" && !isMangaOrBook && !isYouTube) {
       console.log(
         "[VeTerex] Could not extract title for video content, skipping"
       );
       return null;
+    }
+
+    // For YouTube, if we have a title, we can start tracking even without video duration
+    if (isYouTube && title !== "Unknown Title") {
+      console.log(
+        "[VeTerex] YouTube: starting tracking with title, will update duration later"
+      );
     }
 
     // For manga, use URL-based title as fallback
@@ -2469,37 +2564,17 @@ function showCompletionBanner(mediaInfo: MediaInfo, watchTime?: number) {
   const mintBtn = document.getElementById("veterex-mint-btn");
   if (mintBtn) {
     mintBtn.addEventListener("click", () => {
-      // Store pending mint data and open extension popup
+      // Store completion data and open extension popup
+      // Use OPEN_MINT_MODAL which triggers chrome.action.openPopup() in background
+      // This works because the user clicked a button (user gesture)
       const mintData = {
         ...mediaInfo,
         watchTime: watchTime || currentSession?.watchTime || 0,
       };
 
-      // Store in local storage first, then trigger popup opening via background
-      chrome.storage.local.set({ pendingMint: mintData }, () => {
-        console.log("[VeTerex] Pending mint stored:", mintData);
-
-        // Send message to background script to open popup
-        // This is more reliable than trying to open the popup directly
-        chrome.runtime.sendMessage(
-          {
-            type: "OPEN_EXTENSION_POPUP",
-            data: { route: "/mint" },
-          },
-          (response) => {
-            if (chrome.runtime.lastError) {
-              console.log(
-                "[VeTerex] Popup message error:",
-                chrome.runtime.lastError
-              );
-              // Fallback: open extension page in new tab if popup fails
-              const extensionUrl = chrome.runtime.getURL("index.html#/mint");
-              window.open(extensionUrl, "_blank");
-            } else {
-              console.log("[VeTerex] Popup open response:", response);
-            }
-          }
-        );
+      chrome.runtime.sendMessage({
+        type: "OPEN_MINT_MODAL",
+        data: mintData,
       });
 
       banner.remove();
@@ -2556,16 +2631,35 @@ function init() {
   } else {
     // For video content, use mutation observer to wait for video to load
     let initTimeout: ReturnType<typeof setTimeout>;
+    let retryCount = 0;
+    const maxRetries = 5;
+
+    const tryStartTracking = () => {
+      if (!currentSession) {
+        startTracking();
+        // Start activity tracking as fallback for video sites with anti-debugging
+        startActivityTracking();
+
+        // For YouTube, if no session after trying, retry more aggressively
+        if (
+          !currentSession &&
+          platform.name === "youtube" &&
+          retryCount < maxRetries
+        ) {
+          retryCount++;
+          console.log(
+            `[VeTerex] YouTube: retry ${retryCount}/${maxRetries} in 2s...`
+          );
+          setTimeout(tryStartTracking, 2000);
+        }
+      }
+    };
 
     const observer = new MutationObserver(() => {
       // Debounce initialization
       clearTimeout(initTimeout);
       initTimeout = setTimeout(() => {
-        if (!currentSession) {
-          startTracking();
-          // Start activity tracking as fallback for video sites with anti-debugging
-          startActivityTracking();
-        }
+        tryStartTracking();
       }, 2000);
     });
 
@@ -2574,14 +2668,25 @@ function init() {
       subtree: true,
     });
 
-    // Also try after initial delay
+    // Also try after initial delay - YouTube needs longer for DOM to be ready
+    const initialDelay = platform.name === "youtube" ? 2000 : 3000;
     setTimeout(() => {
       if (!currentSession) {
         console.log("[VeTerex] Attempting initial video tracking...");
-        startTracking();
-        startActivityTracking();
+        tryStartTracking();
       }
-    }, 3000);
+    }, initialDelay);
+
+    // For YouTube, also listen for video element to appear
+    if (platform.name === "youtube") {
+      // Extra retry after 5 seconds for slow loading YouTube pages
+      setTimeout(() => {
+        if (!currentSession) {
+          console.log("[VeTerex] YouTube: Final attempt to start tracking...");
+          tryStartTracking();
+        }
+      }, 5000);
+    }
   }
 
   // Stop tracking when page is unloaded

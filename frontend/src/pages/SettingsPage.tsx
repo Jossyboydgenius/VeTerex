@@ -467,7 +467,9 @@ export function SettingsPage() {
     } else {
       addToast({
         type: "error",
-        message: "No wallet found for your account",
+        message:
+          "Unable to export wallet. Please try disconnecting and logging in again to refresh your wallet data.",
+        duration: 6000,
       });
     }
   };
