@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Shield, Eye, Bell, Check, Loader2 } from "lucide-react";
 
@@ -76,10 +77,11 @@ export function TrackingPermissionModal({
     }
   };
 
-  return (
+  // Use portal to render modal at document body level to ensure it's above everything
+  const modalContent = (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[200] overflow-hidden">
+        <div className="fixed inset-0 z-[9999] overflow-hidden">
           {/* Backdrop - Full viewport coverage */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -183,4 +185,7 @@ export function TrackingPermissionModal({
       )}
     </AnimatePresence>
   );
+
+  // Use portal to render at document body level
+  return createPortal(modalContent, document.body);
 }

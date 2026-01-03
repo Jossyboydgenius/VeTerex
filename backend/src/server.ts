@@ -12,10 +12,39 @@ const PORT = process.env.PORT || 3001;
 
 // ========== MIDDLEWARE ==========
 
-// CORS configuration
+// CORS configuration - support multiple origins for frontend and Chrome extension
+const allowedOrigins = [
+  process.env.CORS_ORIGIN || "http://localhost:5173",
+  "https://veterex.vercel.app",
+  "http://localhost:5173",
+];
+
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || "http://localhost:5173",
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps, curl, or Chrome extensions)
+      if (!origin) return callback(null, true);
+
+      // Allow chrome-extension:// URLs
+      if (origin.startsWith("chrome-extension://")) {
+        return callback(null, true);
+      }
+
+      // Check if origin is in allowed list
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      // In development, allow all localhost origins
+      if (
+        process.env.NODE_ENV === "development" &&
+        origin.includes("localhost")
+      ) {
+        return callback(null, true);
+      }
+
+      callback(new Error("Not allowed by CORS"));
+    },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "X-API-Key"],

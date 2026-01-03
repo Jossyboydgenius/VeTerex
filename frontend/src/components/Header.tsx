@@ -22,8 +22,8 @@ import { LogoIcon, WalletImageIcon } from "./AppIcons";
 const DOCS_URL = "https://veterex.gitbook.io/veterex-docs/";
 
 // Web app URL for extension auth redirect
-// Using localhost for testing - change to production URL when deploying
-const WEB_APP_URL = "http://localhost:5173";
+// Production URL for VeTerex web app
+const WEB_APP_URL = "https://veterex.vercel.app";
 
 // Check if running as Chrome extension
 const isExtension =

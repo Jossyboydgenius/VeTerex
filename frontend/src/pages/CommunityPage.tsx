@@ -54,7 +54,6 @@ export function CommunityPage() {
   const [channelTab, setChannelTab] = useState<
     "new" | "popular" | "subscribed"
   >("new");
-  const [addedFriends, setAddedFriends] = useState<Set<string>>(new Set());
   const [showShareModal, setShowShareModal] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
   const [copied, setCopied] = useState(false);
@@ -96,23 +95,11 @@ export function CommunityPage() {
       return;
     }
 
-    // Fallback to old behavior if no profile data
-    const wasAdded = addedFriends.has(userId);
-    setAddedFriends((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(userId)) {
-        newSet.delete(userId);
-      } else {
-        newSet.add(userId);
-      }
-      return newSet;
-    });
-    // Show toast after state update
-    if (wasAdded) {
-      addToast({ type: "info", message: "Friend removed" });
-    } else {
-      addToast({ type: "success", message: "Friend added!" });
-    }
+    // Fallback - copy wallet address if no profile data
+    navigator.clipboard.writeText(userId);
+    setCopiedUserId(userId);
+    addToast({ type: "success", message: "Copied wallet address!" });
+    setTimeout(() => setCopiedUserId(null), 2000);
   };
 
   const openShareModal = (group: Group, e: React.MouseEvent) => {
