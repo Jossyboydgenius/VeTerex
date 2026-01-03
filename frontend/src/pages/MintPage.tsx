@@ -200,9 +200,39 @@ export function MintPage() {
         dataUri, // Pass full metadata URI
         mediaToMint.title
       );
-      addToast({ type: "info", message: "Transaction sent" });
       setMintSuccess(true);
       removePendingMint(mediaToMint.id);
+
+      // Clear from chrome.storage to prevent persistence after minting
+      if (isExtension && chrome.storage?.local) {
+        chrome.storage.local.get(
+          ["activeTracking", "pendingMint", "pendingCompletions"],
+          (result) => {
+            // Remove from activeTracking
+            if (result.activeTracking && Array.isArray(result.activeTracking)) {
+              const filtered = result.activeTracking.filter(
+                (t: any) =>
+                  t.id !== mediaToMint.id && t.title !== mediaToMint.title
+              );
+              chrome.storage.local.set({ activeTracking: filtered });
+            }
+            // Remove from pendingCompletions
+            if (
+              result.pendingCompletions &&
+              Array.isArray(result.pendingCompletions)
+            ) {
+              const filtered = result.pendingCompletions.filter(
+                (t: any) =>
+                  t.id !== mediaToMint.id && t.title !== mediaToMint.title
+              );
+              chrome.storage.local.set({ pendingCompletions: filtered });
+            }
+            // Clear pendingMint
+            chrome.storage.local.remove(["pendingMint"]);
+          }
+        );
+      }
+
       const ids = await readUserNfts(currentAccount.address as `0x${string}`);
       const metas = await getTokensMetadata(ids);
       const items: CompletionNFT[] = metas.map((m) => ({
@@ -245,19 +275,42 @@ export function MintPage() {
     } catch (error: any) {
       // Log error details for debugging
       console.error("Minting failed:", error);
+      console.error("Error details:", JSON.stringify(error, null, 2));
 
-      // Handle revert errors specifically
-      let errorMessage = error.message || "Mint failed";
-      if (error.data) {
-        // If we have raw error data, it might be a custom error from the contract
-        console.error("Error data:", error.data);
-      }
-      if (errorMessage.includes("execution reverted")) {
-        errorMessage =
-          "Transaction reverted. You may have already minted this media.";
-      }
+      // Check if it's an execution reverted error (already minted)
+      // Viem/wagmi wraps errors - check multiple locations
+      const errorMessage = error?.message || error?.toString() || "";
+      const shortMessage = error?.shortMessage || "";
+      const cause = error?.cause;
+      const causeMessage = cause?.message || "";
+      const causeCode = cause?.code;
+      const walkError = error?.walk?.() || null;
+      const walkMessage = walkError?.message || "";
+      const stringifiedError = JSON.stringify(error).toLowerCase();
 
-      addToast({ type: "error", message: errorMessage });
+      // Check all possible locations for "execution reverted" or error code 3
+      const isExecutionReverted =
+        causeCode === 3 ||
+        error?.code === 3 ||
+        errorMessage.toLowerCase().includes("execution reverted") ||
+        shortMessage.toLowerCase().includes("execution reverted") ||
+        causeMessage.toLowerCase().includes("execution reverted") ||
+        walkMessage.toLowerCase().includes("execution reverted") ||
+        stringifiedError.includes("execution reverted") ||
+        stringifiedError.includes('"code":3') ||
+        stringifiedError.includes("0x71d50c23"); // Custom error selector for already minted
+
+      if (isExecutionReverted) {
+        addToast({
+          type: "warning",
+          message: "You've already minted an NFT for this media!",
+        });
+      } else {
+        addToast({
+          type: "error",
+          message: shortMessage || errorMessage || "Mint failed",
+        });
+      }
     }
 
     setIsMinting(false);
@@ -285,7 +338,7 @@ export function MintPage() {
   // Show empty state if no media to mint
   if (!mediaToMint) {
     return (
-      <div className="px-4 py-8 flex flex-col items-center justify-center min-h-[60vh] max-w-2xl mx-auto">
+      <div className="px-4 py-8 flex flex-col items-center justify-center min-h-[60vh] w-full max-w-lg mx-auto">
         <NFTMiningImageIcon size={96} />
         <h2 className="text-xl font-bold text-white mb-2 mt-4">
           Nothing to Mint
@@ -305,7 +358,7 @@ export function MintPage() {
   }
 
   return (
-    <div className="px-3 py-4 space-y-4 max-w-md mx-auto overflow-x-hidden">
+    <div className="px-4 py-4 space-y-4 w-full max-w-lg mx-auto overflow-x-hidden">
       {/* Header */}
       <div className="flex items-center gap-2">
         <button

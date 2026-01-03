@@ -217,7 +217,7 @@ export function VeryChatLoginModal({
                   </div>
 
                   {error && (
-                    <p className="text-sm text-red-400 bg-red-500/10 px-3 py-2 rounded-lg">
+                    <p className="text-sm text-red-400 bg-red-500/10 px-3 py-2 rounded-lg text-center">
                       {error}
                     </p>
                   )}
@@ -282,7 +282,7 @@ export function VeryChatLoginModal({
                   </div>
 
                   {error && (
-                    <p className="text-sm text-red-400 bg-red-500/10 px-3 py-2 rounded-lg">
+                    <p className="text-sm text-red-400 bg-red-500/10 px-3 py-2 rounded-lg text-center">
                       {error}
                     </p>
                   )}

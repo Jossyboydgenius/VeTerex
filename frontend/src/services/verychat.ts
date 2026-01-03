@@ -345,7 +345,8 @@ export function logout(): void {
   currentUser = null;
   localStorage.removeItem("verychat_tokens");
   localStorage.removeItem("verychat_user");
-  console.log("[VeryChat] User logged out");
+  localStorage.removeItem("veterex_verychat_wallet");
+  console.log("[VeryChat] User logged out, wallet cleared");
 }
 
 /**
@@ -371,8 +372,11 @@ export async function getChannels(): Promise<any[]> {
     // Standard REST would be /channels
     return await authenticatedRequest<any[]>("/channels");
   } catch (error) {
-    console.error("[VeryChat] Failed to fetch channels, returning mock data:", error);
-    
+    console.error(
+      "[VeryChat] Failed to fetch channels, returning mock data:",
+      error
+    );
+
     // Return mock data for now since we don't have the exact endpoint
     return [
       {

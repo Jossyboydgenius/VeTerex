@@ -4,7 +4,6 @@ import { useNavigate } from "react-router-dom";
 import {
   Users,
   UserPlus,
-  UserCheck,
   MessageCircle,
   Award,
   Sparkles,
@@ -13,16 +12,18 @@ import {
   X,
   Link,
   Check,
-  Radio,
+  Copy,
 } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import type { Group } from "@/types";
+import type { UserProfile } from "@/services/backend";
 import {
   readUserNfts,
   getSimilars,
   getTokensMetadata,
   getGroupMemberCount,
 } from "@/services/nft";
+import { getUserByWallet } from "@/services/backend";
 import { GroupCardSkeleton, MatchCardSkeleton } from "@/components/Skeleton";
 // import { getChannels } from "@/services/verychat";
 
@@ -58,14 +59,44 @@ export function CommunityPage() {
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
   const [copied, setCopied] = useState(false);
   const [matchingAddrs, setMatchingAddrs] = useState<string[]>([]);
+  const [matchingUsers, setMatchingUsers] = useState<
+    Map<string, UserProfile | null>
+  >(new Map());
   const [userNftIds, setUserNftIds] = useState<bigint[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
+  const [copiedUserId, setCopiedUserId] = useState<string | null>(null);
   // Loading states
   const [isLoadingGroups, setIsLoadingGroups] = useState(false);
   const [isLoadingMatches, setIsLoadingMatches] = useState(false);
   // const [veryChannels, setVeryChannels] = useState<any[]>([]); // Removed unused variable
 
-  const toggleFriend = (userId: string) => {
+  const toggleFriend = (userId: string, userProfile: UserProfile | null) => {
+    // For VeryChat users, copy their ID and show detailed toast about adding in app
+    if (userProfile?.verychatId) {
+      const textToCopy = userProfile.verychatId;
+      navigator.clipboard.writeText(textToCopy);
+      setCopiedUserId(userId);
+      // Show a detailed toast that stays longer for VeryChat users
+      addToast({
+        type: "success",
+        message: `Copied @${textToCopy}! Open VeryChat app and search for this username to add them as a friend.`,
+        duration: 6000, // Stay longer so user can read
+      });
+      setTimeout(() => setCopiedUserId(null), 2000);
+      return;
+    }
+
+    // For Wepin users, copy their profile name or email (not wepinId)
+    if (userProfile?.wepinId) {
+      const textToCopy = userProfile.profileName || userProfile.email || "User";
+      navigator.clipboard.writeText(textToCopy);
+      setCopiedUserId(userId);
+      addToast({ type: "success", message: `Copied ${textToCopy}!` });
+      setTimeout(() => setCopiedUserId(null), 2000);
+      return;
+    }
+
+    // Fallback to old behavior if no profile data
     const wasAdded = addedFriends.has(userId);
     setAddedFriends((prev) => {
       const newSet = new Set(prev);
@@ -116,6 +147,21 @@ export function CommunityPage() {
           ids
         );
         setMatchingAddrs(similars);
+
+        // Fetch user profiles for matching addresses
+        const userProfileMap = new Map<string, UserProfile | null>();
+        await Promise.all(
+          similars.map(async (addr) => {
+            try {
+              const profile = await getUserByWallet(addr);
+              userProfileMap.set(addr, profile);
+            } catch (error) {
+              console.error(`Failed to fetch profile for ${addr}:`, error);
+              userProfileMap.set(addr, null);
+            }
+          })
+        );
+        setMatchingUsers(userProfileMap);
       } catch (e: any) {
         console.error("Failed to load matches:", e);
         addToast({
@@ -327,6 +373,7 @@ export function CommunityPage() {
           <Sparkles className="w-4 h-4" />
           <span>Matches</span>
         </button>
+        {/* VeryChat tab - commented out for now
         <button
           onClick={() => setActiveTab("channels")}
           className={`
@@ -342,6 +389,7 @@ export function CommunityPage() {
           <Radio className="w-4 h-4" />
           <span>VeryChat</span>
         </button>
+        */}
       </div>
 
       {/* Content */}
@@ -485,43 +533,74 @@ export function CommunityPage() {
               </div>
             ) : (
               <div className="space-y-3">
-                {matchingAddrs.map((addr, index) => (
-                  <motion.div
-                    key={addr}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    whileHover={{ scale: 1.01 }}
-                    className="card flex items-center gap-4 cursor-pointer"
-                  >
-                    <div className="w-12 h-12 rounded-xl bg-dark-700 flex items-center justify-center text-white">
-                      {addr.slice(2, 4).toUpperCase()}
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-white">{addr}</h3>
-                      <div className="flex items-center gap-1 text-sm text-coral">
-                        <Award className="w-3 h-3" />
-                        <span>{userNftIds.length} matching NFTs</span>
-                      </div>
-                    </div>
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => toggleFriend(addr)}
-                      className={`p-2 rounded-lg transition-colors ${
-                        addedFriends.has(addr)
-                          ? "bg-brand-green/20 text-brand-green"
-                          : "bg-coral/20 text-coral hover:bg-coral/30"
-                      }`}
+                {matchingAddrs.map((addr, index) => {
+                  const userProfile = matchingUsers.get(addr);
+                  // Display name priority for Wepin: profileName > email > truncated address
+                  // For VeryChat: show verychatId (their username)
+                  let displayName: string;
+                  if (userProfile?.verychatId) {
+                    displayName = `@${userProfile.verychatId}`;
+                  } else if (userProfile?.wepinId) {
+                    displayName =
+                      userProfile.profileName ||
+                      userProfile.email ||
+                      `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+                  } else if (userProfile?.profileName) {
+                    displayName = userProfile.profileName;
+                  } else {
+                    displayName = `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+                  }
+                  const displayImage = userProfile?.profileImage;
+                  const isCopied = copiedUserId === addr;
+
+                  return (
+                    <motion.div
+                      key={addr}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                      whileHover={{ scale: 1.01 }}
+                      className="card flex items-center gap-4 cursor-pointer"
                     >
-                      {addedFriends.has(addr) ? (
-                        <UserCheck className="w-5 h-5" />
+                      {displayImage ? (
+                        <img
+                          src={displayImage}
+                          alt={displayName}
+                          className="w-12 h-12 rounded-xl object-cover"
+                        />
                       ) : (
-                        <UserPlus className="w-5 h-5" />
+                        <div className="w-12 h-12 rounded-xl bg-dark-700 flex items-center justify-center text-white flex-shrink-0">
+                          {addr.slice(2, 4).toUpperCase()}
+                        </div>
                       )}
-                    </motion.button>
-                  </motion.div>
-                ))}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-white truncate">
+                          {displayName}
+                        </h3>
+                        <div className="flex items-center gap-1 text-sm text-coral">
+                          <Award className="w-3 h-3 flex-shrink-0" />
+                          <span>{userNftIds.length} matching NFTs</span>
+                        </div>
+                      </div>
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => toggleFriend(addr, userProfile || null)}
+                        className={`p-2 rounded-lg transition-colors flex-shrink-0 ${
+                          isCopied
+                            ? "bg-brand-green/20 text-brand-green"
+                            : "bg-coral/20 text-coral hover:bg-coral/30"
+                        }`}
+                      >
+                        {isCopied ? (
+                          <Check className="w-5 h-5" />
+                        ) : (
+                          <Copy className="w-5 h-5" />
+                        )}
+                      </motion.button>
+                    </motion.div>
+                  );
+                })}
               </div>
             )}
           </div>

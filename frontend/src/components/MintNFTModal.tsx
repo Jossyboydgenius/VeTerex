@@ -51,7 +51,9 @@ export function MintNFTModal({
       // Create metadata object to store in URI
       const metadata = {
         name: media.title,
-        description: `Completed on ${new Date(completedDate).toISOString()}`,
+        description:
+          review.trim() ||
+          `Completed on ${new Date(completedDate).toISOString()}`,
         image: media.coverImage || "",
         external_url: "",
         attributes: [
@@ -61,6 +63,9 @@ export function MintNFTModal({
             trait_type: "Completed At",
             value: new Date(completedDate).toISOString(),
           },
+          ...(review.trim()
+            ? [{ trait_type: "Review", value: review.trim() }]
+            : []),
         ],
       };
 
@@ -91,6 +96,36 @@ export function MintNFTModal({
         rarity: "common",
       });
 
+      // Clear from chrome.storage to prevent persistence after minting
+      if (typeof chrome !== "undefined" && chrome.storage?.local) {
+        chrome.storage.local.get(
+          ["activeTracking", "pendingMint", "pendingCompletions"],
+          (result) => {
+            // Remove from activeTracking
+            if (result.activeTracking && Array.isArray(result.activeTracking)) {
+              const filtered = result.activeTracking.filter(
+                (t: any) => t.id !== media.id && t.title !== media.title
+              );
+              chrome.storage.local.set({ activeTracking: filtered });
+            }
+            // Remove from pendingCompletions
+            if (
+              result.pendingCompletions &&
+              Array.isArray(result.pendingCompletions)
+            ) {
+              const filtered = result.pendingCompletions.filter(
+                (t: any) => t.id !== media.id && t.title !== media.title
+              );
+              chrome.storage.local.set({ pendingCompletions: filtered });
+            }
+            // Clear pendingMint
+            if (result.pendingMint) {
+              chrome.storage.local.remove(["pendingMint"]);
+            }
+          }
+        );
+      }
+
       setIsSuccess(true);
       addToast({ type: "success", message: "NFT minted successfully! 🎉" });
 
@@ -98,12 +133,44 @@ export function MintNFTModal({
         onSuccess?.();
         onClose();
       }, 2000);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Mint error:", error);
-      addToast({
-        type: "error",
-        message: "Failed to mint NFT. Please try again.",
-      });
+      console.error("Error details:", JSON.stringify(error, null, 2));
+
+      // Check if it's an execution reverted error (already minted)
+      // Viem/wagmi wraps errors - check multiple locations
+      const errorMessage = error?.message || error?.toString() || "";
+      const shortMessage = error?.shortMessage || "";
+      const cause = error?.cause;
+      const causeMessage = cause?.message || "";
+      const causeCode = cause?.code;
+      const walkError = error?.walk?.() || null;
+      const walkMessage = walkError?.message || "";
+      const stringifiedError = JSON.stringify(error).toLowerCase();
+
+      // Check all possible locations for "execution reverted" or error code 3
+      const isExecutionReverted =
+        causeCode === 3 ||
+        error?.code === 3 ||
+        errorMessage.toLowerCase().includes("execution reverted") ||
+        shortMessage.toLowerCase().includes("execution reverted") ||
+        causeMessage.toLowerCase().includes("execution reverted") ||
+        walkMessage.toLowerCase().includes("execution reverted") ||
+        stringifiedError.includes("execution reverted") ||
+        stringifiedError.includes('"code":3') ||
+        stringifiedError.includes("0x71d50c23"); // Custom error selector for already minted
+
+      if (isExecutionReverted) {
+        addToast({
+          type: "warning",
+          message: "You've already minted an NFT for this media!",
+        });
+      } else {
+        addToast({
+          type: "error",
+          message: "Failed to mint NFT. Please try again.",
+        });
+      }
     } finally {
       setIsMinting(false);
     }
@@ -285,7 +352,7 @@ export function MintNFTModal({
                       )}
                     </motion.button>
 
-                    <p className="text-xs text-dark-500 text-center">
+                    <p className="text-xs text-dark-500 text-center pb-6">
                       This will create a soulbound (non-transferable) NFT on the
                       blockchain.
                     </p>

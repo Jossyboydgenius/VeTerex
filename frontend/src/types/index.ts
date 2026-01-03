@@ -87,6 +87,19 @@ export interface WepinAccount {
   isAA?: boolean;
 }
 
+// Backend User Types (from Prisma database)
+export interface BackendUser {
+  id: string;
+  verychatId?: string | null;
+  wepinId?: string | null;
+  profileName: string;
+  profileImage?: string | null;
+  bio?: string | null;
+  email?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // Social/Community Types
 export interface Group {
   id: string;

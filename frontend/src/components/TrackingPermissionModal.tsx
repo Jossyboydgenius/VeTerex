@@ -79,7 +79,7 @@ export function TrackingPermissionModal({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 overflow-hidden">
+        <div className="fixed inset-0 z-[200] overflow-hidden">
           {/* Backdrop - Full viewport coverage */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -95,7 +95,7 @@ export function TrackingPermissionModal({
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="glass-dark rounded-2xl border border-dark-700 shadow-xl overflow-hidden w-full max-w-md max-h-[90vh] overflow-y-auto pointer-events-auto"
+              className="glass-dark rounded-2xl border border-dark-700 shadow-xl overflow-hidden w-full max-w-md max-h-[85vh] overflow-y-auto pointer-events-auto my-auto"
             >
               {/* Header */}
               <div className="relative p-6 pb-4 text-center border-b border-dark-700">

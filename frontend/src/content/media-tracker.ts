@@ -2469,17 +2469,38 @@ function showCompletionBanner(mediaInfo: MediaInfo, watchTime?: number) {
   const mintBtn = document.getElementById("veterex-mint-btn");
   if (mintBtn) {
     mintBtn.addEventListener("click", () => {
-      // Open web app with data
-      const data = encodeURIComponent(
-        JSON.stringify({
-          ...mediaInfo,
-          watchTime: watchTime || currentSession?.watchTime || 0,
-        })
-      );
+      // Store pending mint data and open extension popup
+      const mintData = {
+        ...mediaInfo,
+        watchTime: watchTime || currentSession?.watchTime || 0,
+      };
 
-      // Use localhost for dev, in prod this would be the deployed URL
-      const webUrl = `http://localhost:5173/#/mint?data=${data}`;
-      window.open(webUrl, "_blank");
+      // Store in local storage first, then trigger popup opening via background
+      chrome.storage.local.set({ pendingMint: mintData }, () => {
+        console.log("[VeTerex] Pending mint stored:", mintData);
+
+        // Send message to background script to open popup
+        // This is more reliable than trying to open the popup directly
+        chrome.runtime.sendMessage(
+          {
+            type: "OPEN_EXTENSION_POPUP",
+            data: { route: "/mint" },
+          },
+          (response) => {
+            if (chrome.runtime.lastError) {
+              console.log(
+                "[VeTerex] Popup message error:",
+                chrome.runtime.lastError
+              );
+              // Fallback: open extension page in new tab if popup fails
+              const extensionUrl = chrome.runtime.getURL("index.html#/mint");
+              window.open(extensionUrl, "_blank");
+            } else {
+              console.log("[VeTerex] Popup open response:", response);
+            }
+          }
+        );
+      });
 
       banner.remove();
     });
