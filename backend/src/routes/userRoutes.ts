@@ -240,6 +240,33 @@ router.get(
 // ========== WALLET ROUTES ==========
 
 /**
+ * Get user by wallet address
+ * GET /api/user/by-wallet/:walletAddress
+ */
+router.get(
+  "/by-wallet/:walletAddress",
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { walletAddress } = req.params;
+
+      const wallet = await walletService.getWalletByAddress(walletAddress);
+
+      if (!wallet) {
+        res.status(404).json({ error: "User not found" });
+        return;
+      }
+
+      res.json({
+        success: true,
+        user: wallet.user,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+);
+
+/**
  * Create or update wallet
  * POST /api/user/wallet
  */

@@ -96,6 +96,36 @@ export function MintNFTModal({
         rarity: "common",
       });
 
+      // Clear from chrome.storage to prevent persistence after minting
+      if (typeof chrome !== "undefined" && chrome.storage?.local) {
+        chrome.storage.local.get(
+          ["activeTracking", "pendingMint", "pendingCompletions"],
+          (result) => {
+            // Remove from activeTracking
+            if (result.activeTracking && Array.isArray(result.activeTracking)) {
+              const filtered = result.activeTracking.filter(
+                (t: any) => t.id !== media.id && t.title !== media.title
+              );
+              chrome.storage.local.set({ activeTracking: filtered });
+            }
+            // Remove from pendingCompletions
+            if (
+              result.pendingCompletions &&
+              Array.isArray(result.pendingCompletions)
+            ) {
+              const filtered = result.pendingCompletions.filter(
+                (t: any) => t.id !== media.id && t.title !== media.title
+              );
+              chrome.storage.local.set({ pendingCompletions: filtered });
+            }
+            // Clear pendingMint
+            if (result.pendingMint) {
+              chrome.storage.local.remove(["pendingMint"]);
+            }
+          }
+        );
+      }
+
       setIsSuccess(true);
       addToast({ type: "success", message: "NFT minted successfully! 🎉" });
 
@@ -105,19 +135,30 @@ export function MintNFTModal({
       }, 2000);
     } catch (error: any) {
       console.error("Mint error:", error);
+      console.error("Error details:", JSON.stringify(error, null, 2));
 
       // Check if it's an execution reverted error (already minted)
-      // The error can be nested in different ways depending on the provider
+      // Viem/wagmi wraps errors - check multiple locations
       const errorMessage = error?.message || error?.toString() || "";
-      const errorData = error?.data || error?.error?.data || "";
-      const nestedMessage = error?.error?.message || "";
+      const shortMessage = error?.shortMessage || "";
+      const cause = error?.cause;
+      const causeMessage = cause?.message || "";
+      const causeCode = cause?.code;
+      const walkError = error?.walk?.() || null;
+      const walkMessage = walkError?.message || "";
+      const stringifiedError = JSON.stringify(error).toLowerCase();
 
-      // Check all possible locations for "execution reverted"
+      // Check all possible locations for "execution reverted" or error code 3
       const isExecutionReverted =
+        causeCode === 3 ||
+        error?.code === 3 ||
         errorMessage.toLowerCase().includes("execution reverted") ||
-        errorData.toLowerCase().includes("execution reverted") ||
-        nestedMessage.toLowerCase().includes("execution reverted") ||
-        JSON.stringify(error).toLowerCase().includes("execution reverted");
+        shortMessage.toLowerCase().includes("execution reverted") ||
+        causeMessage.toLowerCase().includes("execution reverted") ||
+        walkMessage.toLowerCase().includes("execution reverted") ||
+        stringifiedError.includes("execution reverted") ||
+        stringifiedError.includes('"code":3') ||
+        stringifiedError.includes("0x71d50c23"); // Custom error selector for already minted
 
       if (isExecutionReverted) {
         addToast({
@@ -311,7 +352,7 @@ export function MintNFTModal({
                       )}
                     </motion.button>
 
-                    <p className="text-xs text-dark-500 text-center mb-20">
+                    <p className="text-xs text-dark-500 text-center pb-6">
                       This will create a soulbound (non-transferable) NFT on the
                       blockchain.
                     </p>

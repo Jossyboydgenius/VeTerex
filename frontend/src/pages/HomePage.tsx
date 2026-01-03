@@ -260,6 +260,7 @@ export function HomePage() {
     setTrackingEnabled,
     setTrackingPermissionAsked,
     removePendingMint,
+    removeActiveTracking,
     addToast,
   } = useAppStore();
 
@@ -495,10 +496,57 @@ export function HomePage() {
   const handleMint = (media: TrackedMedia) => {
     setSelectedMedia(media);
     setShowMintModal(true);
+    // Also remove from chrome.storage to prevent persistence
+    if (isExtension && chrome.storage?.local) {
+      chrome.storage.local.get(["activeTracking", "pendingMint"], (result) => {
+        // Remove from activeTracking in storage
+        if (result.activeTracking && Array.isArray(result.activeTracking)) {
+          const filtered = result.activeTracking.filter(
+            (t: TrackedMedia) => t.id !== media.id && t.title !== media.title
+          );
+          chrome.storage.local.set({ activeTracking: filtered });
+        }
+        // Clear pendingMint if it matches
+        if (
+          result.pendingMint &&
+          (result.pendingMint.title === media.title ||
+            result.pendingMint.id === media.id)
+        ) {
+          chrome.storage.local.remove(["pendingMint"]);
+        }
+      });
+    }
   };
 
   const handleDismissCompletion = (id: string) => {
+    // Remove from both pendingMints and activeTracking
     removePendingMint(id);
+    removeActiveTracking(id);
+    // Also clear from chrome.storage to prevent persistence
+    if (isExtension && chrome.storage?.local) {
+      chrome.storage.local.get(
+        ["activeTracking", "pendingMint", "pendingCompletions"],
+        (result) => {
+          // Remove from activeTracking in storage
+          if (result.activeTracking && Array.isArray(result.activeTracking)) {
+            const filtered = result.activeTracking.filter(
+              (t: TrackedMedia) => t.id !== id
+            );
+            chrome.storage.local.set({ activeTracking: filtered });
+          }
+          // Remove from pendingCompletions in storage
+          if (
+            result.pendingCompletions &&
+            Array.isArray(result.pendingCompletions)
+          ) {
+            const filtered = result.pendingCompletions.filter(
+              (t: any) => t.id !== id
+            );
+            chrome.storage.local.set({ pendingCompletions: filtered });
+          }
+        }
+      );
+    }
   };
 
   // Add custom site handler
@@ -953,10 +1001,7 @@ export function HomePage() {
             removePendingMint(selectedMedia.id);
             setShowMintModal(false);
             setSelectedMedia(null);
-            addToast({
-              type: "success",
-              message: "NFT minted successfully! 🎉",
-            });
+            // Toast is already shown in MintNFTModal
           }}
         />
       )}

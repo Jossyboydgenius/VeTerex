@@ -45,6 +45,15 @@ export interface UserProfile {
   email?: string;
   createdAt: string;
   updatedAt: string;
+  wallets?: Array<{
+    id: string;
+    userId: string;
+    walletAddress: string;
+    network: string;
+    chainId: number;
+    balance?: number;
+    nftCount?: number;
+  }>;
 }
 
 export interface CreateUserParams {
@@ -93,6 +102,23 @@ export async function updateUserProfile(
     method: "PUT",
     body: JSON.stringify(updates),
   });
+}
+
+/**
+ * Get user profile by wallet address
+ */
+export async function getUserByWallet(
+  walletAddress: string
+): Promise<UserProfile | null> {
+  try {
+    const response = await backendRequest<{
+      success: boolean;
+      user: UserProfile;
+    }>(`/api/user/by-wallet/${walletAddress}`);
+    return response.user;
+  } catch {
+    return null;
+  }
 }
 
 // ==================

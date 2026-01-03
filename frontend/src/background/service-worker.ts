@@ -259,6 +259,55 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({ success: true });
       return true;
 
+    case "OPEN_EXTENSION_POPUP":
+      // Open extension popup to a specific route
+      {
+        const route = message.data?.route || "/";
+        console.log("[VeTerex] Opening extension popup to route:", route);
+        chrome.action.setPopup({ popup: `index.html#${route}` });
+        try {
+          chrome.action
+            .openPopup()
+            .then(() => {
+              console.log("[VeTerex] Popup opened successfully");
+              sendResponse({ success: true, message: "Popup opened" });
+            })
+            .catch((err) => {
+              console.log("[VeTerex] Could not open popup:", err);
+              sendResponse({
+                success: false,
+                message: "Could not open popup",
+                error: err,
+              });
+            });
+        } catch (e) {
+          console.log("[VeTerex] openPopup error:", e);
+          sendResponse({
+            success: false,
+            message: "openPopup failed",
+            error: e,
+          });
+        }
+      }
+      return true;
+
+    case "PENDING_MINT":
+      // Store the pending mint data and open extension popup to mint page
+      chrome.storage.local.set({ pendingMint: message.data }, () => {
+        console.log("[VeTerex] Pending mint stored:", message.data);
+        chrome.action.setPopup({ popup: `index.html#/mint` });
+        // Try to open popup, but it may fail if not triggered by user action
+        try {
+          chrome.action.openPopup().catch(() => {
+            console.log("[VeTerex] Could not open popup programmatically");
+          });
+        } catch (e) {
+          console.log("[VeTerex] openPopup not available:", e);
+        }
+        sendResponse({ success: true, message: "Mint data stored" });
+      });
+      return true;
+
     // Get pending completions
     case "GET_PENDING_COMPLETIONS":
       chrome.storage.local.get(["pendingCompletions"], (result) => {

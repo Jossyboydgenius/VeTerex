@@ -13,7 +13,7 @@ import {
 } from "@/services/wepin";
 import { logout as logoutVeryChat } from "@/services/verychat";
 import { getOrCreateWalletForUser } from "@/services/wallet";
-import { createOrUpdateUser } from "@/services/backend";
+import { createOrUpdateUser, getUserProfile } from "@/services/backend";
 import { VeryChatLoginModal } from "./VeryChatLoginModal";
 import { AuthChoiceModal } from "./AuthChoiceModal";
 import { LogoIcon, WalletImageIcon } from "./AppIcons";
@@ -375,38 +375,71 @@ export function Header() {
     setVeryChatUser(user);
     setAuthMethod("verychat");
 
-    // Create or get existing wallet for VeryChat user
+    // First, check if user already exists in backend with a wallet
     let walletAddress = "";
+    let existingWallet = false;
+
     try {
-      const wallet = getOrCreateWalletForUser(user.profileId);
-      walletAddress = wallet.address;
-      // Set the wallet as the current account so minting works
-      setCurrentAccount({
-        address: wallet.address,
-        network: "verychain",
-        symbol: "VERY",
-        label: "Verychain Wallet",
-        name: "Verychain",
-      });
-      console.log("[VeryChat] Created/loaded wallet:", wallet.address);
-    } catch (error) {
-      console.error("[VeryChat] Failed to create wallet:", error);
+      // Try to get existing user from backend first
+      const existingUser = await getUserProfile("verychat", user.profileId);
+      if (existingUser?.wallets && existingUser.wallets.length > 0) {
+        // User has existing wallet in database - use it
+        walletAddress = existingUser.wallets[0].walletAddress;
+        existingWallet = true;
+        console.log("[VeryChat] Using existing wallet from DB:", walletAddress);
+
+        // Set the existing wallet as current account
+        setCurrentAccount({
+          address: walletAddress,
+          network: "verychain",
+          symbol: "VERY",
+          label: "Verychain Wallet",
+          name: "Verychain",
+        });
+        setBackendUser(existingUser);
+      }
+    } catch {
+      console.log("[VeryChat] No existing user found, will create new one");
     }
 
-    // Create or update user in backend database
-    try {
-      const backendUserData = await createOrUpdateUser({
-        authId: user.profileId,
-        authMethod: "verychat",
-        profileName: user.profileName,
-        profileImage: user.profileImage,
-        walletAddress: walletAddress || undefined,
-      });
-      setBackendUser(backendUserData.user);
-      console.log("[VeryChat] Backend user created:", backendUserData.user.id);
-    } catch (error) {
-      console.error("[VeryChat] Failed to create backend user:", error);
-      // Continue even if backend fails
+    // If no existing wallet, create new one locally
+    if (!existingWallet) {
+      try {
+        const wallet = getOrCreateWalletForUser(user.profileId);
+        walletAddress = wallet.address;
+        // Set the wallet as the current account so minting works
+        setCurrentAccount({
+          address: wallet.address,
+          network: "verychain",
+          symbol: "VERY",
+          label: "Verychain Wallet",
+          name: "Verychain",
+        });
+        console.log("[VeryChat] Created new local wallet:", wallet.address);
+      } catch (error) {
+        console.error("[VeryChat] Failed to create wallet:", error);
+      }
+    }
+
+    // Create or update user in backend database (only if we created a new wallet)
+    if (!existingWallet) {
+      try {
+        const backendUserData = await createOrUpdateUser({
+          authId: user.profileId,
+          authMethod: "verychat",
+          profileName: user.profileName,
+          profileImage: user.profileImage,
+          walletAddress: walletAddress || undefined,
+        });
+        setBackendUser(backendUserData.user);
+        console.log(
+          "[VeryChat] Backend user created:",
+          backendUserData.user.id
+        );
+      } catch (error) {
+        console.error("[VeryChat] Failed to create backend user:", error);
+        // Continue even if backend fails
+      }
     }
 
     setConnected(true);
