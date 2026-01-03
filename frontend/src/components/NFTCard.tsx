@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Calendar, Star, ExternalLink } from "lucide-react";
+import { Calendar, Star, ExternalLink, Play, BookOpen } from "lucide-react";
 import type { CompletionNFT } from "@/types";
 import { CrownIcon, StarIcon } from "./AppIcons";
 import { VETEREX_PROXY_ADDRESS } from "@/services/contract";
@@ -20,6 +20,24 @@ const rarityGlow = {
   legendary: "shadow-yellow-500/50",
 };
 
+// Helper to determine if media type is readable (book, manga, comic)
+const isReadableType = (type: string) => {
+  return ["book", "manga", "comic"].includes(type.toLowerCase());
+};
+
+// Helper to get content URL from NFT
+const getContentUrl = (nft: CompletionNFT): string | null => {
+  // Try external_url from media first
+  if (nft.media.externalId && nft.media.externalId.startsWith("http")) {
+    return nft.media.externalId;
+  }
+  // Try description if it's a URL
+  if (nft.media.description && nft.media.description.startsWith("http")) {
+    return nft.media.description;
+  }
+  return null;
+};
+
 interface NFTCardProps {
   nft: CompletionNFT;
   onClick?: () => void;
@@ -34,16 +52,30 @@ export function NFTCard({ nft, onClick }: NFTCardProps) {
     });
   };
 
+  const contentUrl = getContentUrl(nft);
+  const isReadable = isReadableType(nft.media.type);
+
+  // Handle card click - open content URL
+  const handleCardClick = () => {
+    if (onClick) {
+      onClick();
+    } else if (contentUrl) {
+      window.open(contentUrl, "_blank");
+    }
+  };
+
   return (
     <motion.div
       whileHover={{ y: -4 }}
       whileTap={{ scale: 0.98 }}
-      onClick={onClick}
+      onClick={handleCardClick}
       className={`
         relative rounded-2xl overflow-hidden cursor-pointer
         bg-gradient-to-br ${rarityColors[nft.rarity]} p-[2px]
         shadow-xl ${rarityGlow[nft.rarity]} h-full
+        group
       `}
+      title={contentUrl ? "Click to view content" : undefined}
     >
       <div className="bg-dark-900 rounded-2xl overflow-hidden h-full flex flex-col">
         {/* Cover Image - Reduced aspect ratio from 3/4 to 4/5 */}
@@ -115,25 +147,55 @@ export function NFTCard({ nft, onClick }: NFTCardProps) {
             </div>
           )}
 
-          {/* Token ID - Push to bottom */}
+          {/* Token ID and Action buttons */}
           <div className="flex items-center justify-between text-[10px] mt-auto">
             <span className="text-dark-500 truncate">
               #{nft.tokenId.slice(0, 8)}
             </span>
-            <button
-              className="flex items-center gap-0.5 text-coral hover:text-coral-light transition-colors flex-shrink-0"
-              onClick={(e) => {
-                e.stopPropagation();
-                // Open transaction in explorer
-                const url = nft.transactionHash
-                  ? `https://veryscan.io/tx/${nft.transactionHash}`
-                  : `https://veryscan.io/address/${VETEREX_PROXY_ADDRESS}`;
-                window.open(url, "_blank");
-              }}
-            >
-              <span>View</span>
-              <ExternalLink className="w-2.5 h-2.5" />
-            </button>
+            <div className="flex items-center gap-2">
+              {/* Watch/Read Button - opens content URL */}
+              {contentUrl && (
+                <button
+                  className="relative flex items-center gap-0.5 text-violet hover:text-violet-light transition-colors flex-shrink-0 group/btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    window.open(contentUrl, "_blank");
+                  }}
+                  title={isReadable ? "Read content" : "Watch content"}
+                >
+                  {isReadable ? (
+                    <BookOpen className="w-2.5 h-2.5" />
+                  ) : (
+                    <Play className="w-2.5 h-2.5" />
+                  )}
+                  <span>{isReadable ? "Read" : "Watch"}</span>
+                  {/* Tooltip */}
+                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 text-[9px] bg-dark-700 text-white rounded opacity-0 group-hover/btn:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                    {isReadable ? "Open to read" : "Open to watch"}
+                  </span>
+                </button>
+              )}
+              {/* View Button - opens VeryScan */}
+              <button
+                className="relative flex items-center gap-0.5 text-coral hover:text-coral-light transition-colors flex-shrink-0 group/btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  // Open transaction in explorer
+                  const url = nft.transactionHash
+                    ? `https://veryscan.io/tx/${nft.transactionHash}`
+                    : `https://veryscan.io/address/${VETEREX_PROXY_ADDRESS}`;
+                  window.open(url, "_blank");
+                }}
+                title="View on VeryScan"
+              >
+                <span>View</span>
+                <ExternalLink className="w-2.5 h-2.5" />
+                {/* Tooltip */}
+                <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 text-[9px] bg-dark-700 text-white rounded opacity-0 group-hover/btn:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                  View on VeryScan
+                </span>
+              </button>
+            </div>
           </div>
         </div>
       </div>

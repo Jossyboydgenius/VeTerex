@@ -3,6 +3,12 @@
  * Tracks media consumption across supported platforms
  */
 
+// Import UI components from extracted modules
+import {
+  showTrackSeriesButton as showTrackSeriesButtonUI,
+  showCompletionBanner as showCompletionBannerUI,
+} from "./ui";
+
 // Supported platforms for tracking
 const SUPPORTED_PLATFORMS = {
   // Video streaming - Premium
@@ -916,9 +922,7 @@ let currentSession: TrackingSession | null = null;
 let trackingInterval: ReturnType<typeof setInterval> | null = null;
 let scrollTrackingInterval: ReturnType<typeof setInterval> | null = null;
 let activityTrackingInterval: ReturnType<typeof setInterval> | null = null;
-let _lastScrollPosition = 0; // Prefixed with _ for ESLint
 let maxScrollProgress = 0;
-let _pageViewStartTime = Date.now(); // Prefixed with _ for ESLint
 let totalActiveTime = 0;
 let lastActivityTime = Date.now();
 let isUserActive = true;
@@ -1131,8 +1135,6 @@ function startScrollTracking() {
   if (scrollTrackingInterval) return;
 
   console.log("[VeTerex] Starting scroll/reading tracking");
-  _lastScrollPosition = window.scrollY; // Initialize
-  _pageViewStartTime = Date.now(); // Initialize
 
   const updateScrollProgress = () => {
     const scrollProgress = calculateScrollProgress();
@@ -2218,375 +2220,28 @@ function notifyCompletion(session: TrackingSession) {
   showCompletionBanner(session.mediaInfo, session.watchTime);
 }
 
+/**
+ * Show track series button using extracted UI module
+ */
 function showTrackSeriesButton() {
   const existing = document.getElementById("veterex-track-series");
   if (existing) return;
+
   const info = extractMediaInfo();
   if (!info || info.type !== "manga") return;
 
-  // Ensure Outfit font is available
-  if (
-    !document.querySelector(
-      'link[href*="fonts.googleapis.com/css2?family=Outfit"'
-    )
-  ) {
-    const link = document.createElement("link");
-    link.rel = "stylesheet";
-    link.href =
-      "https://fonts.googleapis.com/css2?family=Outfit:wght@500;600&display=swap";
-    document.head.appendChild(link);
-  }
-
-  // Get fruit icon URL
-  const fruitIconUrl = chrome.runtime.getURL("icons/Fruit_color.png");
-
-  const btn = document.createElement("button");
-  btn.id = "veterex-track-series";
-  btn.style.display = "inline-flex";
-  btn.style.alignItems = "center";
-  btn.style.gap = "8px";
-
-  // Fruit Icon Image
-  const icon = document.createElement("img");
-  icon.src = fruitIconUrl;
-  icon.alt = "Track";
-  icon.style.width = "20px";
-  icon.style.height = "20px";
-
-  const label = document.createElement("span");
-  label.textContent = "Track Series";
-  label.style.fontWeight = "600";
-
-  btn.appendChild(icon);
-  btn.appendChild(label);
-
-  // Styling with coral-violet gradient
-  btn.style.position = "fixed";
-  btn.style.bottom = "24px";
-  btn.style.right = "24px";
-  btn.style.zIndex = "999999";
-  btn.style.padding = "12px 20px";
-  btn.style.borderRadius = "12px";
-  btn.style.border = "none";
-  btn.style.color = "#fff";
-  btn.style.background =
-    "linear-gradient(139.84deg, #FF6D75 50%, #9C86FF 96.42%)";
-  btn.style.cursor = "pointer";
-  btn.style.boxShadow = "0 8px 24px rgba(255, 109, 117, 0.35)";
-  btn.style.fontFamily =
-    "Outfit, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
-  btn.style.fontSize = "14px";
-  btn.style.transform = "translateX(140%)";
-  btn.style.transition =
-    "transform 300ms ease-out, box-shadow 200ms ease, transform 200ms ease";
-
-  btn.onclick = () => {
-    const chapterInfo = extractChapterInfo();
-    const entry = {
-      id: `series-${Date.now()}`,
-      title: info.title,
-      url: window.location.href,
-      currentChapter: chapterInfo?.chapter || "",
-      status: "Reading",
-    };
-
-    const onAdded = () => {
-      // Show success toast
-      const toast = document.createElement("div");
-      toast.textContent = "✓ Series added";
-      toast.style.position = "fixed";
-      toast.style.bottom = "80px";
-      toast.style.right = "24px";
-      toast.style.padding = "12px 16px";
-      toast.style.borderRadius = "10px";
-      toast.style.background =
-        "linear-gradient(135deg, #4BE15A 0%, #3DBF4D 100%)";
-      toast.style.color = "#fff";
-      toast.style.fontFamily =
-        "Outfit, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
-      toast.style.fontWeight = "500";
-      toast.style.fontSize = "14px";
-      toast.style.boxShadow = "0 4px 16px rgba(75, 225, 90, 0.3)";
-      toast.style.zIndex = "999999";
-      toast.style.animation = "slideIn 0.3s ease-out";
-      document.body.appendChild(toast);
-      setTimeout(() => {
-        toast.style.opacity = "0";
-        toast.style.transition = "opacity 0.3s ease";
-        setTimeout(() => toast.remove(), 300);
-      }, 2000);
-    };
-
-    try {
-      browserAPI.runtime.sendMessage(
-        { type: "ADD_SERIES_BOOKMARK", data: entry },
-        () => onAdded()
-      );
-    } catch {
-      // Fallback direct storage
-      if (typeof chrome !== "undefined" && chrome.storage) {
-        chrome.storage.local.get(["seriesBookmarks"], (r) => {
-          const list = r.seriesBookmarks || [];
-          chrome.storage.local.set(
-            { seriesBookmarks: [...list, entry] },
-            onAdded
-          );
-        });
-      }
-    }
-  };
-
-  document.body.appendChild(btn);
-
-  // Slide in animation
-  requestAnimationFrame(() => {
-    btn.style.transform = "translateX(0)";
-  });
-
-  // Hover effects
-  btn.onmouseenter = () => {
-    btn.style.boxShadow = "0 12px 28px rgba(255, 109, 117, 0.45)";
-    btn.style.transform = "translateY(-2px)";
-  };
-  btn.onmouseleave = () => {
-    btn.style.boxShadow = "0 8px 24px rgba(255, 109, 117, 0.35)";
-    btn.style.transform = "translateY(0)";
-  };
+  // Use the extracted UI module
+  showTrackSeriesButtonUI(info.title, () => extractChapterInfo());
 }
 
 /**
- * Show a banner to the user offering to mint NFT
+ * Show a banner to the user offering to mint NFT using extracted UI module
  */
 function showCompletionBanner(mediaInfo: MediaInfo, watchTime?: number) {
-  // Remove existing banner if any
-  const existingBanner = document.getElementById("veterex-completion-banner");
-  if (existingBanner) existingBanner.remove();
-
-  // Get icon URLs
-  const giftboxIconUrl = chrome.runtime.getURL("icons/gift-box.svg");
-  const veryCoinIconUrl = chrome.runtime.getURL("icons/very-coin.png");
-
-  const banner = document.createElement("div");
-  banner.id = "veterex-completion-banner";
-  banner.innerHTML = `
-    <style>
-      @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap');
-      
-      #veterex-completion-banner {
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        z-index: 999999;
-        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-        border: 1px solid rgba(255, 109, 117, 0.3);
-        border-radius: 16px;
-        padding: 20px 24px;
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5), 0 0 20px rgba(255, 109, 117, 0.15);
-        font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        min-width: 340px;
-        max-width: 400px;
-        animation: slideIn 0.3s ease-out;
-      }
-      
-      @keyframes slideIn {
-        from {
-          transform: translateX(100%);
-          opacity: 0;
-        }
-        to {
-          transform: translateX(0);
-          opacity: 1;
-        }
-      }
-      
-      .veterex-banner-header {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        margin-bottom: 12px;
-      }
-      
-      .veterex-banner-icon {
-        width: 48px;
-        height: 48px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-      
-      .veterex-banner-icon img {
-        width: 48px;
-        height: 48px;
-      }
-      
-      .veterex-banner-title {
-        color: #FF6D75;
-        font-weight: 600;
-        font-size: 16px;
-        margin: 0;
-        font-family: 'Outfit', sans-serif;
-      }
-      
-      .veterex-banner-subtitle {
-        color: #a0aec0;
-        font-size: 12px;
-        margin: 0;
-        font-family: 'Outfit', sans-serif;
-      }
-      
-      .veterex-banner-media {
-        background: rgba(255, 255, 255, 0.05);
-        border-radius: 10px;
-        padding: 12px;
-        margin-bottom: 16px;
-      }
-      
-      .veterex-banner-media-title {
-        color: white;
-        font-weight: 500;
-        font-size: 14px;
-        margin: 0 0 4px 0;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        font-family: 'Outfit', sans-serif;
-      }
-      
-      .veterex-banner-media-type {
-        color: #a0aec0;
-        font-size: 12px;
-        text-transform: capitalize;
-        margin: 0;
-        font-family: 'Outfit', sans-serif;
-      }
-      
-      .veterex-banner-buttons {
-        display: flex;
-        gap: 10px;
-      }
-      
-      .veterex-banner-btn {
-        flex: 1;
-        padding: 12px 16px;
-        border-radius: 10px;
-        font-size: 14px;
-        font-weight: 500;
-        cursor: pointer;
-        border: none;
-        transition: all 0.2s;
-        font-family: 'Outfit', sans-serif;
-      }
-      
-      .veterex-banner-btn-primary {
-        background: linear-gradient(135deg, #FF6D75 0%, #9C86FF 100%);
-        color: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-      }
-      
-      .veterex-banner-btn-primary:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(255, 109, 117, 0.4);
-      }
-      
-      .veterex-banner-btn-primary img {
-        width: 18px;
-        height: 18px;
-      }
-      
-      .veterex-banner-btn-secondary {
-        background: rgba(255, 255, 255, 0.1);
-        color: #a0aec0;
-      }
-      
-      .veterex-banner-btn-secondary:hover {
-        background: rgba(255, 255, 255, 0.15);
-      }
-      
-      .veterex-banner-close {
-        position: absolute;
-        top: 8px;
-        right: 8px;
-        width: 24px;
-        height: 24px;
-        border: none;
-        background: transparent;
-        color: #718096;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 4px;
-      }
-      
-      .veterex-banner-close:hover {
-        background: rgba(255, 255, 255, 0.1);
-      }
-    </style>
-    
-    <button class="veterex-banner-close" onclick="this.parentElement.remove()">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M18 6L6 18M6 6l12 12"/>
-      </svg>
-    </button>
-    
-    <div class="veterex-banner-header">
-      <div class="veterex-banner-icon">
-        <img src="${giftboxIconUrl}" alt="Achievement" />
-      </div>
-      <div>
-        <p class="veterex-banner-title">Completion Detected!</p>
-        <p class="veterex-banner-subtitle">VeTerex Achievement</p>
-      </div>
-    </div>
-    
-    <div class="veterex-banner-media">
-      <p class="veterex-banner-media-title">${mediaInfo.title}</p>
-      <p class="veterex-banner-media-type">${mediaInfo.type} • ${mediaInfo.platform}</p>
-    </div>
-    
-    <div class="veterex-banner-buttons">
-      <button class="veterex-banner-btn veterex-banner-btn-secondary" onclick="this.closest('#veterex-completion-banner').remove()">
-        Later
-      </button>
-      <button class="veterex-banner-btn veterex-banner-btn-primary" id="veterex-mint-btn">
-        <img src="${veryCoinIconUrl}" alt="" />
-        Mint NFT
-      </button>
-    </div>
-  `;
-
-  document.body.appendChild(banner);
-
-  // Handle mint button click
-  const mintBtn = document.getElementById("veterex-mint-btn");
-  if (mintBtn) {
-    mintBtn.addEventListener("click", () => {
-      // Store completion data and open extension popup
-      // Use OPEN_MINT_MODAL which triggers chrome.action.openPopup() in background
-      // This works because the user clicked a button (user gesture)
-      const mintData = {
-        ...mediaInfo,
-        watchTime: watchTime || currentSession?.watchTime || 0,
-      };
-
-      chrome.runtime.sendMessage({
-        type: "OPEN_MINT_MODAL",
-        data: mintData,
-      });
-
-      banner.remove();
-    });
-  }
-
-  // Auto-remove after 30 seconds
-  setTimeout(() => {
-    if (document.getElementById("veterex-completion-banner")) {
-      banner.remove();
-    }
-  }, 30000);
+  showCompletionBannerUI({
+    mediaInfo,
+    watchTime: watchTime || currentSession?.watchTime || 0,
+  });
 }
 
 /**
@@ -2631,27 +2286,13 @@ function init() {
   } else {
     // For video content, use mutation observer to wait for video to load
     let initTimeout: ReturnType<typeof setTimeout>;
-    let retryCount = 0;
-    const maxRetries = 5;
 
     const tryStartTracking = () => {
       if (!currentSession) {
+        console.log("[VeTerex] Trying to start video tracking...");
         startTracking();
         // Start activity tracking as fallback for video sites with anti-debugging
         startActivityTracking();
-
-        // For YouTube, if no session after trying, retry more aggressively
-        if (
-          !currentSession &&
-          platform.name === "youtube" &&
-          retryCount < maxRetries
-        ) {
-          retryCount++;
-          console.log(
-            `[VeTerex] YouTube: retry ${retryCount}/${maxRetries} in 2s...`
-          );
-          setTimeout(tryStartTracking, 2000);
-        }
       }
     };
 
@@ -2668,25 +2309,13 @@ function init() {
       subtree: true,
     });
 
-    // Also try after initial delay - YouTube needs longer for DOM to be ready
-    const initialDelay = platform.name === "youtube" ? 2000 : 3000;
+    // Also try after initial delay
     setTimeout(() => {
       if (!currentSession) {
         console.log("[VeTerex] Attempting initial video tracking...");
         tryStartTracking();
       }
-    }, initialDelay);
-
-    // For YouTube, also listen for video element to appear
-    if (platform.name === "youtube") {
-      // Extra retry after 5 seconds for slow loading YouTube pages
-      setTimeout(() => {
-        if (!currentSession) {
-          console.log("[VeTerex] YouTube: Final attempt to start tracking...");
-          tryStartTracking();
-        }
-      }, 5000);
-    }
+    }, 3000);
   }
 
   // Stop tracking when page is unloaded
@@ -2848,10 +2477,26 @@ document.addEventListener(
   "play",
   (e) => {
     const el = e.target as HTMLVideoElement;
-    if (el && el.duration > 0 && !currentSession) {
+    // Start tracking when video plays, even if duration isn't ready yet
+    if (el && !currentSession) {
+      console.log("[VeTerex] Video play event detected, starting tracking");
       startTracking();
     }
   },
   true
 );
+
+// Also listen for timeupdate which fires reliably during playback
+document.addEventListener(
+  "timeupdate",
+  (e) => {
+    const el = e.target as HTMLVideoElement;
+    if (el && el.currentTime > 0 && !currentSession) {
+      console.log("[VeTerex] Video timeupdate detected, starting tracking");
+      startTracking();
+    }
+  },
+  true
+);
+
 init();

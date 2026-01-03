@@ -124,14 +124,35 @@ export function CommunityPage() {
       setIsLoadingMatches(true);
       try {
         if (!isConnected || !currentAccount?.address) {
+          console.log("[VeTerex] Matches: Not connected or no address", {
+            isConnected,
+            address: currentAccount?.address,
+          });
           setIsLoadingMatches(false);
           return;
         }
+
+        console.log("[VeTerex] Loading matches for:", currentAccount.address);
+
         const ids = await readUserNfts(currentAccount.address as `0x${string}`);
+        console.log("[VeTerex] User NFT IDs:", ids.length, ids.map(String));
         setUserNftIds(ids);
+
+        if (ids.length === 0) {
+          console.log("[VeTerex] User has no NFTs, no matches possible");
+          setMatchingAddrs([]);
+          setIsLoadingMatches(false);
+          return;
+        }
+
         const similars = await getSimilars(
           currentAccount.address as `0x${string}`,
           ids
+        );
+        console.log(
+          "[VeTerex] Similar users found:",
+          similars.length,
+          similars
         );
         setMatchingAddrs(similars);
 
