@@ -14,8 +14,8 @@ VeTerex/
 ## Deployed Contracts (Verychain)
 
 - Network: Verychain (Chain ID: 4613)
-- Proxy (VeTerex): 0x249448e9867e717B7AE4fa26497abe0ff2755aa5 (https://veryscan.io/address/0x249448e9867e717B7AE4fa26497abe0ff2755aa5)
-- Implementation (VeTerex): 0x1a62E377C8843F853E0B31a9894FB77082Dd843D (https://veryscan.io/address/0x1a62E377C8843F853E0B31a9894FB77082Dd843D)
+- Proxy (VeTerex): [0xc7B0c2E07ce49Ebba93bD87B66C2488e63451471](https://veryscan.io/address/0xc7B0c2E07ce49Ebba93bD87B66C2488e63451471)
+- Implementation (VeTerex): [0x52f4A416E34996F6154d5453B747D4D6Fdd4ada8](https://veryscan.io/address/0x52f4A416E34996F6154d5453B747D4D6Fdd4ada8)
 
 ## Frontend (Chrome Extension)
 
