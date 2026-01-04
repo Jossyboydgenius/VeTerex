@@ -66,6 +66,8 @@ The frontend is built as a Chrome Extension with modern web technologies:
    - Enable "Developer mode"
    - Click "Load unpacked"
    - Select the `dist-extension` folder
+  
+YouTube : https://youtu.be/9SDwl_sKYJE
 
 ### Configuration
 
