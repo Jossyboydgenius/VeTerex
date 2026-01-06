@@ -66,6 +66,8 @@ The frontend is built as a Chrome Extension with modern web technologies:
    - Enable "Developer mode"
    - Click "Load unpacked"
    - Select the `dist-extension` folder
+  
+YouTube : https://youtu.be/9SDwl_sKYJE
 
 ### Configuration
 
@@ -137,6 +139,3 @@ Tokenomics: distribute a small % of platform revenue to a staking pool for token
 Conditional fees: marketplace/listing fees only when creators monetize their completions (no upfront charge).
 Sponsor-backed rewards: brands sponsor bounty pools that pay users for specific completion actions.
 
-
-## nfft
-- after succesfull completion, backend send a code? yh we , verify the code and use it to mint? sounds better.
