@@ -1,4 +1,4 @@
-# links
+# Links
 
 Quick access to all important VeTerex and Very Network resources.
 
@@ -6,9 +6,9 @@ Quick access to all important VeTerex and Very Network resources.
 
 | Resource              | Link        |
 | --------------------- | ----------- |
-| **VeTerex Web App**   | Coming soon |
+| **VeTerex Web App**   | https://veterex.vercel.app/ |
 | **Chrome Extension**  | Coming soon |
-| **GitHub Repository** | Coming soon |
+| **GitHub Repository** | https://github.com/Jossyboydgenius/VeTerex/ |
 
 ***
 

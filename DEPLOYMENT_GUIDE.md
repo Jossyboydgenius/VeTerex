@@ -107,7 +107,7 @@ zip -r ../veterex-extension.zip .
 1. Open Chrome and go to `chrome://extensions`
 2. Enable "Developer mode"
 3. Click "Load unpacked"
-4. Select `/Users/dreytech/Projects/VeTerex/frontend/dist-extension`
+4. Select `VeTerex/frontend/dist-extension`
 
 ## Post-Deployment Checklist
 

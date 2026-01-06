@@ -1,4 +1,4 @@
-# smart contract
+# Smart contract
 
 The VeTerex smart contract is the core of the platform, managing media registrations, completion NFTs, and community features.
 
