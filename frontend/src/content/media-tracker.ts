@@ -2183,31 +2183,33 @@ function updateTracking() {
     sessionData.id ||
     `${currentSession.mediaInfo.platform}-${currentSession.startTime}`;
 
+  // Build tracking data object
+  const trackingData = {
+    id: sessionId,
+    platform: currentSession.mediaInfo.platform,
+    type: currentSession.mediaInfo.type,
+    title: currentSession.mediaInfo.title,
+    url: currentSession.mediaInfo.url,
+    progress: currentSession.mediaInfo.progress,
+    duration: currentSession.mediaInfo.duration,
+    thumbnail: mediaInfo.thumbnail || currentSession.mediaInfo.thumbnail || "",
+    startTime: currentSession.startTime,
+    lastUpdate: now,
+    watchTime: Math.round(currentSession.watchTime),
+    completed: currentSession.completed,
+    chapter: currentSession.mediaInfo.chapter,
+    episode: currentSession.mediaInfo.episode,
+    currentPage: currentSession.mediaInfo.currentPage,
+    totalPages: currentSession.mediaInfo.totalPages,
+    scrollProgress: currentSession.mediaInfo.scrollProgress,
+  };
+
   // Send progress update to background
   try {
     chrome.runtime.sendMessage(
       {
         type: "TRACKING_UPDATE",
-        data: {
-          id: sessionId,
-          platform: currentSession.mediaInfo.platform,
-          type: currentSession.mediaInfo.type,
-          title: currentSession.mediaInfo.title,
-          url: currentSession.mediaInfo.url,
-          progress: currentSession.mediaInfo.progress,
-          duration: currentSession.mediaInfo.duration,
-          thumbnail:
-            mediaInfo.thumbnail || currentSession.mediaInfo.thumbnail || "",
-          startTime: currentSession.startTime,
-          lastUpdate: now,
-          watchTime: Math.round(currentSession.watchTime),
-          completed: currentSession.completed,
-          chapter: currentSession.mediaInfo.chapter,
-          episode: currentSession.mediaInfo.episode,
-          currentPage: currentSession.mediaInfo.currentPage,
-          totalPages: currentSession.mediaInfo.totalPages,
-          scrollProgress: currentSession.mediaInfo.scrollProgress,
-        },
+        data: trackingData,
       },
       (_response) => {
         if (chrome.runtime.lastError) {
@@ -2220,6 +2222,46 @@ function updateTracking() {
     );
   } catch (error) {
     console.error("[VeTerex] Exception sending TRACKING_UPDATE:", error);
+  }
+
+  // Also directly write to chrome.storage.local as backup
+  // This ensures data persists even if service worker restarts
+  try {
+    chrome.storage.local.get(["activeTracking"], (result) => {
+      const existingTracking: Array<typeof trackingData> =
+        result.activeTracking || [];
+
+      // Find existing entry by URL or ID
+      const existingIndex = existingTracking.findIndex(
+        (t) => t.url === trackingData.url || t.id === trackingData.id
+      );
+
+      let updatedTracking: Array<typeof trackingData>;
+      if (existingIndex >= 0) {
+        // Update existing entry
+        updatedTracking = [...existingTracking];
+        updatedTracking[existingIndex] = trackingData;
+      } else {
+        // Add new entry
+        updatedTracking = [...existingTracking, trackingData];
+      }
+
+      // Keep only the last 10 tracking entries to avoid bloat
+      if (updatedTracking.length > 10) {
+        updatedTracking = updatedTracking.slice(-10);
+      }
+
+      chrome.storage.local.set({ activeTracking: updatedTracking }, () => {
+        if (chrome.runtime.lastError) {
+          console.error(
+            "[VeTerex] Error saving tracking to storage:",
+            chrome.runtime.lastError
+          );
+        }
+      });
+    });
+  } catch (err) {
+    console.error("[VeTerex] Failed to write tracking to storage:", err);
   }
 }
 
@@ -2236,11 +2278,27 @@ function stopTracking() {
     // Final update
     updateTracking();
 
+    const sessionUrl = currentSession.mediaInfo.url;
+
     // Send tracking end message
     chrome.runtime.sendMessage({
       type: "TRACKING_END",
       data: currentSession,
     });
+
+    // Also remove from chrome.storage.local
+    try {
+      chrome.storage.local.get(["activeTracking"], (result) => {
+        const existingTracking: Array<{ url: string }> =
+          result.activeTracking || [];
+        const updatedTracking = existingTracking.filter(
+          (t) => t.url !== sessionUrl
+        );
+        chrome.storage.local.set({ activeTracking: updatedTracking });
+      });
+    } catch (err) {
+      console.error("[VeTerex] Failed to remove tracking from storage:", err);
+    }
 
     currentSession = null;
   }
@@ -2518,6 +2576,8 @@ function setupExtensionBridge() {
 }
 
 // Start initialization
+console.log("[VeTerex] Initializing content script...");
+
 document.addEventListener(
   "play",
   (e) => {
@@ -2544,4 +2604,6 @@ document.addEventListener(
   true
 );
 
+console.log("[VeTerex] Calling init()...");
 init();
+console.log("[VeTerex] init() completed");
