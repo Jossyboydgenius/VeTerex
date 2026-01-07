@@ -44,6 +44,7 @@ interface CurrentSiteInfo {
   isTracking: boolean;
   isEnabled: boolean;
   domain: string; // The domain to request permission for
+  activeTrackingCount?: number;
 }
 
 const mediaTypes = [
@@ -347,7 +348,7 @@ export function HomePage() {
           isEnabled = origins.some((o) => o.includes(platformDomain));
         }
 
-        setCurrentSite({
+        const siteInfo = {
           url: tab.url,
           hostname,
           isSupported: platformName !== null,
@@ -355,7 +356,10 @@ export function HomePage() {
           isTracking: activeTracking.some((t) => t.url.includes(hostname)),
           isEnabled,
           domain: platformDomain,
-        });
+          activeTrackingCount: activeTracking.length,
+        };
+        console.log("[VeTerex Popup] Current site detection:", siteInfo);
+        setCurrentSite(siteInfo);
       } catch (error) {
         console.error("[VeTerex] Error detecting current site:", error);
       }
@@ -410,8 +414,13 @@ export function HomePage() {
             console.error("[VeTerex] Storage error:", chrome.runtime.lastError);
             return;
           }
+          console.log("[VeTerex Popup] Loaded tracking data:", {
+            activeTracking: result?.activeTracking || [],
+            count: result?.activeTracking?.length || 0,
+          });
           if (result?.activeTracking && Array.isArray(result.activeTracking)) {
             result.activeTracking.forEach((track: TrackedMedia) => {
+              console.log("[VeTerex Popup] Updating tracking item:", track);
               useAppStore.getState().updateActiveTracking(track);
             });
           }
@@ -613,6 +622,14 @@ export function HomePage() {
     ...pendingMints,
     ...activeTracking.filter((t) => !pendingMints.some((p) => p.id === t.id)),
   ];
+
+  // Debug logging for tracked media
+  console.log("[VeTerex Popup] All tracked media:", {
+    pendingMints: pendingMints.length,
+    activeTracking: activeTracking.length,
+    allTrackedMedia: allTrackedMedia.length,
+    items: allTrackedMedia,
+  });
 
   return (
     <div className="px-4 py-6 space-y-8">

@@ -244,6 +244,7 @@ export const useAppStore = create<AppState>()(
         completions: state.completions,
         trackingEnabled: state.trackingEnabled,
         trackingPermissionAsked: state.trackingPermissionAsked,
+        activeTracking: state.activeTracking,
         pendingMints: state.pendingMints,
       }),
     }

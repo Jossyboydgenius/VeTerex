@@ -2037,17 +2037,48 @@ function initSession(mediaInfo: MediaInfo) {
     completed: false,
   };
 
-  // Send tracking start message to background
-  chrome.runtime.sendMessage({
-    type: "TRACKING_START",
-    data: {
-      id: sessionId,
-      ...currentSession.mediaInfo,
-      startTime: currentSession.startTime,
-      watchTime: 0,
-      completed: false,
-    },
+  console.log("[VeTerex] Created session:", {
+    id: sessionId,
+    title: currentSession.mediaInfo.title,
+    type: currentSession.mediaInfo.type,
+    platform: currentSession.mediaInfo.platform,
   });
+
+  // Send tracking start message to background
+  try {
+    chrome.runtime.sendMessage(
+      {
+        type: "TRACKING_START",
+        data: {
+          id: sessionId,
+          platform: currentSession.mediaInfo.platform,
+          type: currentSession.mediaInfo.type,
+          title: currentSession.mediaInfo.title,
+          url: currentSession.mediaInfo.url,
+          progress: currentSession.mediaInfo.progress || 0,
+          duration: currentSession.mediaInfo.duration || 0,
+          thumbnail: currentSession.mediaInfo.thumbnail || "",
+          startTime: currentSession.startTime,
+          watchTime: 0,
+          completed: false,
+          chapter: currentSession.mediaInfo.chapter,
+          episode: currentSession.mediaInfo.episode,
+        },
+      },
+      (response) => {
+        if (chrome.runtime.lastError) {
+          console.error(
+            "[VeTerex] Error sending TRACKING_START:",
+            chrome.runtime.lastError
+          );
+        } else {
+          console.log("[VeTerex] TRACKING_START sent successfully:", response);
+        }
+      }
+    );
+  } catch (error) {
+    console.error("[VeTerex] Exception sending TRACKING_START:", error);
+  }
 
   // Update tracking every 5 seconds for more responsive UI
   trackingInterval = setInterval(updateTracking, 5000);
@@ -2153,29 +2184,43 @@ function updateTracking() {
     `${currentSession.mediaInfo.platform}-${currentSession.startTime}`;
 
   // Send progress update to background
-  chrome.runtime.sendMessage({
-    type: "TRACKING_UPDATE",
-    data: {
-      id: sessionId,
-      platform: currentSession.mediaInfo.platform,
-      type: currentSession.mediaInfo.type,
-      title: currentSession.mediaInfo.title,
-      url: currentSession.mediaInfo.url,
-      progress: currentSession.mediaInfo.progress,
-      duration: currentSession.mediaInfo.duration,
-      thumbnail:
-        mediaInfo.thumbnail || currentSession.mediaInfo.thumbnail || "",
-      startTime: currentSession.startTime,
-      lastUpdate: now,
-      watchTime: Math.round(currentSession.watchTime),
-      completed: currentSession.completed,
-      chapter: currentSession.mediaInfo.chapter,
-      episode: currentSession.mediaInfo.episode,
-      currentPage: currentSession.mediaInfo.currentPage,
-      totalPages: currentSession.mediaInfo.totalPages,
-      scrollProgress: currentSession.mediaInfo.scrollProgress,
-    },
-  });
+  try {
+    chrome.runtime.sendMessage(
+      {
+        type: "TRACKING_UPDATE",
+        data: {
+          id: sessionId,
+          platform: currentSession.mediaInfo.platform,
+          type: currentSession.mediaInfo.type,
+          title: currentSession.mediaInfo.title,
+          url: currentSession.mediaInfo.url,
+          progress: currentSession.mediaInfo.progress,
+          duration: currentSession.mediaInfo.duration,
+          thumbnail:
+            mediaInfo.thumbnail || currentSession.mediaInfo.thumbnail || "",
+          startTime: currentSession.startTime,
+          lastUpdate: now,
+          watchTime: Math.round(currentSession.watchTime),
+          completed: currentSession.completed,
+          chapter: currentSession.mediaInfo.chapter,
+          episode: currentSession.mediaInfo.episode,
+          currentPage: currentSession.mediaInfo.currentPage,
+          totalPages: currentSession.mediaInfo.totalPages,
+          scrollProgress: currentSession.mediaInfo.scrollProgress,
+        },
+      },
+      (_response) => {
+        if (chrome.runtime.lastError) {
+          console.error(
+            "[VeTerex] Error sending TRACKING_UPDATE:",
+            chrome.runtime.lastError
+          );
+        }
+      }
+    );
+  } catch (error) {
+    console.error("[VeTerex] Exception sending TRACKING_UPDATE:", error);
+  }
 }
 
 /**

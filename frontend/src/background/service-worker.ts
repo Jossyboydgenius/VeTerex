@@ -130,6 +130,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     case "TRACKING_START":
       if (sender.tab?.id) {
         const trackingData = message.data;
+        console.log("[VeTerex] TRACKING_START received:", {
+          tabId: sender.tab.id,
+          data: trackingData,
+        });
         const session: TrackingSession = {
           tabId: sender.tab.id,
           mediaInfo: {
@@ -138,17 +142,27 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             title: trackingData.title,
             url: trackingData.url,
             progress: trackingData.progress || 0,
+            duration: trackingData.duration || 0,
+            thumbnail: trackingData.thumbnail || "",
             timestamp: Date.now(),
-          },
-          startTime: Date.now(),
-          watchTime: 0,
+            ...(trackingData.id && { id: trackingData.id }),
+          } as any,
+          startTime: trackingData.startTime || Date.now(),
+          watchTime: trackingData.watchTime || 0,
           completed: false,
         };
         activeSessions.set(sender.tab.id, session);
-        console.log("[VeTerex] Tracking started:", session.mediaInfo.title);
+        console.log(
+          "[VeTerex] Tracking started:",
+          session.mediaInfo.title,
+          "Total sessions:",
+          activeSessions.size
+        );
 
         // Store in chrome.storage for popup access
         updateActiveTrackingStorage();
+      } else {
+        console.error("[VeTerex] TRACKING_START: No tab ID in sender");
       }
       sendResponse({ success: true });
       return true;
@@ -157,6 +171,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (sender.tab?.id) {
         const session = activeSessions.get(sender.tab.id);
         const updateData = message.data;
+        console.log("[VeTerex] TRACKING_UPDATE received:", {
+          tabId: sender.tab.id,
+          hasSession: !!session,
+          data: updateData,
+        });
         if (session) {
           session.watchTime = updateData.watchTime || session.watchTime || 0;
           session.mediaInfo.progress = updateData.progress || 0;
@@ -164,11 +183,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             updateData.duration || session.mediaInfo.duration || 0;
           session.mediaInfo.thumbnail =
             updateData.thumbnail || session.mediaInfo.thumbnail || "";
+          session.mediaInfo.title = updateData.title || session.mediaInfo.title;
           session.completed = updateData.completed || session.completed;
+
+          // Store the ID from content script if provided
+          if (updateData.id) {
+            (session.mediaInfo as any).id = updateData.id;
+          }
+
           console.log("[VeTerex] Tracking update:", {
             title: session.mediaInfo.title,
             progress: session.mediaInfo.progress,
             watchTime: session.watchTime,
+            totalSessions: activeSessions.size,
           });
 
           // Update storage for popup
@@ -185,8 +212,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               progress: updateData.progress || 0,
               duration: updateData.duration || 0,
               thumbnail: updateData.thumbnail || "",
-              timestamp: Date.now(),
-            },
+              timestamp: updateData.lastUpdate || Date.now(),
+              ...(updateData.id && { id: updateData.id }),
+            } as any,
             startTime: updateData.startTime || Date.now(),
             watchTime: updateData.watchTime || 0,
             completed: updateData.completed || false,
@@ -491,26 +519,34 @@ function updateActiveTrackingStorage() {
     }
   }
 
-  const trackingData = Array.from(uniqueSessions.values()).map((session) => ({
-    id: `track-${session.tabId}-${session.startTime}`,
-    platform: session.mediaInfo.platform,
-    type: session.mediaInfo.type,
-    title: session.mediaInfo.title,
-    url: session.mediaInfo.url,
-    progress: session.mediaInfo.progress || 0,
-    duration: session.mediaInfo.duration || 0,
-    watchTime: Math.round(session.watchTime),
-    thumbnail: session.mediaInfo.thumbnail || "",
-    completed: session.completed,
-    startTime: session.startTime,
-    lastUpdate: Date.now(),
-  }));
+  const trackingData = Array.from(uniqueSessions.values()).map((session) => {
+    // Use ID from mediaInfo if available, otherwise generate one
+    const sessionId =
+      (session.mediaInfo as any).id ||
+      `track-${session.tabId}-${session.startTime}`;
+
+    return {
+      id: sessionId,
+      platform: session.mediaInfo.platform,
+      type: session.mediaInfo.type,
+      title: session.mediaInfo.title,
+      url: session.mediaInfo.url,
+      progress: session.mediaInfo.progress || 0,
+      duration: session.mediaInfo.duration || 0,
+      watchTime: Math.round(session.watchTime),
+      thumbnail: session.mediaInfo.thumbnail || "",
+      completed: session.completed,
+      startTime: session.startTime,
+      lastUpdate: Date.now(),
+    };
+  });
 
   chrome.storage.local.set({ activeTracking: trackingData }, () => {
     console.log(
       "[VeTerex] Updated active tracking storage:",
       trackingData.length,
-      "sessions"
+      "sessions",
+      trackingData
     );
   });
 }
