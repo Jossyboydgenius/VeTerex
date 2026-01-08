@@ -58,8 +58,25 @@ function generateWalletPassword(userId: string): string {
   // Get or create a device-specific salt
   let salt = localStorage.getItem(WALLET_SALT_KEY);
   if (!salt) {
-    salt = CryptoJS.lib.WordArray.random(256 / 8).toString();
-    localStorage.setItem(WALLET_SALT_KEY, salt);
+    // Try to load from chrome.storage.local if in extension
+    if (typeof chrome !== "undefined" && chrome.storage?.local) {
+      // This is synchronous fallback, ideally should be async
+      // But we need sync access for encryption/decryption
+      const storedSalt = localStorage.getItem(WALLET_SALT_KEY);
+      if (storedSalt) {
+        salt = storedSalt;
+      }
+    }
+
+    if (!salt) {
+      salt = CryptoJS.lib.WordArray.random(256 / 8).toString();
+      localStorage.setItem(WALLET_SALT_KEY, salt);
+
+      // Also save to chrome.storage.local in extension
+      if (typeof chrome !== "undefined" && chrome.storage?.local) {
+        chrome.storage.local.set({ [WALLET_SALT_KEY]: salt });
+      }
+    }
   }
 
   // Create password from userId + salt
@@ -113,10 +130,11 @@ export function getVeryChainClient() {
 
 /**
  * Create a new random wallet for a VeryChat user
+ * Now includes mnemonic generation for backup/recovery
  */
 export function createWalletForUser(userId: string): VeryChainWallet {
   try {
-    // Generate a random mnemonic phrase
+    // Generate a random mnemonic phrase (12 words)
     const mnemonic = generateMnemonic(english);
 
     // Create account from mnemonic
@@ -137,6 +155,9 @@ export function createWalletForUser(userId: string): VeryChainWallet {
 
     console.log("[Wallet] Created new wallet for VeryChat user:", userId);
     console.log("[Wallet] Address:", account.address);
+    console.warn(
+      "[Wallet] ⚠️ IMPORTANT: User should backup their recovery phrase immediately!"
+    );
 
     return walletData;
   } catch (error) {
@@ -261,8 +282,23 @@ function storeWallet(wallet: VeryChainWallet): void {
       existingWallets.push(encryptedWallet);
     }
 
+    // Store in localStorage
     localStorage.setItem(WALLET_STORAGE_KEY, JSON.stringify(existingWallets));
-    console.log("[Wallet] Wallet stored with AES encryption");
+
+    // Also store in chrome.storage.local for extension persistence
+    if (typeof chrome !== "undefined" && chrome.storage?.local) {
+      chrome.storage.local.set({
+        [WALLET_STORAGE_KEY]: existingWallets,
+        [WALLET_SALT_KEY]: localStorage.getItem(WALLET_SALT_KEY),
+      });
+      console.log(
+        "[Wallet] Wallet stored with AES encryption (localStorage + chrome.storage)"
+      );
+    } else {
+      console.log(
+        "[Wallet] Wallet stored with AES encryption (localStorage only)"
+      );
+    }
   } catch (error) {
     console.error("[Wallet] Error storing wallet:", error);
   }
@@ -271,22 +307,14 @@ function storeWallet(wallet: VeryChainWallet): void {
 /**
  * Get all stored wallets
  * Works in both web and extension contexts
+ * In extension context, stores in BOTH localStorage AND chrome.storage.local for persistence
  */
 function getStoredWallets(): VeryChainWallet[] {
   try {
-    // Check if we're in extension context
-    const isExtension = typeof chrome !== "undefined" && chrome.storage;
-
-    if (isExtension) {
-      // For extension: use chrome.storage.local (synchronous fallback)
-      // Note: This is a temporary sync solution. Ideally use chrome.storage.local.get with callbacks
-      const stored = localStorage.getItem(WALLET_STORAGE_KEY);
-      return stored ? JSON.parse(stored) : [];
-    } else {
-      // For web: use localStorage
-      const stored = localStorage.getItem(WALLET_STORAGE_KEY);
-      return stored ? JSON.parse(stored) : [];
-    }
+    // Always use localStorage as primary storage
+    // Extension also syncs to chrome.storage.local via storeWallet()
+    const stored = localStorage.getItem(WALLET_STORAGE_KEY);
+    return stored ? JSON.parse(stored) : [];
   } catch (error) {
     console.error("[Wallet] Error reading stored wallets:", error);
     return [];
@@ -300,9 +328,17 @@ function getStoredWallets(): VeryChainWallet[] {
 export function getWalletForUser(userId: string): VeryChainWallet | null {
   try {
     const wallets = getStoredWallets();
+    console.log("[Wallet] getWalletForUser called for:", userId);
+    console.log("[Wallet] Total wallets in storage:", wallets.length);
+    console.log(
+      "[Wallet] Wallet userIds:",
+      wallets.map((w) => w.userId)
+    );
+
     const wallet = wallets.find((w) => w.userId === userId);
 
     if (!wallet) {
+      console.warn("[Wallet] No wallet found for user:", userId);
       return null;
     }
 
@@ -325,17 +361,29 @@ export function getWalletForUser(userId: string): VeryChainWallet | null {
 /**
  * Get or create wallet for a VeryChat user
  * If wallet exists, return it. Otherwise, create a new one.
+ * Returns both the wallet and whether it was newly created
  */
-export function getOrCreateWalletForUser(userId: string): VeryChainWallet {
+export function getOrCreateWalletForUser(userId: string): {
+  wallet: VeryChainWallet;
+  isNewWallet: boolean;
+} {
+  console.log("[Wallet] getOrCreateWalletForUser called for:", userId);
   const existingWallet = getWalletForUser(userId);
   if (existingWallet) {
-    console.log("[Wallet] Found existing wallet for user:", userId);
-    return existingWallet;
+    console.log(
+      "[Wallet] Found existing wallet for user:",
+      userId,
+      "address:",
+      existingWallet.address
+    );
+    return { wallet: existingWallet, isNewWallet: false };
   }
 
   console.log("[Wallet] Creating new wallet for user:", userId);
-  // Use the simpler private key approach to avoid mnemonic complexity
-  return createWalletFromPrivateKey(userId);
+  // Create wallet with mnemonic for backup capability
+  const newWallet = createWalletForUser(userId);
+  console.log("[Wallet] New wallet created with address:", newWallet.address);
+  return { wallet: newWallet, isNewWallet: true };
 }
 
 /**
@@ -384,18 +432,89 @@ export function clearAllWallets(): void {
  */
 export function exportPrivateKey(userId: string): string | null {
   try {
+    console.log("[Wallet] exportPrivateKey called for:", userId);
     const wallet = getWalletForUser(userId);
     if (!wallet) {
-      console.warn("[Wallet] No wallet found for user:", userId);
+      console.warn("[Wallet] No wallet found for export, userId:", userId);
       return null;
     }
 
+    console.log("[Wallet] Wallet found for export, address:", wallet.address);
     console.warn("[Wallet] ⚠️ Private key exported - Keep it secure!");
     return wallet.privateKey;
   } catch (error) {
     console.error("[Wallet] Error exporting private key:", error);
     return null;
   }
+}
+
+/**
+ * Export wallet recovery phrase (mnemonic) for user
+ * This is the preferred backup method - users should write this down
+ * Returns 12-word mnemonic phrase
+ */
+export function exportRecoveryPhrase(userId: string): string | null {
+  try {
+    console.log("[Wallet] exportRecoveryPhrase called for:", userId);
+    const wallet = getWalletForUser(userId);
+    if (!wallet) {
+      console.warn(
+        "[Wallet] No wallet found for recovery phrase export, userId:",
+        userId
+      );
+      return null;
+    }
+
+    if (!wallet.mnemonic) {
+      console.warn(
+        "[Wallet] Wallet has no mnemonic (created from private key)"
+      );
+      return null;
+    }
+
+    console.log("[Wallet] Recovery phrase found for export");
+    console.warn(
+      "[Wallet] ⚠️ Recovery phrase exported - Keep it secure and offline!"
+    );
+    return wallet.mnemonic;
+  } catch (error) {
+    console.error("[Wallet] Error exporting recovery phrase:", error);
+    return null;
+  }
+}
+
+/**
+ * Initialize wallet storage from chrome.storage.local in extension context
+ * Call this on extension startup to ensure wallet data is synced
+ */
+export function initWalletStorageFromExtension(): Promise<void> {
+  return new Promise((resolve) => {
+    if (typeof chrome !== "undefined" && chrome.storage?.local) {
+      chrome.storage.local.get(
+        [WALLET_STORAGE_KEY, WALLET_SALT_KEY],
+        (result) => {
+          if (result[WALLET_STORAGE_KEY]) {
+            localStorage.setItem(
+              WALLET_STORAGE_KEY,
+              JSON.stringify(result[WALLET_STORAGE_KEY])
+            );
+            console.log(
+              "[Wallet] Loaded wallet data from chrome.storage.local"
+            );
+          }
+          if (result[WALLET_SALT_KEY]) {
+            localStorage.setItem(WALLET_SALT_KEY, result[WALLET_SALT_KEY]);
+            console.log(
+              "[Wallet] Loaded wallet salt from chrome.storage.local"
+            );
+          }
+          resolve();
+        }
+      );
+    } else {
+      resolve();
+    }
+  });
 }
 
 /**

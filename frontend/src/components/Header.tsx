@@ -16,6 +16,7 @@ import { getOrCreateWalletForUser } from "@/services/wallet";
 import { createOrUpdateUser, getUserProfile } from "@/services/backend";
 import { VeryChatLoginModal } from "./VeryChatLoginModal";
 import { AuthChoiceModal } from "./AuthChoiceModal";
+import { WalletBackupModal } from "./WalletBackupModal";
 import { LogoIcon, WalletImageIcon } from "./AppIcons";
 
 // Documentation URL
@@ -36,12 +37,14 @@ export function Header() {
   const {
     isConnected,
     isLoading,
+    isConnecting,
     authMethod,
     currentAccount,
     verychatUser,
     backendUser,
     setConnected,
     setLoading,
+    setConnecting,
     setAuthMethod,
     setWepinUser,
     setVeryChatUser,
@@ -57,6 +60,11 @@ export function Header() {
   const [copiedHandle, setCopiedHandle] = useState(false);
   const [showVeryChatModal, setShowVeryChatModal] = useState(false);
   const [showAuthChoiceModal, setShowAuthChoiceModal] = useState(false);
+  const [showBackupModal, setShowBackupModal] = useState(false);
+  const [newWalletData, setNewWalletData] = useState<{
+    address: string;
+    recoveryPhrase: string;
+  } | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
@@ -135,6 +143,9 @@ export function Header() {
           (user?.status === "success" || status === "login") &&
           accounts.length > 0
         ) {
+          // Show connecting state while setting up
+          setConnecting(true);
+
           setWepinUser(user);
           setAuthMethod("wepin");
           setAccounts(accounts);
@@ -144,6 +155,7 @@ export function Header() {
           }
 
           setConnected(true);
+          setConnecting(false);
 
           // Send session to extension with full accounts data
           const sessionData = {
@@ -240,6 +252,7 @@ export function Header() {
         }
       } catch (error: unknown) {
         console.error("Wepin auth error:", error);
+        setConnecting(false);
         addToast({
           type: "error",
           message: "Failed to connect wallet. Please try again.",
@@ -253,6 +266,7 @@ export function Header() {
       setAccounts,
       setAuthMethod,
       setConnected,
+      setConnecting,
       setCurrentAccount,
       setLoading,
       setWepinUser,
@@ -317,6 +331,9 @@ export function Header() {
       const user = await loginWithWepin();
 
       if (user?.status === "success") {
+        // Show connecting state while setting up
+        setConnecting(true);
+
         setWepinUser(user);
         setAuthMethod("wepin");
 
@@ -351,6 +368,8 @@ export function Header() {
         }
 
         setConnected(true);
+        setConnecting(false);
+
         addToast({
           type: "success",
           message: "Wallet connected successfully!",
@@ -358,6 +377,7 @@ export function Header() {
       }
     } catch (error: unknown) {
       console.error("Connection error:", error);
+      setConnecting(false);
       addToast({
         type: "error",
         message: "Failed to connect wallet. Please try again.",
@@ -372,64 +392,87 @@ export function Header() {
     profileName: string;
     profileImage?: string;
   }) => {
+    // Show connecting state
+    setConnecting(true);
+
     setVeryChatUser(user);
     setAuthMethod("verychat");
 
-    // First, check if user already exists in backend with a wallet
-    let walletAddress = "";
-    let existingWallet = false;
+    // CRITICAL: Always ensure wallet exists locally first
+    // This creates/loads the wallet with private key in encrypted local storage
+    let localWallet;
+    let isNewWallet = false;
+    try {
+      const result = getOrCreateWalletForUser(user.profileId);
+      localWallet = result.wallet;
+      isNewWallet = result.isNewWallet;
+      console.log(
+        "[VeryChat] Local wallet ensured:",
+        localWallet.address,
+        "isNew:",
+        isNewWallet
+      );
+
+      // If this is a new wallet, prepare to show backup modal
+      if (isNewWallet && localWallet.mnemonic) {
+        setNewWalletData({
+          address: localWallet.address,
+          recoveryPhrase: localWallet.mnemonic,
+        });
+      }
+    } catch (error) {
+      console.error("[VeryChat] Failed to get/create local wallet:", error);
+      setConnecting(false);
+      addToast({
+        type: "error",
+        message: "Failed to initialize wallet. Please try again.",
+      });
+      return;
+    }
+
+    // Now check if user exists in backend with a wallet
+    let walletAddress = localWallet.address;
+    let existingBackendUser = false;
 
     try {
-      // Try to get existing user from backend first
+      // Try to get existing user from backend
       const existingUser = await getUserProfile("verychat", user.profileId);
-      if (existingUser?.wallets && existingUser.wallets.length > 0) {
-        // User has existing wallet in database - use it
-        walletAddress = existingUser.wallets[0].walletAddress;
-        existingWallet = true;
-        console.log("[VeryChat] Using existing wallet from DB:", walletAddress);
-
-        // Set the existing wallet as current account
-        setCurrentAccount({
-          address: walletAddress,
-          network: "verychain",
-          symbol: "VERY",
-          label: "Verychain Wallet",
-          name: "Verychain",
-        });
+      if (existingUser) {
+        existingBackendUser = true;
+        console.log("[VeryChat] Found existing backend user");
         setBackendUser(existingUser);
+
+        // If backend has wallets, use the first one's address for consistency
+        // But keep the local wallet for private key access
+        if (existingUser.wallets && existingUser.wallets.length > 0) {
+          walletAddress = existingUser.wallets[0].walletAddress;
+          console.log("[VeryChat] Using wallet from backend:", walletAddress);
+        }
       }
     } catch {
-      console.log("[VeryChat] No existing user found, will create new one");
+      console.log(
+        "[VeryChat] No existing backend user found, will create new one"
+      );
     }
 
-    // If no existing wallet, create new one locally
-    if (!existingWallet) {
-      try {
-        const wallet = getOrCreateWalletForUser(user.profileId);
-        walletAddress = wallet.address;
-        // Set the wallet as the current account so minting works
-        setCurrentAccount({
-          address: wallet.address,
-          network: "verychain",
-          symbol: "VERY",
-          label: "Verychain Wallet",
-          name: "Verychain",
-        });
-        console.log("[VeryChat] Created new local wallet:", wallet.address);
-      } catch (error) {
-        console.error("[VeryChat] Failed to create wallet:", error);
-      }
-    }
+    // Set the wallet as current account
+    setCurrentAccount({
+      address: walletAddress,
+      network: "verychain",
+      symbol: "VERY",
+      label: "Verychain Wallet",
+      name: "Verychain",
+    });
 
-    // Create or update user in backend database (only if we created a new wallet)
-    if (!existingWallet) {
+    // Create or update user in backend database if needed
+    if (!existingBackendUser) {
       try {
         const backendUserData = await createOrUpdateUser({
           authId: user.profileId,
           authMethod: "verychat",
           profileName: user.profileName,
           profileImage: user.profileImage,
-          walletAddress: walletAddress || undefined,
+          walletAddress: walletAddress,
         });
         setBackendUser(backendUserData.user);
         console.log(
@@ -442,7 +485,15 @@ export function Header() {
       }
     }
 
+    // Connection complete
     setConnected(true);
+    setConnecting(false);
+
+    // Show backup modal for new wallets
+    if (isNewWallet && newWalletData) {
+      setShowBackupModal(true);
+    }
+
     addToast({
       type: "success",
       message: `Welcome, ${user.profileName}!`,
@@ -520,17 +571,17 @@ export function Header() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={handleConnect}
-                disabled={isLoading}
+                disabled={isLoading || isConnecting}
                 className="flex items-center gap-2 px-4 py-2 bg-main-gradient 
                      rounded-xl font-medium text-white text-sm
                      hover:shadow-neon-coral 
                      disabled:opacity-50 disabled:cursor-not-allowed
                      transition-all duration-200 shadow-lg shadow-coral/25"
               >
-                {isLoading ? (
+                {isLoading || isConnecting ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    <span>Connecting...</span>
+                    <span>{isConnecting ? "Connecting..." : "Loading..."}</span>
                   </>
                 ) : (
                   <>
@@ -539,6 +590,14 @@ export function Header() {
                   </>
                 )}
               </motion.button>
+            ) : isConnecting ? (
+              <motion.div
+                className="flex items-center gap-2 px-4 py-2 bg-dark-800 border border-dark-700 
+                     rounded-xl font-medium text-white text-sm"
+              >
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <span>Connecting...</span>
+              </motion.div>
             ) : (
               <div className="relative">
                 <motion.button
@@ -776,6 +835,20 @@ export function Header() {
         onClose={() => setShowVeryChatModal(false)}
         onSuccess={handleVeryChatSuccess}
       />
+
+      {/* Wallet Backup Modal (shown after creating new wallet) */}
+      {newWalletData && (
+        <WalletBackupModal
+          isOpen={showBackupModal}
+          onClose={() => {
+            setShowBackupModal(false);
+            setNewWalletData(null);
+          }}
+          recoveryPhrase={newWalletData.recoveryPhrase}
+          walletAddress={newWalletData.address}
+          isFirstTimeSetup={true}
+        />
+      )}
     </>
   );
 }

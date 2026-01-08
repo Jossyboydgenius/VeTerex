@@ -39,6 +39,7 @@ interface AppState {
   // Auth State
   isConnected: boolean;
   isLoading: boolean;
+  isConnecting: boolean; // New: shows "Connecting..." state after login while wallet is being set up
   authMethod: AuthMethod;
   wepinUser: WepinUser | null;
   verychatUser: VeryChatUser | null;
@@ -63,6 +64,7 @@ interface AppState {
   // Actions
   setConnected: (connected: boolean) => void;
   setLoading: (loading: boolean) => void;
+  setConnecting: (connecting: boolean) => void;
   setAuthMethod: (method: AuthMethod) => void;
   setWepinUser: (user: WepinUser | null) => void;
   setVeryChatUser: (user: VeryChatUser | null) => void;
@@ -98,6 +100,7 @@ export const useAppStore = create<AppState>()(
       // Initial State
       isConnected: false,
       isLoading: false,
+      isConnecting: false,
       authMethod: null,
       wepinUser: null,
       verychatUser: null,
@@ -116,6 +119,7 @@ export const useAppStore = create<AppState>()(
       // Auth Actions
       setConnected: (connected) => set({ isConnected: connected }),
       setLoading: (loading) => set({ isLoading: loading }),
+      setConnecting: (connecting) => set({ isConnecting: connecting }),
       setAuthMethod: (method) => set({ authMethod: method }),
       setBackendUser: (user) => set({ backendUser: user }),
       updateBackendUserImage: (imageUrl) =>

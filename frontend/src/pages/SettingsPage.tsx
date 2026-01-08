@@ -25,7 +25,12 @@ import {
 import { useAppStore } from "@/store/useAppStore";
 import { isExtension } from "@/services/tracking";
 import { CustomDropdown } from "@/components/CustomDropdown";
-import { exportPrivateKey, isWalletEncrypted } from "@/services/wallet";
+import {
+  exportPrivateKey,
+  exportRecoveryPhrase,
+  isWalletEncrypted,
+} from "@/services/wallet";
+import { WalletBackupModal } from "@/components/WalletBackupModal";
 
 interface CustomSite {
   id: string;
@@ -174,6 +179,7 @@ export function SettingsPage() {
     setTrackingEnabled: setGlobalTrackingEnabled,
     verychatUser,
     authMethod,
+    currentAccount,
   } = useAppStore();
   const [trackingEnabled, setTrackingEnabled] = useState(globalTrackingEnabled);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
@@ -192,6 +198,8 @@ export function SettingsPage() {
   const [showPrivateKey, setShowPrivateKey] = useState(false);
   const [exportedKey, setExportedKey] = useState<string | null>(null);
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
+  const [showBackupModal, setShowBackupModal] = useState(false);
+  const [recoveryPhrase, setRecoveryPhrase] = useState<string | null>(null);
 
   // Filter platforms based on search query
   const filteredPlatforms = useMemo(() => {
@@ -440,7 +448,9 @@ export function SettingsPage() {
       return;
     }
 
+    // Try to get the local wallet
     const privateKey = exportPrivateKey(verychatUser.profileId);
+
     if (privateKey) {
       setExportedKey(privateKey);
       setShowPrivateKey(true);
@@ -465,11 +475,12 @@ export function SettingsPage() {
         message: "Private key exported successfully",
       });
     } else {
+      // No local wallet found - user might be on a different device
       addToast({
         type: "error",
         message:
-          "Unable to export wallet. Please try disconnecting and logging in again to refresh your wallet data.",
-        duration: 6000,
+          "No wallet found on this device. Private keys are stored locally for security and cannot be retrieved from the cloud. If you're on a new device, you'll need to either import your existing private key or use the new wallet address created on this device.",
+        duration: 8000,
       });
     }
   };
@@ -481,6 +492,34 @@ export function SettingsPage() {
       addToast({
         type: "success",
         message: "Private key copied to clipboard",
+      });
+    }
+  };
+
+  // View recovery phrase (12-word mnemonic)
+  const handleViewRecoveryPhrase = () => {
+    if (!verychatUser) {
+      addToast({
+        type: "error",
+        message: "Only VeryChat users can view recovery phrase",
+      });
+      return;
+    }
+
+    const phrase = exportRecoveryPhrase(verychatUser.profileId);
+    if (phrase) {
+      setRecoveryPhrase(phrase);
+      setShowBackupModal(true);
+      addToast({
+        type: "success",
+        message: "Recovery phrase loaded",
+      });
+    } else {
+      addToast({
+        type: "error",
+        message:
+          "No recovery phrase found. Your wallet may have been created from a private key without a mnemonic.",
+        duration: 6000,
       });
     }
   };
@@ -601,6 +640,31 @@ export function SettingsPage() {
               Wallet Security
             </h2>
             <div className="card space-y-4">
+              {/* Recovery Phrase Section */}
+              <div className="flex items-start gap-3 pb-4 border-b border-dark-700">
+                <div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center shrink-0">
+                  <Key className="w-5 h-5 text-green-500" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium text-white mb-1">
+                    View Recovery Phrase
+                  </p>
+                  <p className="text-xs text-dark-400 mb-3">
+                    Your 12-word recovery phrase is the master key to your
+                    wallet. Write it down and store it safely offline. This is
+                    the recommended way to backup your wallet.
+                  </p>
+                  <button
+                    onClick={handleViewRecoveryPhrase}
+                    className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-colors text-sm flex items-center gap-2"
+                  >
+                    <Eye className="w-4 h-4" />
+                    View Recovery Phrase
+                  </button>
+                </div>
+              </div>
+
+              {/* Private Key Export Section */}
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center shrink-0">
                   <Key className="w-5 h-5 text-amber-500" />
@@ -1157,6 +1221,20 @@ export function SettingsPage() {
           </>
         )}
       </AnimatePresence>
+
+      {/* Wallet Backup Modal */}
+      {recoveryPhrase && currentAccount && (
+        <WalletBackupModal
+          isOpen={showBackupModal}
+          onClose={() => {
+            setShowBackupModal(false);
+            setRecoveryPhrase(null);
+          }}
+          recoveryPhrase={recoveryPhrase}
+          walletAddress={currentAccount.address}
+          isFirstTimeSetup={false}
+        />
+      )}
     </div>
   );
 }

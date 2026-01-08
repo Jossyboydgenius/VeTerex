@@ -9,6 +9,7 @@ import {
   isExtension,
   MESSAGE_TYPES,
 } from "@/services/extensionBridge";
+import { initWalletStorageFromExtension } from "@/services/wallet";
 
 /**
  * Hook to synchronize session between web app and extension
@@ -92,13 +93,20 @@ export function useExtensionSync() {
   useEffect(() => {
     // For extension: load from chrome.storage and listen for updates
     if (isExtension()) {
-      // Load initial session
-      chrome.storage.local.get(["veterex_session"], (result) => {
-        const sessionData = result.veterex_session as SessionData | undefined;
-        if (sessionData && sessionData.isConnected) {
-          console.log("[useExtensionSync] Loading session from chrome.storage");
-          applySession(sessionData);
-        }
+      // Initialize wallet storage from chrome.storage first
+      initWalletStorageFromExtension().then(() => {
+        console.log("[useExtensionSync] Wallet storage initialized");
+
+        // Load initial session
+        chrome.storage.local.get(["veterex_session"], (result) => {
+          const sessionData = result.veterex_session as SessionData | undefined;
+          if (sessionData && sessionData.isConnected) {
+            console.log(
+              "[useExtensionSync] Loading session from chrome.storage"
+            );
+            applySession(sessionData);
+          }
+        });
       });
 
       // Listen for session updates from background script (Wepin auth redirect flow)
