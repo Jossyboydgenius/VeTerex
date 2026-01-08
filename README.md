@@ -39,6 +39,10 @@ The frontend is built as a Chrome Extension with modern web technologies:
 
 ### Getting Started
 
+```bash
+git clone https://github.com/Jossyboydgenius/VeTerex
+```
+
 1. **Install Dependencies**
    ```bash
    cd frontend
