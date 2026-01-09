@@ -437,4 +437,157 @@ router.get(
   }
 );
 
+// ========== WALLET PASSWORD ROUTES ==========
+
+/**
+ * Set wallet password
+ * POST /api/user/wallet-password
+ */
+router.post(
+  "/wallet-password",
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { userId, password } = req.body;
+
+      if (!userId || !password) {
+        res.status(400).json({ error: "Missing userId or password" });
+        return;
+      }
+
+      // Password validation
+      if (password.length < 8) {
+        res
+          .status(400)
+          .json({ error: "Password must be at least 8 characters" });
+        return;
+      }
+
+      await userService.setWalletPassword(userId, password);
+
+      res.json({
+        success: true,
+        message: "Wallet password set successfully",
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+);
+
+/**
+ * Verify wallet password
+ * POST /api/user/wallet-password/verify
+ */
+router.post(
+  "/wallet-password/verify",
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { userId, password } = req.body;
+
+      if (!userId || !password) {
+        res.status(400).json({ error: "Missing userId or password" });
+        return;
+      }
+
+      const isValid = await userService.verifyWalletPassword(userId, password);
+
+      res.json({
+        success: true,
+        isValid,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+);
+
+/**
+ * Check if user has wallet password
+ * GET /api/user/wallet-password/check/:userId
+ */
+router.get(
+  "/wallet-password/check/:userId",
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { userId } = req.params;
+
+      const hasPassword = await userService.hasWalletPassword(userId);
+
+      res.json({
+        success: true,
+        hasPassword,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+);
+
+/**
+ * Reset wallet password
+ * PUT /api/user/wallet-password/reset
+ */
+router.put(
+  "/wallet-password/reset",
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { userId, newPassword } = req.body;
+
+      if (!userId || !newPassword) {
+        res.status(400).json({ error: "Missing userId or newPassword" });
+        return;
+      }
+
+      // Password validation
+      if (newPassword.length < 8) {
+        res
+          .status(400)
+          .json({ error: "Password must be at least 8 characters" });
+        return;
+      }
+
+      await userService.resetWalletPassword(userId, newPassword);
+
+      res.json({
+        success: true,
+        message: "Wallet password reset successfully",
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+);
+
+/**
+ * Update user's wallet address (for wallet import)
+ * PUT /api/user/wallet-address
+ */
+router.put(
+  "/wallet-address",
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { userId, walletAddress, network, chainId } = req.body;
+
+      if (!userId || !walletAddress) {
+        res.status(400).json({ error: "Missing userId or walletAddress" });
+        return;
+      }
+
+      const wallet = await walletService.updateUserWalletAddress(
+        userId,
+        walletAddress,
+        network || "verychain",
+        chainId || 4613
+      );
+
+      res.json({
+        success: true,
+        wallet,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+);
+
 export default router;

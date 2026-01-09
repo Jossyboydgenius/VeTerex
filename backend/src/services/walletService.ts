@@ -148,3 +148,44 @@ export async function deleteWallet(walletAddress: string) {
     throw error;
   }
 }
+
+/**
+ * Update user's wallet address (for wallet import on new device)
+ * This replaces the old wallet with the new imported one
+ */
+export async function updateUserWalletAddress(
+  userId: string,
+  newWalletAddress: string,
+  network: string = "verychain",
+  chainId: number = 4613
+) {
+  try {
+    // Delete old wallets for this user
+    await prisma.wallet.deleteMany({
+      where: { userId },
+    });
+
+    console.log("🗑️ Deleted old wallets for user:", userId);
+
+    // Create new wallet record
+    const wallet = await prisma.wallet.create({
+      data: {
+        userId,
+        walletAddress: newWalletAddress,
+        network,
+        chainId,
+      },
+    });
+
+    console.log(
+      "✅ New wallet created for user:",
+      userId,
+      "address:",
+      newWalletAddress
+    );
+    return wallet;
+  } catch (error) {
+    console.error("❌ Error updating user wallet address:", error);
+    throw error;
+  }
+}

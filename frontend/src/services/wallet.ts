@@ -198,68 +198,6 @@ export function createWalletFromPrivateKey(userId: string): VeryChainWallet {
 }
 
 /**
- * Import wallet from private key
- */
-export function importWalletFromPrivateKey(
-  privateKey: string,
-  userId: string
-): VeryChainWallet {
-  try {
-    // Ensure private key has 0x prefix
-    const formattedKey = (
-      privateKey.startsWith("0x") ? privateKey : `0x${privateKey}`
-    ) as `0x${string}`;
-
-    const account = privateKeyToAccount(formattedKey);
-
-    const walletData: VeryChainWallet = {
-      address: account.address,
-      privateKey: formattedKey,
-      userId,
-      createdAt: new Date().toISOString(),
-    };
-
-    storeWallet(walletData);
-
-    console.log("[Wallet] Imported wallet for user:", userId);
-    return walletData;
-  } catch (error) {
-    console.error("[Wallet] Error importing wallet:", error);
-    throw error;
-  }
-}
-
-/**
- * Import wallet from mnemonic phrase
- */
-export function importWalletFromMnemonic(
-  mnemonic: string,
-  userId: string
-): VeryChainWallet {
-  try {
-    const account = mnemonicToAccount(mnemonic);
-
-    const walletData: VeryChainWallet = {
-      address: account.address,
-      privateKey: account.getHdKey().privateKey
-        ? `0x${Buffer.from(account.getHdKey().privateKey!).toString("hex")}`
-        : generatePrivateKey(),
-      mnemonic,
-      userId,
-      createdAt: new Date().toISOString(),
-    };
-
-    storeWallet(walletData);
-
-    console.log("[Wallet] Imported wallet from mnemonic for user:", userId);
-    return walletData;
-  } catch (error) {
-    console.error("[Wallet] Error importing wallet from mnemonic:", error);
-    throw error;
-  }
-}
-
-/**
  * Store wallet data securely with encryption
  */
 function storeWallet(wallet: VeryChainWallet): void {
@@ -368,22 +306,37 @@ export function getOrCreateWalletForUser(userId: string): {
   isNewWallet: boolean;
 } {
   console.log("[Wallet] getOrCreateWalletForUser called for:", userId);
-  const existingWallet = getWalletForUser(userId);
-  if (existingWallet) {
-    console.log(
-      "[Wallet] Found existing wallet for user:",
-      userId,
-      "address:",
-      existingWallet.address
-    );
-    return { wallet: existingWallet, isNewWallet: false };
+
+  if (!userId) {
+    console.error("[Wallet] userId is required but was empty/null");
+    throw new Error("User ID is required to create wallet");
   }
 
-  console.log("[Wallet] Creating new wallet for user:", userId);
-  // Create wallet with mnemonic for backup capability
-  const newWallet = createWalletForUser(userId);
-  console.log("[Wallet] New wallet created with address:", newWallet.address);
-  return { wallet: newWallet, isNewWallet: true };
+  try {
+    const existingWallet = getWalletForUser(userId);
+    if (existingWallet) {
+      console.log(
+        "[Wallet] Found existing wallet for user:",
+        userId,
+        "address:",
+        existingWallet.address
+      );
+      return { wallet: existingWallet, isNewWallet: false };
+    }
+
+    console.log("[Wallet] Creating new wallet for user:", userId);
+    // Create wallet with mnemonic for backup capability
+    const newWallet = createWalletForUser(userId);
+    console.log("[Wallet] New wallet created with address:", newWallet.address);
+    return { wallet: newWallet, isNewWallet: true };
+  } catch (error) {
+    console.error("[Wallet] Error in getOrCreateWalletForUser:", error);
+    throw new Error(
+      `Failed to initialize wallet: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`
+    );
+  }
 }
 
 /**
@@ -480,6 +433,206 @@ export function exportRecoveryPhrase(userId: string): string | null {
   } catch (error) {
     console.error("[Wallet] Error exporting recovery phrase:", error);
     return null;
+  }
+}
+
+/**
+ * Import wallet from recovery phrase (mnemonic)
+ * This allows users to restore their wallet on new devices
+ * @param mnemonic - 12/24 word recovery phrase
+ * @param userId - VeryChat profileId
+ * @param previewOnly - If true, only returns the address without saving
+ * @returns The wallet address (0x...)
+ */
+export async function importWalletFromMnemonic(
+  mnemonic: string,
+  previewOnly: boolean = false
+): Promise<string> {
+  try {
+    console.log(
+      "[Wallet] importWalletFromMnemonic called, preview:",
+      previewOnly
+    );
+
+    // Clean and validate mnemonic
+    const cleanedMnemonic = mnemonic.trim().toLowerCase().replace(/\s+/g, " ");
+    const words = cleanedMnemonic.split(" ");
+
+    // Validate word count
+    const validLengths = [12, 15, 18, 21, 24];
+    if (!validLengths.includes(words.length)) {
+      throw new Error(
+        `Invalid mnemonic length. Expected 12, 15, 18, 21, or 24 words, got ${words.length}`
+      );
+    }
+
+    // Create account from mnemonic (BIP-39 standard)
+    let account;
+    try {
+      account = mnemonicToAccount(cleanedMnemonic);
+    } catch (error) {
+      console.error("[Wallet] Failed to derive account from mnemonic:", error);
+      throw new Error(
+        "Invalid recovery phrase. Please check that all words are correct and in the right order."
+      );
+    }
+
+    // If preview mode, just return the address
+    if (previewOnly) {
+      console.log("[Wallet] Preview mode - derived address:", account.address);
+      return account.address;
+    }
+
+    // Get current user from VeryChat (we need userId to encrypt)
+    // Note: This requires the user to be logged in
+    // The calling component should handle getting userId
+
+    console.warn(
+      "[Wallet] ⚠️ Importing wallet will replace any existing wallet!"
+    );
+
+    // Return the address - the actual import with userId will be done by the component
+    return account.address;
+  } catch (error) {
+    console.error("[Wallet] Error importing wallet from mnemonic:", error);
+    throw error;
+  }
+}
+
+/**
+ * Import wallet from recovery phrase with user ID
+ * This is the actual import that saves to storage
+ * @param mnemonic - 12/24 word recovery phrase
+ * @param userId - VeryChat profileId for encryption
+ * @returns The imported wallet
+ */
+export function importWalletWithUserId(
+  mnemonic: string,
+  userId: string
+): VeryChainWallet {
+  try {
+    console.log("[Wallet] importWalletWithUserId called for user:", userId);
+
+    // Clean mnemonic
+    const cleanedMnemonic = mnemonic.trim().toLowerCase().replace(/\s+/g, " ");
+
+    // Create account from mnemonic
+    const account = mnemonicToAccount(cleanedMnemonic);
+
+    // Extract private key
+    const privateKey = account.getHdKey().privateKey
+      ? `0x${Buffer.from(account.getHdKey().privateKey!).toString("hex")}`
+      : generatePrivateKey();
+
+    // Create wallet data
+    const walletData: VeryChainWallet = {
+      address: account.address,
+      privateKey,
+      mnemonic: cleanedMnemonic,
+      userId,
+      createdAt: new Date().toISOString(),
+    };
+
+    // Delete any existing wallet first
+    const existingWallets = getStoredWallets();
+    const filteredWallets = existingWallets.filter(
+      (w: VeryChainWallet) => w.userId !== userId
+    );
+
+    if (filteredWallets.length < existingWallets.length) {
+      console.warn("[Wallet] Removed existing wallet for user:", userId);
+    }
+
+    // Store the imported wallet
+    storeWallet(walletData);
+
+    console.log("[Wallet] ✅ Wallet imported successfully!");
+    console.log("[Wallet] Address:", account.address);
+    console.warn("[Wallet] ⚠️ Make sure to backup your recovery phrase!");
+
+    return walletData;
+  } catch (error) {
+    console.error("[Wallet] Error importing wallet with userId:", error);
+    throw error;
+  }
+}
+
+/**
+ * Preview wallet address from private key (doesn't save)
+ * @param privateKey - Private key with or without 0x prefix
+ * @returns The wallet address
+ */
+export function previewAddressFromPrivateKey(privateKey: string): string {
+  try {
+    // Normalize private key format
+    let cleanedKey = privateKey.trim();
+    if (!cleanedKey.startsWith("0x")) {
+      cleanedKey = `0x${cleanedKey}`;
+    }
+
+    // Create account from private key
+    const account = privateKeyToAccount(cleanedKey as `0x${string}`);
+
+    return account.address;
+  } catch (error) {
+    console.error("[Wallet] Error previewing private key:", error);
+    throw new Error("Invalid private key format");
+  }
+}
+
+/**
+ * Import wallet from private key with user ID
+ * This saves to storage and replaces existing wallet
+ * @param privateKey - Private key with or without 0x prefix
+ * @param userId - VeryChat profileId for encryption
+ * @returns The imported wallet
+ */
+export function importWalletFromPrivateKey(
+  privateKey: string,
+  userId: string
+): VeryChainWallet {
+  try {
+    console.log("[Wallet] importWalletFromPrivateKey called for user:", userId);
+
+    // Normalize private key format
+    let cleanedKey = privateKey.trim();
+    if (!cleanedKey.startsWith("0x")) {
+      cleanedKey = `0x${cleanedKey}`;
+    }
+
+    // Create account from private key
+    const account = privateKeyToAccount(cleanedKey as `0x${string}`);
+
+    // Create wallet data (no mnemonic for private key imports)
+    const walletData: VeryChainWallet = {
+      address: account.address,
+      privateKey: cleanedKey,
+      // No mnemonic for private key imports
+      userId,
+      createdAt: new Date().toISOString(),
+    };
+
+    // Delete any existing wallet first
+    const existingWallets = getStoredWallets();
+    const filteredWallets = existingWallets.filter(
+      (w: VeryChainWallet) => w.userId !== userId
+    );
+
+    if (filteredWallets.length < existingWallets.length) {
+      console.warn("[Wallet] Removed existing wallet for user:", userId);
+    }
+
+    // Store the imported wallet
+    storeWallet(walletData);
+
+    console.log("[Wallet] ✅ Wallet imported from private key successfully!");
+    console.log("[Wallet] Address:", account.address);
+    console.warn("[Wallet] ⚠️ No recovery phrase - backup your private key!");
+
+    return walletData;
+  } catch (error) {
+    console.error("[Wallet] Error importing wallet from private key:", error);
+    throw new Error("Invalid private key or import failed");
   }
 }
 

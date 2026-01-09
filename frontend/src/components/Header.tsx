@@ -17,6 +17,7 @@ import { createOrUpdateUser, getUserProfile } from "@/services/backend";
 import { VeryChatLoginModal } from "./VeryChatLoginModal";
 import { AuthChoiceModal } from "./AuthChoiceModal";
 import { WalletBackupModal } from "./WalletBackupModal";
+import { WalletImportModal } from "./WalletImportModal";
 import { LogoIcon, WalletImageIcon } from "./AppIcons";
 
 // Documentation URL
@@ -61,10 +62,14 @@ export function Header() {
   const [showVeryChatModal, setShowVeryChatModal] = useState(false);
   const [showAuthChoiceModal, setShowAuthChoiceModal] = useState(false);
   const [showBackupModal, setShowBackupModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [newWalletData, setNewWalletData] = useState<{
     address: string;
     recoveryPhrase: string;
   } | null>(null);
+  const [pendingImportUserId, setPendingImportUserId] = useState<string | null>(
+    null
+  );
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
@@ -387,6 +392,37 @@ export function Header() {
     }
   };
 
+  // Handle wallet import success
+  const handleImportSuccess = async (address: string) => {
+    if (!pendingImportUserId) {
+      addToast({
+        type: "error",
+        message: "No user session found. Please log in first.",
+      });
+      return;
+    }
+
+    addToast({
+      type: "success",
+      message: `Wallet imported successfully! Address: ${address.slice(
+        0,
+        6
+      )}...${address.slice(-4)}`,
+      duration: 5000,
+    });
+
+    // The wallet is already imported, just need to update UI
+    setCurrentAccount({
+      address,
+      network: "verychain",
+      symbol: "VERY",
+      label: "Verychain Wallet",
+      name: "Verychain",
+    });
+
+    setPendingImportUserId(null);
+  };
+
   const handleVeryChatSuccess = async (user: {
     profileId: string;
     profileName: string;
@@ -403,6 +439,11 @@ export function Header() {
     let localWallet;
     let isNewWallet = false;
     try {
+      if (!user.profileId) {
+        throw new Error("Profile ID is missing from VeryChat user data");
+      }
+
+      console.log("[VeryChat] Initializing wallet for user:", user.profileId);
       const result = getOrCreateWalletForUser(user.profileId);
       localWallet = result.wallet;
       isNewWallet = result.isNewWallet;
@@ -422,10 +463,16 @@ export function Header() {
       }
     } catch (error) {
       console.error("[VeryChat] Failed to get/create local wallet:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error occurred";
+      console.error("[VeryChat] Error details:", errorMessage);
+
       setConnecting(false);
+      setLoading(false);
       addToast({
         type: "error",
-        message: "Failed to initialize wallet. Please try again.",
+        message: `Failed to initialize wallet: ${errorMessage}. Please try again or contact support.`,
+        duration: 8000,
       });
       return;
     }
@@ -847,6 +894,19 @@ export function Header() {
           recoveryPhrase={newWalletData.recoveryPhrase}
           walletAddress={newWalletData.address}
           isFirstTimeSetup={true}
+        />
+      )}
+
+      {/* Wallet Import Modal (for restoring wallet on new device) */}
+      {pendingImportUserId && (
+        <WalletImportModal
+          isOpen={showImportModal}
+          onClose={() => {
+            setShowImportModal(false);
+            setPendingImportUserId(null);
+          }}
+          onImportSuccess={handleImportSuccess}
+          userId={pendingImportUserId}
         />
       )}
     </>

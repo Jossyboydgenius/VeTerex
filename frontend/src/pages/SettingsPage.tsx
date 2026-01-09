@@ -31,6 +31,10 @@ import {
   isWalletEncrypted,
 } from "@/services/wallet";
 import { WalletBackupModal } from "@/components/WalletBackupModal";
+import { WalletImportModal } from "@/components/WalletImportModal";
+import WalletPasswordSetupModal from "@/components/WalletPasswordSetupModal";
+import WalletPasswordVerifyModal from "@/components/WalletPasswordVerifyModal";
+import { hasWalletPassword } from "@/services/backend";
 
 interface CustomSite {
   id: string;
@@ -199,7 +203,11 @@ export function SettingsPage() {
   const [exportedKey, setExportedKey] = useState<string | null>(null);
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
   const [showBackupModal, setShowBackupModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [recoveryPhrase, setRecoveryPhrase] = useState<string | null>(null);
+  const [showPasswordSetup, setShowPasswordSetup] = useState(false);
+  const [showPasswordVerify, setShowPasswordVerify] = useState(false);
+  const backendUser = useAppStore((state) => state.backendUser);
 
   // Filter platforms based on search query
   const filteredPlatforms = useMemo(() => {
@@ -448,6 +456,51 @@ export function SettingsPage() {
       return;
     }
 
+    if (!backendUser?.id) {
+      addToast({
+        type: "error",
+        message: "Backend user not found. Please try logging in again.",
+      });
+      return;
+    }
+
+    // Check if user has wallet password set
+    try {
+      const result = await hasWalletPassword(backendUser.id);
+
+      if (!result.hasPassword) {
+        // No password set, show password setup modal first
+        setShowPasswordSetup(true);
+        return;
+      }
+
+      // Password exists, show verification modal
+      setShowPasswordVerify(true);
+    } catch (error) {
+      console.error("Error checking wallet password:", error);
+      addToast({
+        type: "error",
+        message: "Failed to verify wallet security. Please try again.",
+      });
+    }
+  };
+
+  const handlePasswordSetupSuccess = () => {
+    setShowPasswordSetup(false);
+    addToast({
+      type: "success",
+      message:
+        "Wallet password set successfully. You can now export your private key.",
+    });
+    // Now show verification modal
+    setShowPasswordVerify(true);
+  };
+
+  const handlePasswordVerified = async () => {
+    setShowPasswordVerify(false);
+
+    if (!verychatUser) return;
+
     // Try to get the local wallet
     const privateKey = exportPrivateKey(verychatUser.profileId);
 
@@ -474,6 +527,13 @@ export function SettingsPage() {
         type: "success",
         message: "Private key exported successfully",
       });
+
+      // Auto-clear clipboard after 30 seconds for security
+      setTimeout(() => {
+        setShowPrivateKey(false);
+        setExportedKey(null);
+        setQrCodeUrl(null);
+      }, 30000);
     } else {
       // No local wallet found - user might be on a different device
       addToast({
@@ -522,6 +582,34 @@ export function SettingsPage() {
         duration: 6000,
       });
     }
+  };
+
+  // Import wallet from recovery phrase
+  const handleImportWallet = () => {
+    if (!verychatUser) {
+      addToast({
+        type: "error",
+        message: "Only VeryChat users can import wallets",
+      });
+      return;
+    }
+
+    setShowImportModal(true);
+  };
+
+  // Handle successful wallet import
+  const handleImportSuccess = (address: string) => {
+    addToast({
+      type: "success",
+      message: `Wallet imported successfully! Address: ${address.slice(
+        0,
+        6
+      )}...${address.slice(-4)}`,
+      duration: 5000,
+    });
+
+    // Reload the page to reflect the new wallet
+    window.location.reload();
   };
 
   // Download private key as file
@@ -640,6 +728,30 @@ export function SettingsPage() {
               Wallet Security
             </h2>
             <div className="card space-y-4">
+              {/* Import Wallet Section */}
+              <div className="flex items-start gap-3 pb-4 border-b border-dark-700">
+                <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center shrink-0">
+                  <Download className="w-5 h-5 text-blue-500" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium text-white mb-1">
+                    Import Existing Wallet
+                  </p>
+                  <p className="text-xs text-dark-400 mb-3">
+                    Restore your wallet from another device using your 12-word
+                    recovery phrase or private key. This will replace your
+                    current wallet.
+                  </p>
+                  <button
+                    onClick={handleImportWallet}
+                    className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors text-sm flex items-center gap-2"
+                  >
+                    <Download className="w-4 h-4" />
+                    Import Wallet
+                  </button>
+                </div>
+              </div>
+
               {/* Recovery Phrase Section */}
               <div className="flex items-start gap-3 pb-4 border-b border-dark-700">
                 <div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center shrink-0">
@@ -1235,6 +1347,28 @@ export function SettingsPage() {
           isFirstTimeSetup={false}
         />
       )}
+
+      {/* Wallet Import Modal */}
+      {verychatUser && (
+        <WalletImportModal
+          isOpen={showImportModal}
+          onClose={() => setShowImportModal(false)}
+          onImportSuccess={handleImportSuccess}
+          userId={verychatUser.profileId}
+        />
+      )}
+
+      <WalletPasswordSetupModal
+        isOpen={showPasswordSetup}
+        onClose={() => setShowPasswordSetup(false)}
+        onSuccess={handlePasswordSetupSuccess}
+      />
+
+      <WalletPasswordVerifyModal
+        isOpen={showPasswordVerify}
+        onClose={() => setShowPasswordVerify(false)}
+        onVerified={handlePasswordVerified}
+      />
     </div>
   );
 }

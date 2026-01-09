@@ -361,9 +361,13 @@ export function VeryChatLoginModal({
                   <h4 className="text-lg font-semibold text-white mb-2">
                     Connected Successfully!
                   </h4>
-                  <p className="text-sm text-dark-400">
-                    Welcome to VeTerex. Start tracking your media journey!
+                  <p className="text-sm text-dark-400 mb-3">
+                    Welcome to VeTerex. Setting up your wallet...
                   </p>
+                  <div className="flex items-center justify-center gap-2 text-coral">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span className="text-sm">Initializing...</span>
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>

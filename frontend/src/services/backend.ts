@@ -306,6 +306,73 @@ export async function updateTransactionStatus(
 }
 
 // ==================
+// Wallet Password API
+// ==================
+
+/**
+ * Set wallet password for private key export protection
+ */
+export async function setWalletPassword(
+  userId: string,
+  password: string
+): Promise<{ success: boolean; message: string }> {
+  return backendRequest("/api/user/wallet-password", {
+    method: "POST",
+    body: JSON.stringify({ userId, password }),
+  });
+}
+
+/**
+ * Verify wallet password
+ */
+export async function verifyWalletPassword(
+  userId: string,
+  password: string
+): Promise<{ success: boolean; isValid: boolean }> {
+  return backendRequest("/api/user/wallet-password/verify", {
+    method: "POST",
+    body: JSON.stringify({ userId, password }),
+  });
+}
+
+/**
+ * Check if user has wallet password set
+ */
+export async function hasWalletPassword(
+  userId: string
+): Promise<{ success: boolean; hasPassword: boolean }> {
+  return backendRequest(`/api/user/wallet-password/check/${userId}`);
+}
+
+/**
+ * Reset wallet password
+ */
+export async function resetWalletPassword(
+  userId: string,
+  newPassword: string
+): Promise<{ success: boolean; message: string }> {
+  return backendRequest("/api/user/wallet-password/reset", {
+    method: "PUT",
+    body: JSON.stringify({ userId, newPassword }),
+  });
+}
+
+/**
+ * Update user's wallet address (for wallet import)
+ */
+export async function updateUserWalletAddress(
+  userId: string,
+  walletAddress: string,
+  network: string = "verychain",
+  chainId: number = 4613
+): Promise<{ success: boolean; wallet: any }> {
+  return backendRequest("/api/user/wallet-address", {
+    method: "PUT",
+    body: JSON.stringify({ userId, walletAddress, network, chainId }),
+  });
+}
+
+// ==================
 // Health Check
 // ==================
 
