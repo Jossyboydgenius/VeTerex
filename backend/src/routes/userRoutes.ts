@@ -1,12 +1,12 @@
 import { Router, Request, Response } from "express";
-import type { Router as RouterType } from "express";
+import type { Router as IRouter } from "express";
 import { verifyVeryChatToken, optionalAuth } from "../middleware/auth.js";
 import * as userService from "../services/userService.js";
 import * as walletService from "../services/walletService.js";
 import * as fileService from "../services/fileService.js";
 import * as transactionService from "../services/transactionService.js";
 
-const router: RouterType = Router();
+const router: IRouter = Router();
 
 // ========== USER ROUTES ==========
 

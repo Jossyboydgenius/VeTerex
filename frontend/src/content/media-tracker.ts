@@ -2501,13 +2501,14 @@ function setupExtensionBridge() {
         message
       );
 
-      // Handle SESSION_DATA or SESSION_SYNC (both are used for session sync)
+      // Handle SESSION_DATA or SESSION_SYNC - BUT ONLY FOR WEPIN
       if (
-        message.type === MESSAGE_TYPES.SESSION_DATA ||
-        message.type === "SESSION_SYNC"
+        (message.type === MESSAGE_TYPES.SESSION_DATA ||
+          message.type === "SESSION_SYNC") &&
+        message.authMethod === "wepin" // CRITICAL: Only accept Wepin sessions
       ) {
         console.log(
-          "[VeTerex Bridge] Saving session to chrome.storage:",
+          "[VeTerex Bridge] Saving WEPIN session to chrome.storage:",
           message.data
         );
 
@@ -2543,6 +2544,17 @@ function setupExtensionBridge() {
           },
           "*"
         );
+      } else if (
+        (message.type === MESSAGE_TYPES.SESSION_DATA ||
+          message.type === "SESSION_SYNC") &&
+        message.authMethod !== "wepin"
+      ) {
+        // Reject non-Wepin sessions from web page
+        console.log(
+          "[VeTerex Bridge] Ignoring non-Wepin session from web page:",
+          message.authMethod
+        );
+        // VeryChat authenticates directly in extension, not via web page
       }
 
       if (message.type === MESSAGE_TYPES.REQUEST_SESSION) {

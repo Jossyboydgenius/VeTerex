@@ -8,6 +8,7 @@
     "dev:node": "node --import tsx src/server.ts",
     "build": "prisma generate && prisma db push && tsc",
     "start": "node dist/server.js",
+    "postinstall": "prisma generate",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:push": "prisma db push",

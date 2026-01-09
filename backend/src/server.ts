@@ -1,4 +1,4 @@
-import express, { Express, Request, Response, NextFunction } from "express";
+import express, { Request, Response, NextFunction, Application } from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import multer from "multer";
@@ -7,7 +7,7 @@ import userRoutes from "./routes/userRoutes.js";
 // Load environment variables
 dotenv.config();
 
-const app: Express = express();
+const app: Application = express();
 const PORT = process.env.PORT || 3001;
 
 // ========== MIDDLEWARE ==========

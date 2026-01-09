@@ -71,7 +71,7 @@ export default function AuthPage() {
       // Create/get local wallet (for extension sync)
       const localWallet = getOrCreateWalletForUser(userId);
 
-      // Store session data in localStorage for extension to pickup
+      // Store session data for extension to pickup
       const sessionData = {
         isConnected: true,
         authMethod: "wepin" as const,
@@ -83,34 +83,49 @@ export default function AuthPage() {
         timestamp: Date.now(),
       };
 
-      localStorage.setItem(
-        "veterex_wepin_session",
-        JSON.stringify(sessionData)
-      );
-
-      // Send message to extension via postMessage (works from web page)
+      // CRITICAL: Send to extension via postMessage
+      // Content script will catch this and save to chrome.storage.local
       window.postMessage(
         {
-          type: "WEPIN_AUTH_SUCCESS",
-          source: "veterex-auth",
+          type: "SESSION_SYNC",
+          source: "veterex-web",
+          authMethod: "wepin", // ONLY Wepin, not VeryChat
           data: sessionData,
         },
         "*"
       );
 
-      console.log(
-        "[AuthPage] Session stored in localStorage and sent via postMessage"
-      );
+      console.log("[AuthPage] Wepin session sent to extension via postMessage");
 
       setStatus("success");
       setSuccessMessage(
         "Wallet connected successfully! Extension will update shortly..."
       );
 
-      // Close window after 3 seconds (give extension time to sync session)
-      setTimeout(() => {
+      // Wait for extension to acknowledge receipt, then close
+      // Listen for acknowledgment from extension
+      const ackTimeout = setTimeout(() => {
+        console.log("[AuthPage] Extension sync timeout, closing anyway");
         window.close();
-      }, 3000);
+      }, 5000);
+
+      const handleAck = (event: MessageEvent) => {
+        if (
+          event.data &&
+          event.data.type === "SESSION_SYNC_ACK" &&
+          event.data.source === "veterex-extension"
+        ) {
+          console.log("[AuthPage] Extension acknowledged session sync");
+          clearTimeout(ackTimeout);
+          window.removeEventListener("message", handleAck);
+          // Give UI a moment to show success, then close
+          setTimeout(() => {
+            window.close();
+          }, 1500);
+        }
+      };
+
+      window.addEventListener("message", handleAck);
     } catch (error) {
       console.error("Wepin auth error:", error);
       setStatus("error");
