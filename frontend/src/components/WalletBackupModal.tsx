@@ -9,6 +9,10 @@ import {
   Eye,
   EyeOff,
 } from "lucide-react";
+import WalletPasswordSetupModal from "./WalletPasswordSetupModal";
+import WalletPasswordVerifyModal from "./WalletPasswordVerifyModal";
+import { hasWalletPassword } from "../services/backend";
+import { useAppStore } from "../store/useAppStore";
 
 interface WalletBackupModalProps {
   isOpen: boolean;
@@ -25,19 +29,71 @@ export function WalletBackupModal({
   walletAddress,
   isFirstTimeSetup = false,
 }: WalletBackupModalProps) {
+  const backendUser = useAppStore((state) => state.backendUser);
   const [copied, setCopied] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [showPhrase, setShowPhrase] = useState(false);
+  const [phraseRevealed, setPhraseRevealed] = useState(false);
+  const [showPasswordSetup, setShowPasswordSetup] = useState(false);
+  const [showPasswordVerify, setShowPasswordVerify] = useState(false);
 
   const words = recoveryPhrase.split(" ");
 
-  const handleCopy = () => {
+  const handleRevealPhrase = async () => {
+    if (!backendUser?.id) {
+      alert("Please log in to reveal recovery phrase");
+      return;
+    }
+
+    try {
+      // Check if password exists
+      const result = await hasWalletPassword(backendUser.id);
+
+      if (!result.hasPassword) {
+        // No password set, show setup modal
+        setShowPasswordSetup(true);
+        return;
+      }
+
+      // Password exists, verify it
+      setShowPasswordVerify(true);
+    } catch (error) {
+      console.error("Error checking wallet password:", error);
+      alert("Failed to verify security. Please try again.");
+    }
+  };
+
+  const handlePasswordVerified = () => {
+    setShowPasswordVerify(false);
+    setPhraseRevealed(true);
+    setShowPhrase(true);
+  };
+
+  const handlePasswordSetupSuccess = () => {
+    setShowPasswordSetup(false);
+    // After setup, show verification
+    setShowPasswordVerify(true);
+  };
+
+  const handleCopy = async () => {
+    // Require password verification before copying
+    if (!phraseRevealed) {
+      await handleRevealPhrase();
+      return;
+    }
+
     navigator.clipboard.writeText(recoveryPhrase);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
+    // Require password verification before downloading
+    if (!phraseRevealed) {
+      await handleRevealPhrase();
+      return;
+    }
+
     const blob = new Blob(
       [
         `VeTerex Wallet Recovery Phrase\n\nWallet Address: ${walletAddress}\n\nRecovery Phrase:\n${recoveryPhrase}\n\nIMPORTANT:\n- Keep this phrase safe and private\n- Never share it with anyone\n- Anyone with this phrase can access your wallet\n- Store it offline in a secure location\n- VeTerex cannot recover this phrase if lost`,
@@ -69,13 +125,13 @@ export function WalletBackupModal({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/80 backdrop-blur-md"
             onClick={handleClose}
           />
 
@@ -115,29 +171,25 @@ export function WalletBackupModal({
             <div className="p-6 space-y-6">
               {/* Warning Banner */}
               <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
-                <div className="flex gap-3">
-                  <AlertTriangle className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" />
-                  <div className="space-y-2">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="w-5 h-5 text-yellow-500 flex-shrink-0" />
                     <h3 className="text-yellow-500 font-semibold">
-                      ⚠️ CRITICAL - Read Carefully
+                      CRITICAL - Read Carefully
                     </h3>
-                    <ul className="text-yellow-200/90 text-sm space-y-1">
-                      <li>• This is your ONLY way to recover your wallet</li>
-                      <li>
-                        • Write it down on paper and store it safely offline
-                      </li>
-                      <li>
-                        • NEVER share this phrase with anyone - not even VeTerex
-                        support
-                      </li>
-                      <li>
-                        • Anyone with this phrase can steal all your funds
-                      </li>
-                      <li>
-                        • VeTerex CANNOT recover this phrase if you lose it
-                      </li>
-                    </ul>
                   </div>
+                  <ul className="text-yellow-200/90 text-sm space-y-1">
+                    <li>• This is your ONLY way to recover your wallet</li>
+                    <li>
+                      • Write it down on paper and store it safely offline
+                    </li>
+                    <li>
+                      • NEVER share this phrase with anyone - not even VeTerex
+                      support
+                    </li>
+                    <li>• Anyone with this phrase can steal all your funds</li>
+                    <li>• VeTerex CANNOT recover this phrase if you lose it</li>
+                  </ul>
                 </div>
               </div>
 
@@ -157,26 +209,36 @@ export function WalletBackupModal({
                   <label className="text-white font-semibold">
                     12-Word Recovery Phrase:
                   </label>
-                  <button
-                    onClick={() => setShowPhrase(!showPhrase)}
-                    className="flex items-center gap-2 text-sm text-purple-400 hover:text-purple-300 transition-colors"
-                  >
-                    {showPhrase ? (
-                      <>
-                        <EyeOff className="w-4 h-4" />
-                        Hide
-                      </>
-                    ) : (
-                      <>
-                        <Eye className="w-4 h-4" />
-                        Show
-                      </>
-                    )}
-                  </button>
+                  {!phraseRevealed ? (
+                    <button
+                      onClick={handleRevealPhrase}
+                      className="flex items-center gap-2 px-3 py-1.5 text-sm bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                    >
+                      <Eye className="w-4 h-4" />
+                      Reveal Phrase
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => setShowPhrase(!showPhrase)}
+                      className="flex items-center gap-2 text-sm text-purple-400 hover:text-purple-300 transition-colors"
+                    >
+                      {showPhrase ? (
+                        <>
+                          <EyeOff className="w-4 h-4" />
+                          Hide
+                        </>
+                      ) : (
+                        <>
+                          <Eye className="w-4 h-4" />
+                          Show
+                        </>
+                      )}
+                    </button>
+                  )}
                 </div>
 
                 <div className="bg-gray-800/80 rounded-lg p-6 border border-purple-500/30">
-                  {showPhrase ? (
+                  {phraseRevealed && showPhrase ? (
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                       {words.map((word, index) => (
                         <div
@@ -297,6 +359,19 @@ export function WalletBackupModal({
           </motion.div>
         </div>
       )}
+
+      {/* Password Modals */}
+      <WalletPasswordSetupModal
+        isOpen={showPasswordSetup}
+        onClose={() => setShowPasswordSetup(false)}
+        onSuccess={handlePasswordSetupSuccess}
+      />
+
+      <WalletPasswordVerifyModal
+        isOpen={showPasswordVerify}
+        onClose={() => setShowPasswordVerify(false)}
+        onVerified={handlePasswordVerified}
+      />
     </AnimatePresence>
   );
 }

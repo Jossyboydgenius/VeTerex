@@ -23,10 +23,6 @@ import { LogoIcon, WalletImageIcon } from "./AppIcons";
 // Documentation URL
 const DOCS_URL = "https://veterex.gitbook.io/veterex-docs/";
 
-// Web app URL for extension auth redirect
-// Production URL for VeTerex web app
-const WEB_APP_URL = "https://veterex.vercel.app";
-
 // Check if running as Chrome extension
 const isExtension =
   typeof chrome !== "undefined" &&
@@ -861,13 +857,12 @@ export function Header() {
         onChooseWepin={() => {
           setShowAuthChoiceModal(false);
           if (isExtension) {
-            // Extension: Open web app in new tab with auth params
-            const extensionId = chrome.runtime?.id || "";
-            const authUrl = `${WEB_APP_URL}?extension_auth=wepin&extension_id=${extensionId}`;
+            // Extension: Open localhost auth page in new tab
+            const authUrl = `http://localhost:5173/auth`;
             window.open(authUrl, "_blank");
             addToast({
               type: "info",
-              message: "Opening browser for Wepin login...",
+              message: "Opening authentication page...",
             });
           } else {
             // Web: Use Wepin directly

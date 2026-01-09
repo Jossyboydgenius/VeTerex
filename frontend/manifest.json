@@ -76,6 +76,15 @@
       ],
       "js": ["src/content/media-tracker.ts"],
       "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "http://localhost:5173/auth*",
+        "https://*.veterex.io/auth*",
+        "https://*.vercel.app/auth*"
+      ],
+      "js": ["src/content/auth-relay.ts"],
+      "run_at": "document_start"
     }
   ],
   "content_security_policy": {
@@ -91,7 +100,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["icons/*"],
+      "resources": ["icons/*", "auth.html"],
       "matches": ["<all_urls>"]
     }
   ]

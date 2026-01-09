@@ -83,6 +83,40 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   console.log("[VeTerex] Message received:", message.type);
 
   switch (message.type) {
+    // Wepin authentication flow - check localStorage periodically
+    case "CHECK_WEPIN_SESSION":
+      // This is called from content script when auth page posts message
+      chrome.storage.local.get(["veterex_wepin_session"], (result) => {
+        if (result.veterex_wepin_session) {
+          console.log("[VeTerex] Wepin session found in localStorage");
+          sendResponse({
+            success: true,
+            session: result.veterex_wepin_session,
+          });
+        } else {
+          sendResponse({ success: false });
+        }
+      });
+      return true;
+
+    case "WEPIN_AUTH_SUCCESS":
+      // Store authenticated session data from auth page
+      const sessionData = message.data;
+
+      chrome.storage.local.set({ veterex_session: sessionData }, () => {
+        console.log("[VeTerex] Wepin auth success, session stored");
+
+        // Notify popup to update UI
+        chrome.runtime
+          .sendMessage({ type: "SESSION_UPDATED", data: sessionData })
+          .catch(() => {
+            // Ignore if popup not open
+          });
+
+        sendResponse({ success: true });
+      });
+      return true;
+
     // User data management
     case "GET_USER_DATA":
       chrome.storage.local.get(["userData"], (result) => {

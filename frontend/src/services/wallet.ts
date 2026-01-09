@@ -5,6 +5,7 @@
  * Implements AES encryption for private key security
  */
 
+import { Buffer } from "buffer";
 import {
   generatePrivateKey,
   privateKeyToAccount,
