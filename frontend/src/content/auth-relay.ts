@@ -1,7 +1,9 @@
 // Content script for VeTerex auth page
-// Relays postMessage events to background script
+// Relays Wepin authentication from auth page to background script
+// NOTE: This is ONLY for Wepin auth via localhost/auth page
+// VeryChat authentication happens directly in the extension popup
 
-console.log("[VeTerex Auth Content] Script loaded");
+console.log("[VeTerex Auth Relay] Script loaded for Wepin auth only");
 
 // Listen for postMessage from auth page
 window.addEventListener("message", (event) => {
@@ -17,8 +19,17 @@ window.addEventListener("message", (event) => {
     event.data?.type === "WEPIN_AUTH_SUCCESS" &&
     event.data?.source === "veterex-auth"
   ) {
+    // Validate it's actually a Wepin session (not VeryChat)
+    if (event.data.data?.authMethod !== "wepin") {
+      console.warn(
+        "[VeTerex Auth Relay] Ignoring non-Wepin auth:",
+        event.data.data?.authMethod
+      );
+      return;
+    }
+
     console.log(
-      "[VeTerex Auth Content] Wepin auth success, relaying to background"
+      "[VeTerex Auth Relay] Wepin auth success, relaying to background"
     );
 
     // Send to background script
@@ -28,7 +39,7 @@ window.addEventListener("message", (event) => {
         data: event.data.data,
       },
       (response) => {
-        console.log("[VeTerex Auth Content] Background response:", response);
+        console.log("[VeTerex Auth Relay] Background response:", response);
       }
     );
   }

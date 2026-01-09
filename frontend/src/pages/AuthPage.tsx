@@ -103,12 +103,14 @@ export default function AuthPage() {
       );
 
       setStatus("success");
-      setSuccessMessage("Wallet connected successfully!");
+      setSuccessMessage(
+        "Wallet connected successfully! Extension will update shortly..."
+      );
 
-      // Close window after 2 seconds
+      // Close window after 3 seconds (give extension time to sync session)
       setTimeout(() => {
         window.close();
-      }, 2000);
+      }, 3000);
     } catch (error) {
       console.error("Wepin auth error:", error);
       setStatus("error");

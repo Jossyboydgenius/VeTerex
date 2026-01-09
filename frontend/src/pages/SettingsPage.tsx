@@ -752,32 +752,8 @@ export function SettingsPage() {
                 </div>
               </div>
 
-              {/* Recovery Phrase Section */}
-              <div className="flex items-start gap-3 pb-4 border-b border-dark-700">
-                <div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center shrink-0">
-                  <Key className="w-5 h-5 text-green-500" />
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium text-white mb-1">
-                    View Recovery Phrase
-                  </p>
-                  <p className="text-xs text-dark-400 mb-3">
-                    Your 12-word recovery phrase is the master key to your
-                    wallet. Write it down and store it safely offline. This is
-                    the recommended way to backup your wallet.
-                  </p>
-                  <button
-                    onClick={handleViewRecoveryPhrase}
-                    className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-colors text-sm flex items-center gap-2"
-                  >
-                    <Eye className="w-4 h-4" />
-                    View Recovery Phrase
-                  </button>
-                </div>
-              </div>
-
               {/* Private Key Export Section */}
-              <div className="flex items-start gap-3">
+              <div className="flex items-start gap-3 pb-4 border-b border-dark-700">
                 <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center shrink-0">
                   <Key className="w-5 h-5 text-amber-500" />
                 </div>
@@ -956,6 +932,30 @@ export function SettingsPage() {
                       </div>
                     </div>
                   )}
+                </div>
+              </div>
+
+              {/* Recovery Phrase Section (moved to end) */}
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center shrink-0">
+                  <Key className="w-5 h-5 text-green-500" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium text-white mb-1">
+                    View Recovery Phrase
+                  </p>
+                  <p className="text-xs text-dark-400 mb-3">
+                    Your 12-word recovery phrase is the master key to your
+                    wallet. Write it down and store it safely offline. This is
+                    the recommended way to backup your wallet.
+                  </p>
+                  <button
+                    onClick={handleViewRecoveryPhrase}
+                    className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-colors text-sm flex items-center gap-2"
+                  >
+                    <Eye className="w-4 h-4" />
+                    View Recovery Phrase
+                  </button>
                 </div>
               </div>
             </div>

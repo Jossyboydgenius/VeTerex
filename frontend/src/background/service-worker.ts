@@ -100,21 +100,35 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return true;
 
     case "WEPIN_AUTH_SUCCESS":
-      // Store authenticated session data from auth page
+      // Store Wepin session from auth page (NOT VeryChat - that's extension-only)
       const sessionData = message.data;
 
-      chrome.storage.local.set({ veterex_session: sessionData }, () => {
-        console.log("[VeTerex] Wepin auth success, session stored");
-
-        // Notify popup to update UI
-        chrome.runtime
-          .sendMessage({ type: "SESSION_UPDATED", data: sessionData })
-          .catch(() => {
-            // Ignore if popup not open
-          });
-
-        sendResponse({ success: true });
+      console.log("[VeTerex] Wepin auth success from auth page:", {
+        authMethod: sessionData.authMethod,
+        hasAccounts: !!sessionData.accounts,
       });
+
+      // Store ONLY Wepin sessions from auth page
+      if (sessionData.authMethod === "wepin") {
+        chrome.storage.local.set({ veterex_session: sessionData }, () => {
+          console.log("[VeTerex] Wepin session stored in chrome.storage.local");
+
+          // Notify popup to update UI
+          chrome.runtime
+            .sendMessage({ type: "SESSION_UPDATED", data: sessionData })
+            .catch(() => {
+              // Ignore if popup not open
+            });
+
+          sendResponse({ success: true });
+        });
+      } else {
+        console.warn(
+          "[VeTerex] Ignoring non-Wepin auth from auth page:",
+          sessionData.authMethod
+        );
+        sendResponse({ success: false, error: "Only Wepin auth supported" });
+      }
       return true;
 
     // User data management

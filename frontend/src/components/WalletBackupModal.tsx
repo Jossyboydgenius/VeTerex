@@ -13,6 +13,7 @@ import WalletPasswordSetupModal from "./WalletPasswordSetupModal";
 import WalletPasswordVerifyModal from "./WalletPasswordVerifyModal";
 import { hasWalletPassword } from "../services/backend";
 import { useAppStore } from "../store/useAppStore";
+import { createPortal } from "react-dom";
 
 interface WalletBackupModalProps {
   isOpen: boolean;
@@ -122,7 +123,8 @@ export function WalletBackupModal({
     onClose();
   };
 
-  return (
+  // Use portal to render modal at document body level to ensure it's above everything
+  const modalContent = (
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
@@ -374,4 +376,7 @@ export function WalletBackupModal({
       />
     </AnimatePresence>
   );
+
+  // Use portal to render at document body level
+  return createPortal(modalContent, document.body);
 }
